@@ -45,16 +45,6 @@ enum tok {
 	TEOF
 };
 
-struct tok {
-	enum tok_type type;
-	union {
-		char *string_val;
-		bool bool_val;
-		BigNum num_val; // TODO
-		uint32_t char_val;
-	} u;
-};
-
 static uint16_t lineno = 1;
 
 static NORETURN void fatal_error(char *s)
@@ -81,10 +71,19 @@ static void skipspaces(void)
 	} while (isspace(*inp));
 }
 
+static enum tok char_(void)
+{
+	switch (*inp) {
+	case ''':
+	case 'U':
+	}
+	fatal_error("Internal error");
+}
+
 // TODO: This should probably use a hash table
 static enum tok lookup_keyword(char *keyword)
 {
-	static struct {
+	static const struct {
 		char *keyword;
 		enum tok tok;
 	} keywords[] = {
@@ -144,8 +143,7 @@ static enum tok ident(void)
 	int i;
 
 	if (!is_ident_head(*inp)) {
-		fatal_error("Identifiers must begin with an underscore, "
-		            "a letter, or a digit");
+		fatal_error("Internal error");
 	}
 	for (i = 0; is_ident_tail(inp[i]); i++) {
 		if (i == MAX_IDENT_SIZE) {
