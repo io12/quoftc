@@ -1,17 +1,25 @@
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "langc.h"
+
 #ifdef __GNUC__
 #define NORETURN __attribute__((noreturn))
 #else
 #define NORETURN
 #endif
 
+#define xstr(x) str__(x)
+#define str__(x) #x
 #define LEN(x) (sizeof(x) / sizeof((x)[0]))
 #define MAX_IDENT_SIZE 512
 
-// N/A (Not applicable) == -1
-#define N -1
-#define A 1
-
 enum tok {
+	N, A, // N/A (Not applicable) == 0
+
 	IMPURE,
 	IDENT,
 	TYPEDEF,
@@ -21,7 +29,7 @@ enum tok {
 
 	PLUS_PLUS, MINUS_MINUS,
 	PLUS, MINUS, STAR, SLASH, PERCENT,
-	LT_EQ, GT_EQ, EQ_EQ, BANG_EQ,
+	LT, GT, LT_EQ, GT_EQ, EQ_EQ, BANG_EQ,
 	AMP, PIPE, CARET, TILDE, LT_LT, GT_GT,
 	AMP_AMP, PIPE_PIPE, CARET_CARET, BANG,
 	EQ,
@@ -50,6 +58,8 @@ static union {
 	uint32_t char_literal;
 } yylval;
 
+extern char *inp;
+
 static NORETURN void fatal_error(char *s)
 {
 	// TODO: filename
@@ -66,7 +76,7 @@ static void inc_lineno(void)
 {
 	if (++lineno == 0) {
 		lineno--;
-		fatal_error("Source file longer than "#UINT16_MAX" lines");
+		fatal_error("Source file longer than "xstr(UINT16_MAX)" lines");
 	}
 }
 
@@ -82,9 +92,10 @@ static void skipspaces(void)
 static enum tok char_literal(void)
 {
 	switch (*inp) {
-	case ''':
-		inp += str_to_code_point(&yylval.char_literal, ++inp);
-		if (*inp != ''') {
+	case '\'':
+		inp++;
+		inp += str_to_code_point(&yylval.char_literal, inp);
+		if (*inp++ != '\'') {
 			fatal_error("Invalid char literal");
 		}
 		return CHAR_LITERAL;
@@ -133,7 +144,7 @@ static enum tok lookup_keyword(char *keyword)
 		{ "void", VOID },
 		{ "char", CHAR }
 	};
-	int i;
+	size_t i;
 
 	for (i = 0; i < LEN(keywords); i++) {
 		if (strcmp(keyword, keywords[i].keyword) == 0) {
@@ -155,7 +166,7 @@ static bool is_ident_tail(int c)
 
 static enum tok ident(void)
 {
-	char *p, yytext[MAX_IDENT_SIZE + 1];
+	char yytext[MAX_IDENT_SIZE + 1];
 	int i;
 
 	if (!is_ident_head(*inp)) {
@@ -165,7 +176,7 @@ static enum tok ident(void)
 		if (i == MAX_IDENT_SIZE) {
 			fatal_error("Identifier longer than the "
 			            "maximum allowed size "
-			            "("#MAX_IDENT_SIZE")");
+			            "("xstr(MAX_IDENT_SIZE)")");
 		}
 		yytext[i] = *inp++;
 	}
@@ -195,8 +206,8 @@ enum tok next_tok(void)
 {
 	skipspaces();
 	switch (*inp) {
-	case ''': return char_literal();
-	case '"': return string();
+	case '\'': return char_literal();
+	case '"': return string_literal();
 	case '+': return op('+', PLUS, PLUS_PLUS, PLUS_EQ);
 	case '-': return op('-', MINUS, MINUS_MINUS, MINUS_EQ);
 	case '*': return op('*', STAR, N/A, STAR_EQ);
@@ -229,7 +240,7 @@ enum tok next_tok(void)
 		return ident();
 	}
 	if (isdigit(*inp)) {
-		return num();
+		return num_literal();
 	}
 	fatal_error("Invalid token");
 }

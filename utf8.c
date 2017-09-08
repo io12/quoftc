@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "langc.h"
 
 #define MAX_UTF8_BYTES 6
 
@@ -15,9 +16,10 @@ static const uint8_t masks[MAX_UTF8_BYTES] = {
 	0x7F, 0x1F, 0x0F, 0x07, 0x03, 0x01
 };
 
-int str_to_code_point(uint32_t *code_point, const uint8_t *s)
+int str_to_code_point(uint32_t *code_point, const char *src)
 {
 	int nbytes, i;
+	const uint8_t *s = (uint8_t *) src;
 
 	for (nbytes = 1; nbytes <= MAX_UTF8_BYTES; nbytes++) {
 		if (s[0] >> shifts[nbytes - 1] == headers[nbytes - 1]) {
