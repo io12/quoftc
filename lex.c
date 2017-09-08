@@ -81,16 +81,6 @@ static void skipspaces(void)
 	} while (isspace(*inp));
 }
 
-static bool is_ident_head(int c)
-{
-	return c == '_' || isalpha(c);
-}
-
-static bool is_ident_tail(int c)
-{
-	return c == '_' || isalnum(c);
-}
-
 // TODO: This should probably use a hash table
 static enum tok lookup_keyword(char *keyword)
 {
@@ -136,6 +126,16 @@ static enum tok lookup_keyword(char *keyword)
 		}
 	}
 	return IDENT;
+}
+
+static bool is_ident_head(int c)
+{
+	return c == '_' || isalpha(c);
+}
+
+static bool is_ident_tail(int c)
+{
+	return c == '_' || isalnum(c);
 }
 
 static enum tok ident(void)
