@@ -46,12 +46,20 @@ enum tok {
 };
 
 static uint16_t lineno = 1;
+static union {
+	uint32_t char_literal;
+} yylval;
 
 static NORETURN void fatal_error(char *s)
 {
 	// TODO: filename
 	fprintf(stderr, "filename:%hu: error: %s\n", lineno, s);
 	exit(EXIT_FAILURE);
+}
+
+static NORETURN void internal_error(void)
+{
+	fatal_error("Internal error");
 }
 
 static void inc_lineno(void)
@@ -71,13 +79,21 @@ static void skipspaces(void)
 	} while (isspace(*inp));
 }
 
-static enum tok char_(void)
+static enum tok char_literal(void)
 {
 	switch (*inp) {
 	case ''':
+		inp += str_to_code_point(&yylval.char_literal, ++inp);
+		if (*inp != ''') {
+			fatal_error("Invalid char literal");
+		}
+		return CHAR_LITERAL;
 	case 'U':
+		if (*++inp != '+') {
+			internal_error();
+		}
 	}
-	fatal_error("Internal error");
+	internal_error();
 }
 
 // TODO: This should probably use a hash table
@@ -143,7 +159,7 @@ static enum tok ident(void)
 	int i;
 
 	if (!is_ident_head(*inp)) {
-		fatal_error("Internal error");
+		internal_error();
 	}
 	for (i = 0; is_ident_tail(inp[i]); i++) {
 		if (i == MAX_IDENT_SIZE) {
@@ -160,7 +176,7 @@ static enum tok ident(void)
 static enum tok op(int c, enum tok single, enum tok twice, enum tok eq_postfix)
 {
 	if (*inp != c) {
-		fatal_error("Internal error");
+		internal_error();
 	}
 	inp++;
 	if (twice != N/A && *inp == c) {
@@ -179,9 +195,7 @@ enum tok next_tok(void)
 {
 	skipspaces();
 	switch (*inp) {
-	case ''':
-	case 'U':
-		return char_(); // TODO: make sure this isn't an IDENT
+	case ''': return char_literal();
 	case '"': return string();
 	case '+': return op('+', PLUS, PLUS_PLUS, PLUS_EQ);
 	case '-': return op('-', MINUS, MINUS_MINUS, MINUS_EQ);
@@ -207,6 +221,9 @@ enum tok next_tok(void)
 	case '{': inp++; return OPEN_BRACE;
 	case '}': inp++; return CLOSE_BRACE;
 	case '\0': return TEOF;
+	}
+	if (inp[0] == 'U' && inp[1] == '+') {
+		return char_literal();
 	}
 	if (is_ident_head(*inp)) {
 		return ident();
