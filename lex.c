@@ -56,7 +56,6 @@ struct tok {
 };
 
 static uint16_t lineno = 1;
-static char yytext[MAX_IDENT_SIZE + 1];
 
 static NORETURN void fatal_error(char *s)
 {
@@ -141,25 +140,20 @@ static enum tok lookup_keyword(char *keyword)
 
 static enum tok ident(void)
 {
-	int c, i;
+	char *p, yytext[MAX_IDENT_SIZE + 1];
+	int i;
 
-	c = next_nonspace_char();
-	if (!is_ident_head(c)) {
+	if (!is_ident_head(*inp)) {
 		fatal_error("Identifiers must begin with an underscore, "
 		            "a letter, or a digit");
 	}
-	yytext[0] = c;
-	for (i = 1;; i++) {
-		c = peek_nonspace_char();
-		if (!is_ident_tail(c)) {
-			break;
-		}
+	for (i = 0; is_ident_tail(inp[i]); i++) {
 		if (i == MAX_IDENT_SIZE) {
 			fatal_error("Identifier longer than the "
 			            "maximum allowed size "
 			            "("#MAX_IDENT_SIZE")");
 		}
-		yytext[i] = next_nonspace_char();
+		yytext[i] = *inp++;
 	}
 	yytext[i] = '\0';
 	return lookup_keyword(yytext);
