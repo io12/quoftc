@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include "langc.h"
 
@@ -44,7 +45,7 @@ invalid:
 
 bool is_valid_utf8(const char *s)
 {
-	uint8_t c;
+	uint32_t c;
 	int nbytes;
 
 	do {
