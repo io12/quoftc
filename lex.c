@@ -15,6 +15,7 @@
 #define xstr(x) str__(x)
 #define str__(x) #x
 #define LEN(x) (sizeof(x) / sizeof((x)[0]))
+#define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 #define MAX_IDENT_SIZE 512
 
 enum tok {
@@ -56,6 +57,7 @@ enum tok {
 static uint16_t lineno = 1;
 static union {
 	uint32_t char_literal;
+	char string_literal[MAX_STRING_SIZE + 1];
 } yylval;
 
 extern char *inp;
@@ -105,6 +107,31 @@ static enum tok char_literal(void)
 		}
 	}
 	internal_error();
+}
+
+static enum tok string_literal(void)
+{
+	char *p;
+
+	if (*inp++ != '"') {
+		internal_error();
+	}
+	p = yylval.string_literal;
+	do {
+		// TODO: Fix this
+		if (p - yylval.string_literal == MAX_STRING_SIZE) {
+			fatal_error("String literal is longer than the maximum "
+			            "allowed length ("xstr(MAX_STRING_SIZE)
+			            " bytes)");
+		}
+		*p++ = *inp++;
+	} while (*inp != '"');
+	*p = '\0';
+	if (!is_valid_utf8(yylval.string_literal)) {
+		fatal_error("Invalid string literal");
+	}
+	inp++;
+	return STRING_LITERAL;
 }
 
 // TODO: This should probably use a hash table

@@ -41,3 +41,18 @@ int str_to_code_point(uint32_t *code_point, const char *src)
 invalid:
 	return 0;
 }
+
+bool is_valid_utf8(const char *s)
+{
+	uint8_t c;
+	int nbytes;
+
+	do {
+		nbytes = str_to_code_point(&c, s);
+		if (nbytes == 0) {
+			return false;
+		}
+		s += nbytes;
+	} while (c != '\0');
+	return true;
+}
