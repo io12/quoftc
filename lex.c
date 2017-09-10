@@ -60,12 +60,9 @@ static union {
 	char string_literal[MAX_STRING_SIZE + 1];
 } yylval;
 
-extern char *inp;
-
 static NORETURN void fatal_error(char *s)
 {
-	// TODO: filename
-	fprintf(stderr, "filename:%hu: error: %s\n", lineno, s);
+	fprintf(stderr, "%s:%hu: error: %s\n", filename, lineno, s);
 	exit(EXIT_FAILURE);
 }
 

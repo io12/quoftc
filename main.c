@@ -5,8 +5,9 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include "lang.h"
 
-char *inp;
+char *inp, *filename;
 
 int main(int argc, char *argv[])
 {
@@ -33,5 +34,6 @@ int main(int argc, char *argv[])
 		inp = mmap(NULL, stat.st_size + 1, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE, fd, 0);
 		inp[stat.st_size] = '\0';
+		filename = argv[1];
 	}
 }
