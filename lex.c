@@ -225,7 +225,6 @@ static enum tok op(int c, enum tok single, enum tok twice, enum tok eq_postfix)
 	return single;
 }
 
-// TODO: <<= and >>=
 enum tok next_tok(void)
 {
 	skipspaces();
