@@ -297,3 +297,14 @@ enum tok next_tok(void)
 	}
 	fatal_error("Invalid token");
 }
+
+enum tok peek_tok(void)
+{
+	char *inp_save;
+	enum tok tok;
+
+	inp_save = inp;
+	tok = next_tok();
+	inp = inp_save;
+	return tok;
+}
