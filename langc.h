@@ -1,4 +1,16 @@
+#ifdef __GNUC__
+#define NORETURN __attribute__((noreturn))
+#define PRINTF_LIKE __attribute__((format(printf, 1, 2)))
+#define MALLOC_LIKE __attribute__((malloc))
+#else
+#define NORETURN
+#define PRINTF_LIKE
+#define MALLOC_LIKE
+#endif
+
 #define MAX_IDENT_SIZE 512
+
+#define NEW(type) = ((type *) emalloc(sizeof(type)))
 
 enum tok {
 	N, A, // N/A (Not applicable) == 0
@@ -38,6 +50,8 @@ enum tok {
 
 enum tok next_tok(void);
 enum tok peek_tok(void);
+
+MALLOC_LIKE void *emalloc(size_t);
 
 int str_to_code_point(uint32_t *, const char *);
 bool is_valid_utf8(const char *);

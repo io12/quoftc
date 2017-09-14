@@ -7,14 +7,6 @@
 #include <string.h>
 #include "langc.h"
 
-#ifdef __GNUC__
-#define NORETURN __attribute__((noreturn))
-#define PRINTF_LIKE __attribute__((format(printf, 1, 2)))
-#else
-#define NORETURN
-#define PRINTF_LIKE
-#endif
-
 #define xstr(x) str__(x)
 #define str__(x) #x
 #define LEN(x) (sizeof(x) / sizeof((x)[0]))
