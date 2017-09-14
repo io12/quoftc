@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -8,8 +9,10 @@
 
 #ifdef __GNUC__
 #define NORETURN __attribute__((noreturn))
+#define PRINTF_LIKE __attribute__((format(printf, 1, 2)))
 #else
 #define NORETURN
+#define PRINTF_LIKE
 #endif
 
 #define xstr(x) str__(x)
@@ -62,9 +65,15 @@ static union {
 	long num_literal;
 } yylval;
 
-static NORETURN void fatal_error(char *s)
+static NORETURN PRINTF_LIKE void fatal_error(char *fmt, ...)
 {
-	fprintf(stderr, "%s:%hu: error: %s\n", filename, lineno, s);
+	va_list ap;
+
+	fprintf(stderr, "%s:%hu: error: ", filename, lineno);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
 	exit(EXIT_FAILURE);
 }
 
