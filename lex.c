@@ -15,6 +15,7 @@
 #define xstr(x) str__(x)
 #define str__(x) #x
 #define LEN(x) (sizeof(x) / sizeof((x)[0]))
+#define IN_RANGE(x, min, max) (x >= min && x <= max)
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 #define MAX_IDENT_SIZE 512
 
@@ -58,6 +59,7 @@ static uint16_t lineno = 1;
 static union {
 	uint32_t char_literal;
 	char string_literal[MAX_STRING_SIZE + 1];
+	long num_literal;
 } yylval;
 
 static NORETURN void fatal_error(char *s)
@@ -81,25 +83,24 @@ static void inc_lineno(void)
 
 static void skipspaces(void)
 {
-	do {
+	while (isspace(*inp)) {
 		if (*inp++ == '\n') {
 			inc_lineno();
 		}
-	} while (isspace(*inp));
+	}
 }
 
 static enum tok char_literal(void)
 {
-	switch (*inp) {
+	switch (*inp++) {
 	case '\'':
-		inp++;
 		inp += str_to_code_point(&yylval.char_literal, inp);
 		if (*inp++ != '\'') {
 			fatal_error("Invalid char literal");
 		}
 		return CHAR_LITERAL;
 	case 'U':
-		if (*++inp != '+') {
+		if (*inp != '+') {
 			internal_error();
 		}
 	}
@@ -206,6 +207,63 @@ static enum tok ident(void)
 	}
 	yytext[i] = '\0';
 	return lookup_keyword(yytext);
+}
+
+static bool is_bin_digit(int c)
+{
+	return c == '0' || c == '1';
+}
+
+static bool is_oct_digit(int c)
+{
+	return IN_RANGE(c, '0', '7');
+}
+
+static bool is_dec_digit(int c)
+{
+	return isdigit(c);
+}
+
+static bool is_hex_digit(int c)
+{
+	return is_dec_digit(c) || IN_RANGE(c, 'A', 'F');
+}
+
+static int value_of_digit(int c)
+{
+	return is_dec_digit(c) ? c - '0' : c - 'A' + 10;
+}
+
+static enum tok num_literal(void)
+{
+	bool (*is_valid_digit)(int c) = is_dec_digit;
+	int base = 10;
+
+	if (*inp == '0') {
+		inp++;
+		switch (*inp++) {
+		case 'b':
+			is_valid_digit = is_bin_digit;
+			base = 2;
+			break;
+		case 'o':
+			is_valid_digit = is_oct_digit;
+			base = 8;
+			break;
+		case 'x':
+			is_valid_digit = is_hex_digit;
+			base = 16;
+			break;
+		default:
+			fatal_error("Numerical literal has a leading zero");
+		}
+	}
+	yylval.num_literal = 0;
+	while (is_valid_digit(*inp)) {
+		yylval.num_literal *= base;
+		yylval.num_literal += value_of_digit(*inp++);
+	}
+	return NUM_LITERAL;
 }
 
 static enum tok op(int c, enum tok single, enum tok twice, enum tok eq_postfix)
