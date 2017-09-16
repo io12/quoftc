@@ -56,19 +56,17 @@ static void skipspaces(void)
 
 static enum tok char_literal(void)
 {
-	switch (*inp++) {
-	case '\'':
-		inp += str_to_code_point(&yylval.char_literal, inp);
-		if (*inp++ != '\'') {
-			fatal_error("Invalid char literal");
-		}
-		return CHAR_LITERAL;
-	case 'U':
-		if (*inp != '+') {
-			internal_error();
-		}
+	if (*inp++ != '\'') {
+		internal_error();
 	}
-	internal_error();
+	if (inp[0] == 'U' && inp[1] == '+') {
+		// TODO:
+	}
+	inp += str_to_code_point(&yylval.char_literal, inp);
+	if (*inp++ != '\'') {
+		fatal_error("Invalid char literal");
+	}
+	return CHAR_LITERAL;
 }
 
 static enum tok string_literal(void)
@@ -277,9 +275,6 @@ enum tok next_tok(void)
 	case '{': inp++; return OPEN_BRACE;
 	case '}': inp++; return CLOSE_BRACE;
 	case '\0': return TEOF;
-	}
-	if (inp[0] == 'U' && inp[1] == '+') {
-		return char_literal();
 	}
 	if (is_ident_head(*inp)) {
 		return ident();
