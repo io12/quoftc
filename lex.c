@@ -101,6 +101,7 @@ static enum tok lookup_keyword(char *keyword)
 		char *keyword;
 		enum tok tok;
 	} keywords[] = {
+		{ "fn", FN },
 		{ "impure", IMPURE },
 		{ "typedef", TYPEDEF },
 		{ "True", TRUE },
