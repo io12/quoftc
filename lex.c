@@ -296,3 +296,100 @@ enum tok peek_tok(void)
 	inp = inp_save;
 	return tok;
 }
+
+static char *tok_to_str(enum tok tok)
+{
+	static char *tok_names[] = {
+		[IMPURE] = "`impure`",
+		[IDENT] = "an identifier",
+		[TYPEDEF] = "`typedef`",
+		[TRUE] = "`True`",
+		[FALSE] = "`False`",
+		[NUM_LITERAL] = "a numerical literal",
+		[CHAR_LITERAL] = "a character literal",
+		[STRING_LITERAL] = "a string literal",
+		[PLUS_PLUS] = "`++`",
+		[MINUS_MINUS] = "`--`",
+		[PLUS] = "`+`",
+		[MINUS] = "`-`",
+		[STAR] = "`*`",
+		[SLASH] = "`/`",
+		[PERCENT] = "`%`",
+		[LT] = "`<`",
+		[GT] = "`>`",
+		[LT_EQ] = "`<=`",
+		[GT_EQ] = "`>=`",
+		[EQ_EQ] = "`==`",
+		[BANG_EQ] = "`!=`",
+		[AMP] = "`&`",
+		[PIPE] = "`|`",
+		[CARET] = "`^`",
+		[TILDE] = "`~`",
+		[LT_LT] = "`<<`",
+		[GT_GT] = "`>>`",
+		[AMP_AMP] = "`&&`",
+		[PIPE_PIPE] = "`||`",
+		[CARET_CARET] = "`^^`",
+		[BANG] = "`!`",
+		[EQ] = "`=`",
+		[PLUS_EQ] = "`+=`",
+		[MINUS_EQ] = "`-=`",
+		[STAR_EQ] = "`*=`",
+		[SLASH_EQ] = "`/=`",
+		[PERCENT_EQ] = "`%=`",
+		[AMP_EQ] = "`&=`",
+		[PIPE_EQ] = "`|=`",
+		[CARET_EQ] = "`^=`",
+		[IF] = "`if`",
+		[THEN] = "`then`",
+		[ELSE] = "`else`",
+		[DO] = "`do`",
+		[WHILE] = "`while`",
+		[FOR] = "`for`",
+		[MATCH] = "`match`",
+		[BREAK] = "`break`",
+		[CONTINUE] = "`continue`",
+		[DEFER] = "`defer`",
+		[RETURN] = "`return`",
+		[U8] = "`U8`",
+		[U16] = "`U16`",
+		[U32] = "`U32`",
+		[U64] = "`U64`",
+		[I8] = "`I8`",
+		[I16] = "`I16`",
+		[I32] = "`I32`",
+		[I64] = "`I64`",
+		[F32] = "`F32`",
+		[F64] = "`F64`",
+		[BOOL] = "`bool`",
+		[VOID] = "`void`",
+		[CHAR] = "`char`",
+		[DOT] = "`.`",
+		[COLON] = "`:`",
+		[SEMICOLON] = "`;`",
+		[COMMA] = "`,`",
+		[OPEN_BRACKET] = "`[`",
+		[CLOSE_BRACKET] = "`]`",
+		[OPEN_PAREN] = "`(`",
+		[CLOSE_PAREN] = "`)`",
+		[OPEN_BRACE] = "`{`",
+		[CLOSE_BRACE] = "`}`",
+		[TEOF] = "end of file"
+	};
+
+	if (tok_names[tok] == NULL) {
+		internal_error();
+	}
+	return tok_names[tok];
+}
+
+void expect_tok(enum tok expected_tok)
+{
+	enum tok tok;
+
+	tok = next_tok();
+	if (tok != expected_tok) {
+		fatal_error("Expected %s, instead got %s",
+				tok_to_str(expected_tok), tok_to_str(tok));
+	}
+}
