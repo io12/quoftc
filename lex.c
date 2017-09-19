@@ -300,6 +300,7 @@ enum tok peek_tok(void)
 static char *tok_to_str(enum tok tok)
 {
 	static char *tok_names[] = {
+		[MUT] = "`mut`",
 		[IMPURE] = "`impure`",
 		[IDENT] = "an identifier",
 		[TYPEDEF] = "`typedef`",
