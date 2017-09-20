@@ -10,7 +10,7 @@
 
 #define MAX_IDENT_SIZE 512
 
-#define NEW(type) = ((type *) emalloc(sizeof(type)))
+#define NEW(type) ((type *) emalloc(sizeof(type)))
 
 enum tok {
 	N, A, // N/A (Not applicable) == 0
