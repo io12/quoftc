@@ -1,9 +1,6 @@
 #include <ctype.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "langc.h"
 
@@ -13,29 +10,11 @@
 #define IN_RANGE(x, min, max) (x >= min && x <= max)
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 
-uint16_t lineno = 1;
 union {
 	uint32_t char_literal;
 	char string_literal[MAX_STRING_SIZE + 1];
 	long num_literal;
 } yylval;
-
-static NORETURN PRINTF_LIKE void fatal_error(char *fmt, ...)
-{
-	va_list ap;
-
-	fprintf(stderr, "%s:%hu: error: ", filename, lineno);
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	fputc('\n', stderr);
-	exit(EXIT_FAILURE);
-}
-
-static NORETURN void internal_error(void)
-{
-	fatal_error("Internal error");
-}
 
 static void inc_lineno(void)
 {

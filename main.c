@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,6 +11,24 @@
 #include "langc.h"
 
 char *argv0, *filename, *inp;
+uint16_t lineno;
+
+NORETURN PRINTF_LIKE void fatal_error(char *fmt, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, "%s:%hu: error: ", filename, lineno);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	exit(EXIT_FAILURE);
+}
+
+NORETURN void internal_error(void)
+{
+	fatal_error("Internal error");
+}
 
 MALLOC_LIKE void *emalloc(size_t size)
 {
@@ -50,5 +69,6 @@ int main(int argc, char *argv[])
 		inp = mmap(NULL, stat.st_size + 1, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE, fd, 0);
 		inp[stat.st_size] = '\0';
+		lineno = 1;
 	}
 }
