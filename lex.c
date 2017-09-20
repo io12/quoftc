@@ -13,8 +13,8 @@
 #define IN_RANGE(x, min, max) (x >= min && x <= max)
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 
-static uint16_t lineno = 1;
-static union {
+uint16_t lineno = 1;
+union {
 	uint32_t char_literal;
 	char string_literal[MAX_STRING_SIZE + 1];
 	long num_literal;
