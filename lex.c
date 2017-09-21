@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "langc.h"
+#include "ds.h"
 
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 
@@ -71,52 +72,92 @@ static enum tok string_literal(void)
 	return STRING_LITERAL;
 }
 
-// TODO: This should probably use a hash table
 static enum tok lookup_keyword(char *keyword)
 {
-	static const struct {
-		char *keyword;
-		enum tok tok;
-	} keywords[] = {
-		{ "mut", MUT },
-		{ "impure", IMPURE },
-		{ "typedef", TYPEDEF },
-		{ "True", TRUE },
-		{ "False", FALSE },
-		{ "if", IF },
-		{ "then", THEN },
-		{ "else", ELSE },
-		{ "do", DO },
-		{ "while", WHILE },
-		{ "for", FOR },
-		{ "match", MATCH },
-		{ "cond", COND },
-		{ "break", BREAK },
-		{ "continue", CONTINUE },
-		{ "defer", DEFER },
-		{ "return", RETURN },
-		{ "U8", U8 },
-		{ "U16", U16 },
-		{ "U32", U32 },
-		{ "U64", U64 },
-		{ "I8", I8 },
-		{ "I16", I16 },
-		{ "I32", I32 },
-		{ "I64", I64 },
-		{ "F32", F32 },
-		{ "F64", F64 },
-		{ "bool", BOOL },
-		{ "void", VOID },
-		{ "char", CHAR }
-	};
-	size_t i;
+	static HashTable *keywords = NULL;
+	void *p;
 
-	for (i = 0; i < LEN(keywords); i++) {
-		if (strcmp(keyword, keywords[i].keyword) == 0) {
-			return keywords[i].tok;
-		}
+	if (keywords == NULL) {
+		keywords = alloc_hash_table();
+#define K(keyword, tok) hash_table_set(keywords, keyword, (void *) tok)
+		K("mut", MUT);
+		K("impure", IMPURE);
+		K("typedef", TYPEDEF);
+		K("True", TRUE);
+		K("False", FALSE);
+		K("++", PLUS_PLUS);
+		K("--", MINUS_MINUS);
+		K("+", PLUS);
+		K("-", MINUS);
+		K("*", STAR);
+		K("/", SLASH);
+		K("%", PERCENT);
+		K("<", LT);
+		K(">", GT);
+		K("<=", LT_EQ);
+		K(">=", GT_EQ);
+		K("==", EQ_EQ);
+		K("!=", BANG_EQ);
+		K("&", AMP);
+		K("|", PIPE);
+		K("^", CARET);
+		K("~", TILDE);
+		K("<<", LT_LT);
+		K(">>", GT_GT);
+		K("&&", AMP_AMP);
+		K("||", PIPE_PIPE);
+		K("^^", CARET_CARET);
+		K("!", BANG);
+		K("=", EQ);
+		K("+=", PLUS_EQ);
+		K("-=", MINUS_EQ);
+		K("*=", STAR_EQ);
+		K("/=", SLASH_EQ);
+		K("%=", PERCENT_EQ);
+		K("&=", AMP_EQ);
+		K("|=", PIPE_EQ);
+		K("^=", CARET_EQ);
+		K("<<=", LT_LT_EQ);
+		K(">>=", GT_GT_EQ);
+		K("if", IF);
+		K("then", THEN);
+		K("else", ELSE);
+		K("do", DO);
+		K("while", WHILE);
+		K("for", FOR);
+		K("match", MATCH);
+		K("cond", COND);
+		K("break", BREAK);
+		K("continue", CONTINUE);
+		K("defer", DEFER);
+		K("return", RETURN);
+		K("U8", U8);
+		K("U16", U16);
+		K("U32", U32);
+		K("U64", U64);
+		K("I8", I8);
+		K("I16", I16);
+		K("I32", I32);
+		K("I64", I64);
+		K("F32", F32);
+		K("F64", F64);
+		K("bool", BOOL);
+		K("void", VOID);
+		K("char", CHAR);
+		K(".", DOT);
+		K(":", COLON);
+		K(";", SEMICOLON);
+		K(",", COMMA);
+		K("[", OPEN_BRACKET);
+		K("]", CLOSE_BRACKET);
+		K("(", OPEN_PAREN);
+		K(")", CLOSE_PAREN);
+		K("{", OPEN_BRACE);
+		K("}", CLOSE_BRACE);
+#undef K
 	}
-	return IDENT;
+	p = hash_table_get(keywords, keyword);
+	return p == NULL ? IDENT : (enum tok) p;
 }
 
 static bool is_ident_head(int c)
@@ -205,21 +246,28 @@ static enum tok num_literal(void)
 	return NUM_LITERAL;
 }
 
-static enum tok op(int c, enum tok single, enum tok twice, enum tok eq_postfix)
+static bool is_op_char(int c)
 {
-	if (*inp != c) {
+	// TODO: Optimize this
+	return strchr("+-*/%<?=!&|^~.:;,[](){}", c) != NULL;
+}
+
+static enum tok op(void)
+{
+	int i = 0;
+
+	if (!is_op_char(*inp)) {
 		internal_error();
 	}
-	inp++;
-	if (twice != N/A && *inp == c) {
-		inp++;
-		return twice;
-	}
-	if (eq_postfix != N/A && *inp == '=') {
-		inp++;
-		return eq_postfix;
-	}
-	return single;
+	do {
+		if (i == MAX_IDENT_SIZE) {
+			fatal_error("Operator longer than the "
+			            "maximum allowed size "
+			            "("xstr(MAX_IDENT_SIZE)")");
+		}
+		yytext[i++] = *inp++;
+	} while (is_op_char(*inp));
+	yytext[i] = '\0';
 }
 
 enum tok next_tok(void)
@@ -228,30 +276,10 @@ enum tok next_tok(void)
 	switch (*inp) {
 	case '\'': return char_literal();
 	case '"': return string_literal();
-	case '+': return op('+', PLUS, PLUS_PLUS, PLUS_EQ);
-	case '-': return op('-', MINUS, MINUS_MINUS, MINUS_EQ);
-	case '*': return op('*', STAR, N/A, STAR_EQ);
-	case '/': return op('/', SLASH, N/A, SLASH_EQ);
-	case '%': return op('%', PERCENT, N/A, PERCENT_EQ);
-	case '<': return op('<', LT, LT_LT, LT_EQ);
-	case '>': return op('>', GT, GT_GT, GT_EQ);
-	case '=': return op('=', EQ, EQ_EQ, EQ_EQ);
-	case '!': return op('!', BANG, N/A, BANG_EQ);
-	case '&': return op('&', AMP, AMP_AMP, AMP_EQ);
-	case '|': return op('|', PIPE, PIPE_PIPE, PIPE_EQ);
-	case '^': return op('^', CARET, CARET_CARET, CARET_EQ);
-	case '~': inp++; return TILDE;
-	case '.': inp++; return DOT;
-	case ':': inp++; return COLON;
-	case ';': inp++; return SEMICOLON;
-	case ',': inp++; return COMMA;
-	case '[': inp++; return OPEN_BRACKET;
-	case ']': inp++; return CLOSE_BRACKET;
-	case '(': inp++; return OPEN_PAREN;
-	case ')': inp++; return CLOSE_PAREN;
-	case '{': inp++; return OPEN_BRACE;
-	case '}': inp++; return CLOSE_BRACE;
 	case '\0': return TEOF;
+	}
+	if (is_op_char(*inp)) {
+		return op();
 	}
 	if (is_ident_head(*inp)) {
 		return ident();
