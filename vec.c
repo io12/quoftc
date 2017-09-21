@@ -30,8 +30,7 @@ Vec *vec_push(Vec *vec, void *val)
 	vec->len++;
 	if (vec->len > vec->nalloc) {
 		vec->nalloc *= 2;
-		// TODO: Make an erealloc
-		vec->data = realloc(vec->data, vec->nalloc * sizeof(void *));
+		vec->data = erealloc(vec->data, vec->nalloc * sizeof(void *));
 	}
 	vec->data[vec->len - 1] = val;
 	return vec;
