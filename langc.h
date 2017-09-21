@@ -60,5 +60,7 @@ MALLOC_LIKE void *emalloc(size_t);
 int str_to_code_point(uint32_t *, const char *);
 bool is_valid_utf8(const char *);
 
+extern char yytext[MAX_IDENT_SIZE + 1];
+
 extern char *inp, *filename;
 extern uint16_t lineno;

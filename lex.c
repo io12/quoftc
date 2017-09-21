@@ -16,6 +16,8 @@ union {
 	long num_literal;
 } yylval;
 
+char yytext[MAX_IDENT_SIZE + 1];
+
 static void inc_lineno(void)
 {
 	if (++lineno == 0) {
@@ -133,7 +135,6 @@ static bool is_ident_tail(int c)
 
 static enum tok ident(void)
 {
-	char yytext[MAX_IDENT_SIZE + 1];
 	int i;
 
 	if (!is_ident_head(*inp)) {
