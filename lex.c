@@ -4,10 +4,6 @@
 #include <string.h>
 #include "langc.h"
 
-#define xstr(x) str__(x)
-#define str__(x) #x
-#define LEN(x) (sizeof(x) / sizeof((x)[0]))
-#define IN_RANGE(x, min, max) (x >= min && x <= max)
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 
 union {
