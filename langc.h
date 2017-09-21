@@ -15,6 +15,7 @@
 #define LEN(x) (sizeof(x) / sizeof((x)[0]))
 #define IN_RANGE(x, min, max) (x >= min && x <= max)
 #define NEW(type) ((type *) emalloc(sizeof(type)))
+#define NEWC(type) ((type *) ecalloc(sizeof(type)))
 
 enum tok {
 	N, A, // N/A (Not applicable) == 0
@@ -61,6 +62,8 @@ void expect_tok(enum tok tok);
 NORETURN PRINTF_LIKE void fatal_error(char *, ...);
 NORETURN void internal_error(void);
 MALLOC_LIKE void *emalloc(size_t);
+MALLOC_LIKE void *ecalloc(size_t);
+void *erealloc(void *, size_t);
 
 int str_to_code_point(uint32_t *, const char *);
 bool is_valid_utf8(const char *);

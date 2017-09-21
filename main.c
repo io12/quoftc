@@ -42,6 +42,28 @@ MALLOC_LIKE void *emalloc(size_t size)
 	return p;
 }
 
+MALLOC_LIKE void *ecalloc(size_t size)
+{
+	void *p;
+
+	p = calloc(1, size);
+	if (p == NULL) {
+		fprintf(stderr, "%s: error: %s\n", argv0, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	return p;
+}
+
+void *erealloc(void *p, size_t size)
+{
+	p = realloc(p, size);
+	if (p == NULL) {
+		fprintf(stderr, "%s: error: %s\n", argv0, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	return p;
+}
+
 int main(int argc, char *argv[])
 {
 	int i, fd;
