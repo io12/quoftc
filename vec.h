@@ -4,6 +4,6 @@ struct vec {
 	void **data;
 };
 
-Vec *vec(void);
+Vec *alloc_vec(void);
 void *vec_get(Vec *, size_t);
 Vec *vec_push(Vec *, void *);

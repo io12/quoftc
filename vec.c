@@ -6,7 +6,7 @@
 
 #define VEC_SIZE 8
 
-Vec *vec(void)
+Vec *alloc_vec(void)
 {
 	Vec *vec;
 
