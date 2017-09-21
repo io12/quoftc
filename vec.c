@@ -25,7 +25,7 @@ void *vec_get(Vec *vec, size_t n)
 	return vec->data[n];
 }
 
-void vec_push(Vec *vec, void *val)
+Vec *vec_push(Vec *vec, void *val)
 {
 	vec->len++;
 	if (vec->len > vec->nalloc) {
@@ -34,4 +34,5 @@ void vec_push(Vec *vec, void *val)
 		vec->data = realloc(vec->data, vec->nalloc * sizeof(void *));
 	}
 	vec->data[vec->len - 1] = val;
+	return vec;
 }
