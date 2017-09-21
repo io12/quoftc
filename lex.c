@@ -249,7 +249,6 @@ static enum tok num_literal(void)
 
 static bool is_op_char(int c)
 {
-	// TODO: Optimize this
 	return strchr("+-*/%<?=!&|^~.:;,[](){}", c) != NULL;
 }
 
