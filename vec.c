@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "langc.h"
-#include "vec.h"
+#include "ds.h"
 
 #define VEC_SIZE 8
 
