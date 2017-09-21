@@ -148,6 +148,7 @@ static enum tok lookup_keyword(char *keyword)
 		K(":", COLON);
 		K(";", SEMICOLON);
 		K(",", COMMA);
+		K("->", ARROW);
 		K("[", OPEN_BRACKET);
 		K("]", CLOSE_BRACKET);
 		K("(", OPEN_PAREN);
@@ -345,6 +346,8 @@ static char *tok_to_str(enum tok tok)
 		[AMP_EQ] = "`&=`",
 		[PIPE_EQ] = "`|=`",
 		[CARET_EQ] = "`^=`",
+		[LT_LT_EQ] = "`<<=`",
+		[GT_GT_EQ] = "`>>=`",
 		[IF] = "`if`",
 		[THEN] = "`then`",
 		[ELSE] = "`else`",
@@ -373,6 +376,7 @@ static char *tok_to_str(enum tok tok)
 		[COLON] = "`:`",
 		[SEMICOLON] = "`;`",
 		[COMMA] = "`,`",
+		[ARROW] = "`->`",
 		[OPEN_BRACKET] = "`[`",
 		[CLOSE_BRACKET] = "`]`",
 		[OPEN_PAREN] = "`(`",
