@@ -8,9 +8,9 @@
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 
 union {
-	uint32_t char_literal;
-	char string_literal[MAX_STRING_SIZE + 1];
-	long num_literal;
+	uint32_t char_lit;
+	char string_lit[MAX_STRING_SIZE + 1];
+	long num_lit;
 } yylval;
 
 char yytext[MAX_IDENT_SIZE + 1];
@@ -32,7 +32,7 @@ static void skipspaces(void)
 	}
 }
 
-static enum tok char_literal(void)
+static enum tok char_lit(void)
 {
 	if (*inp++ != '\'') {
 		internal_error();
@@ -40,24 +40,24 @@ static enum tok char_literal(void)
 	if (inp[0] == 'U' && inp[1] == '+') {
 		// TODO:
 	}
-	inp += str_to_code_point(&yylval.char_literal, inp);
+	inp += str_to_code_point(&yylval.char_lit, inp);
 	if (*inp++ != '\'') {
 		fatal_error("Invalid char literal");
 	}
-	return CHAR_LITERAL;
+	return CHAR_LIT;
 }
 
-static enum tok string_literal(void)
+static enum tok string_lit(void)
 {
 	char *p;
 
 	if (*inp++ != '"') {
 		internal_error();
 	}
-	p = yylval.string_literal;
+	p = yylval.string_lit;
 	do {
 		// TODO: Fix this
-		if (p - yylval.string_literal == MAX_STRING_SIZE) {
+		if (p - yylval.string_lit == MAX_STRING_SIZE) {
 			fatal_error("String literal is longer than the maximum "
 			            "allowed length ("xstr(MAX_STRING_SIZE)
 			            " bytes)");
@@ -65,11 +65,11 @@ static enum tok string_literal(void)
 		*p++ = *inp++;
 	} while (*inp != '"');
 	*p = '\0';
-	if (!is_valid_utf8(yylval.string_literal)) {
+	if (!is_valid_utf8(yylval.string_lit)) {
 		fatal_error("Invalid string literal");
 	}
 	inp++;
-	return STRING_LITERAL;
+	return STRING_LIT;
 }
 
 static enum tok lookup_keyword(char *keyword)
@@ -217,7 +217,7 @@ static int value_of_digit(int c)
 	return is_dec_digit(c) ? c - '0' : c - 'A' + 10;
 }
 
-static enum tok num_literal(void)
+static enum tok num_lit(void)
 {
 	bool (*is_valid_digit)(int c) = is_dec_digit;
 	int base = 10;
@@ -241,12 +241,12 @@ static enum tok num_literal(void)
 			fatal_error("Numerical literal has a leading zero");
 		}
 	}
-	yylval.num_literal = 0;
+	yylval.num_lit = 0;
 	while (is_valid_digit(*inp)) {
-		yylval.num_literal *= base;
-		yylval.num_literal += value_of_digit(*inp++);
+		yylval.num_lit *= base;
+		yylval.num_lit += value_of_digit(*inp++);
 	}
-	return NUM_LITERAL;
+	return NUM_LIT;
 }
 
 static bool is_op_char(int c)
@@ -282,8 +282,8 @@ enum tok next_tok(void)
 {
 	skipspaces();
 	switch (*inp) {
-	case '\'': return char_literal();
-	case '"': return string_literal();
+	case '\'': return char_lit();
+	case '"': return string_lit();
 	case '\0': return TEOF;
 	}
 	if (is_op_char(*inp)) {
@@ -293,7 +293,7 @@ enum tok next_tok(void)
 		return ident();
 	}
 	if (isdigit(*inp)) {
-		return num_literal();
+		return num_lit();
 	}
 	fatal_error("Invalid token");
 }
@@ -318,9 +318,9 @@ static char *tok_to_str(enum tok tok)
 		[TYPEDEF] = "`typedef`",
 		[TRUE] = "`True`",
 		[FALSE] = "`False`",
-		[NUM_LITERAL] = "a numerical literal",
-		[CHAR_LITERAL] = "a character literal",
-		[STRING_LITERAL] = "a string literal",
+		[NUM_LIT] = "a numerical literal",
+		[CHAR_LIT] = "a character literal",
+		[STRING_LIT] = "a string literal",
 		[PLUS_PLUS] = "`++`",
 		[MINUS_MINUS] = "`--`",
 		[PLUS] = "`+`",
