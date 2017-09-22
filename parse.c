@@ -80,7 +80,7 @@ static struct type *alloc_func_type(struct type *l, struct type *r)
 struct expr {
 	enum {
 		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
-		UNARY_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
+		UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
 		IDENT_EXPR
 	} type;
 	union {
@@ -91,6 +91,10 @@ struct expr {
 			enum tok op;
 			struct expr *subexpr;
 		} unary_op;
+		struct {
+			enum tok op;
+			struct expr *l, *r;
+		} bin_op;
 		struct {
 			Vec *params;
 			struct expr *body;
@@ -141,6 +145,19 @@ static struct expr *alloc_unary_op_expr(enum tok op, struct expr *subexpr)
 	return expr;
 }
 
+static struct expr *alloc_bin_op_expr(enum tok op, struct expr *l,
+		struct expr *r)
+{
+	struct expr *expr;
+
+	expr = NEW(struct expr);
+	expr->type = BIN_OP_EXPR;
+	expr->u.bin_op.op = op;
+	expr->u.bin_op.l = l;
+	expr->u.bin_op.r = r;
+	return expr;
+}
+
 static struct expr *alloc_lambda_expr(Vec *params, struct expr *body)
 {
 	struct expr *expr;
@@ -162,7 +179,7 @@ static struct expr *alloc_array_lit_expr(Vec *array_lit)
 	return expr;
 }
 
-static struct expr *alloc_ident_expr(char ident[IDENT_MAX_SIZE + 1])
+static struct expr *alloc_ident_expr(char ident[MAX_IDENT_SIZE + 1])
 {
 	struct expr *expr;
 
@@ -335,8 +352,121 @@ static struct expr *parse_primary_expr(void)
 	}
 }
 
+static bool is_bin_op(enum tok tok)
+{
+	switch (tok) {
+	case PLUS: case MINUS:
+	case STAR: case SLASH: case PERCENT:
+	case LT: case GT: case LT_EQ: case GT_EQ: case EQ_EQ: case BANG_EQ:
+	case AMP: case PIPE: case CARET: case LT_LT: case GT_GT:
+	case AMP_AMP: case PIPE_PIPE: case CARET_CARET:
+	case EQ:
+	case PLUS_EQ: case MINUS_EQ:
+	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
+	case AMP_EQ: case PIPE_EQ: case CARET_EQ: case LT_LT_EQ: case GT_GT_EQ:
+	case DOT: case COMMA:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static int get_bin_op_prec(enum tok op)
+{
+	switch (op) {
+	case DOT:
+		return 13;
+	case STAR: case SLASH: case PERCENT:
+		return 12;
+	case PLUS: case MINUS:
+		return 11;
+	case LT_LT: case GT_GT:
+		return 10;
+	case AMP:
+		return 9;
+	case CAROT:
+		return 8;
+	case PIPE:
+		return 7;
+	case LT: case GT: case LT_EQ: case GT_EQ:
+		return 6;
+	case EQ_EQ: case BANG_EQ:
+		return 5;
+	case AMP_AMP:
+		return 4;
+	case CAROT_CAROT:
+		return 3;
+	case PIPE_PIPE:
+		return 2;
+	case COMMA:
+		return 1;
+	case EQ:
+	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
+	case PLUS_EQ: case MINUS_EQ:
+	case LT_LT_EQ: case GT_GT_EQ:
+	case AMP_EQ: case CAROT_EQ: case PIPE_EQ:
+		return 0;
+	default:
+		internal_error();
+	}
+}
+
+enum assoc {
+	L_ASSOC, R_ASSOC, NON_ASSOC
+};
+
+static enum assoc get_bin_op_assoc(enum tok op)
+{
+	switch (op) {
+	case DOT:
+	case STAR: case SLASH: case PERCENT:
+	case PLUS: case MINUS:
+	case LT_LT: case GT_GT:
+	case AMP:
+	case CAROT:
+	case PIPE:
+	case EQ_EQ: case BANG_EQ:
+	case AMP_AMP:
+	case CAROT_CAROT:
+	case PIPE_PIPE:
+		return L_ASSOC;
+	case LT: case GT: case LT_EQ: case GT_EQ:
+		return NON_ASSOC;
+	case COMMA:
+	case EQ:
+	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
+	case PLUS_EQ: case MINUS_EQ:
+	case LT_LT_EQ: case GT_GT_EQ:
+	case AMP_EQ: case CAROT_EQ: case PIPE_EQ:
+		return R_ASSOC;
+	default:
+		internal_error();
+	}
+}
+
+// Precedence climbing
 static struct expr *parse_expr__(struct expr *l, int min_prec)
 {
+	enum tok peek, op;
+	struct expr *r;
+
+	peek = peek_tok();
+	while (is_bin_op(peek) && get_bin_op_prec(peek) >= min_prec) {
+		op = peek;
+		next_tok();
+		r = parse_primary_expr();
+		peek = peek_tok();
+		while (is_bin_op(peek) &&
+				(get_bin_op_prec(peek) > get_bin_op_prec(op)
+				|| get_bin_op_assoc(peek) == R_ASSOC
+				&& get_bin_op_prec(peek)
+				== get_bin_op_prec(op))) {
+			r = parse_expr__(r, get_bin_op_prec(peek));
+			peek = peek_tok();
+		}
+		l = alloc_bin_op_expr(op, l, r);
+	}
+	return l;
 }
 
 static struct expr *parse_expr(void)
