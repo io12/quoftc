@@ -258,7 +258,7 @@ static struct type *parse_primary_type(void)
 	if (is_prim_type(tok)) {
 		return alloc_prim_type(tok);
 	}
-	fatal_error("Expected a primary type, instead got %s, tok_to_str(tok));
+	fatal_error("Expected a primary type, instead got %s", tok_to_str(tok));
 }
 
 static struct type *parse_type(void)
@@ -274,9 +274,8 @@ static struct type *parse_type(void)
 		next_tok();
 		return alloc_func_type(l, parse_type());
 	default:
-		break;
+		return l;
 	}
-	return l;
 }
 
 static struct expr *parse_lambda_expr(void)
@@ -308,11 +307,11 @@ static struct expr *parse_array_lit_expr(void)
 
 static struct expr *parse_primary_expr(void)
 {
-	enum tok peek;
+	enum tok tok;
 	struct expr *expr;
 
-	peek = peek_tok();
-	switch (peek) {
+	tok = peek_tok();
+	switch (tok) {
 	case TRUE:
 		next_tok();
 		return alloc_bool_lit_expr(true);
@@ -335,7 +334,7 @@ static struct expr *parse_primary_expr(void)
 	case TILDE:
 	case BANG:
 		next_tok();
-		return alloc_unary_op_expr(peek, parse_primary_expr());
+		return alloc_unary_op_expr(tok, parse_primary_expr());
 	case BACKSLASH:
 		return parse_lambda_expr();
 	case OPEN_BRACKET:
@@ -348,9 +347,10 @@ static struct expr *parse_primary_expr(void)
 	case IDENT:
 		return alloc_ident_expr(yytext);
 	default:
-		fatal_error("Expected a primary expression, instead got %s",
-				tok_to_str);
+		break;
 	}
+	fatal_error("Expected a primary expression, instead got %s",
+			tok_to_str(tok));
 }
 
 static bool is_bin_op(enum tok tok)
