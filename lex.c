@@ -156,12 +156,6 @@ static enum tok lookup_keyword(char *keyword)
 		K(",", COMMA);
 		K("->", ARROW);
 		K("\\", BACKSLASH);
-		K("[", OPEN_BRACKET);
-		K("]", CLOSE_BRACKET);
-		K("(", OPEN_PAREN);
-		K(")", CLOSE_PAREN);
-		K("{", OPEN_BRACE);
-		K("}", CLOSE_BRACE);
 #undef K
 	}
 	// Returns INVALID_TOK if not found
@@ -254,7 +248,7 @@ static enum tok num_lit(void)
 
 static bool is_op_char(int c)
 {
-	return strchr("+-*/%<>=!&|^~.:;,[](){}", c) != NULL;
+	return strchr("+-*/%<>=!&|^~.:;,", c) != NULL;
 }
 
 static enum tok op(void)
@@ -289,6 +283,24 @@ enum tok next_tok(void)
 		return char_lit();
 	case '"':
 		return string_lit();
+	case '[':
+		inp++;
+		return OPEN_BRACKET;
+	case ']':
+		inp++;
+		return CLOSE_BRACKET;
+	case '(':
+		inp++;
+		return OPEN_PAREN;
+	case ')':
+		inp++;
+		return CLOSE_PAREN;
+	case '{':
+		inp++;
+		return OPEN_BRACE;
+	case '}':
+		inp++;
+		return CLOSE_BRACE;
 	case '\0':
 		return TEOF;
 	}
