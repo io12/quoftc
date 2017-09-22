@@ -30,38 +30,28 @@ NORETURN void internal_error(void)
 	fatal_error("Internal error");
 }
 
-MALLOC_LIKE void *emalloc(size_t size)
+static void *ptr_sanitize(void *p)
 {
-	void *p;
-
-	p = malloc(size);
 	if (p == NULL) {
 		fprintf(stderr, "%s: error: %s\n", argv0, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	return p;
+}
+
+MALLOC_LIKE void *emalloc(size_t size)
+{
+	return ptr_sanitize(malloc(size));
 }
 
 MALLOC_LIKE void *ecalloc(size_t size)
 {
-	void *p;
-
-	p = calloc(1, size);
-	if (p == NULL) {
-		fprintf(stderr, "%s: error: %s\n", argv0, strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	return p;
+	return ptr_sanitize(calloc(1, size));
 }
 
 void *erealloc(void *p, size_t size)
 {
-	p = realloc(p, size);
-	if (p == NULL) {
-		fprintf(stderr, "%s: error: %s\n", argv0, strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	return p;
+	return ptr_sanitize(realloc(p, size));
 }
 
 char *estrdup(const char *s)
