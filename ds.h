@@ -14,5 +14,5 @@ struct hash_table {
 };
 
 HashTable *alloc_hash_table(void);
-void hash_table_set(HashTable *ht, const char *key, void *val);
-void *hash_table_get(HashTable *ht, const char *key);
+void hash_table_set(HashTable *, const char *, void *);
+void *hash_table_get(HashTable *, const char *);

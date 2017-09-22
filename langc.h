@@ -58,8 +58,8 @@ enum tok {
 
 enum tok next_tok(void);
 enum tok peek_tok(void);
-bool accept_tok(enum tok tok);
-void expect_tok(enum tok tok);
+bool accept_tok(enum tok);
+void expect_tok(enum tok);
 
 NORETURN PRINTF_LIKE void fatal_error(char *, ...);
 NORETURN void internal_error(void);
