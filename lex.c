@@ -75,7 +75,6 @@ static enum tok string_literal(void)
 static enum tok lookup_keyword(char *keyword)
 {
 	static HashTable *keywords = NULL;
-	void *p;
 
 	if (keywords == NULL) {
 		keywords = alloc_hash_table();
@@ -157,8 +156,8 @@ static enum tok lookup_keyword(char *keyword)
 		K("}", CLOSE_BRACE);
 #undef K
 	}
-	p = hash_table_get(keywords, keyword);
-	return p == NULL ? IDENT : (enum tok) p;
+	// Returns INVALID_TOK if not found
+	return (enum tok) hash_table_get(keywords, keyword);
 }
 
 static bool is_ident_head(int c)
@@ -174,6 +173,7 @@ static bool is_ident_tail(int c)
 static enum tok ident(void)
 {
 	int i;
+	enum tok tok;
 
 	if (!is_ident_head(*inp)) {
 		internal_error();
@@ -187,7 +187,8 @@ static enum tok ident(void)
 		yytext[i] = *inp++;
 	}
 	yytext[i] = '\0';
-	return lookup_keyword(yytext);
+	tok = lookup_keyword(yytext);
+	return tok == INVALID_TOK ? IDENT : tok;
 }
 
 static bool is_bin_digit(int c)
@@ -255,6 +256,7 @@ static bool is_op_char(int c)
 static enum tok op(void)
 {
 	int i = 0;
+	enum tok tok;
 
 	if (!is_op_char(*inp)) {
 		internal_error();
@@ -268,6 +270,11 @@ static enum tok op(void)
 		yytext[i++] = *inp++;
 	} while (is_op_char(*inp));
 	yytext[i] = '\0';
+	tok = lookup_keyword(yytext);
+	if (tok == INVALID_TOK) {
+		fatal_error("`%s` is not a valid operator", yytext);
+	}
+	return tok;
 }
 
 enum tok next_tok(void)

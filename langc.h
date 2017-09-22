@@ -18,7 +18,9 @@
 #define NEWC(type) ((type *) ecalloc(sizeof(type)))
 
 enum tok {
-	MUT = 1,
+	INVALID_TOK,
+
+	MUT,
 	IMPURE,
 	IDENT,
 	TYPEDEF,
