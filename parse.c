@@ -258,8 +258,7 @@ static struct type *parse_primary_type(void)
 	if (is_prim_type(tok)) {
 		return alloc_prim_type(tok);
 	}
-	// TODO: error
-	internal_error();
+	fatal_error("Expected a primary type, instead got %s, tok_to_str(tok));
 }
 
 static struct type *parse_type(void)
@@ -346,11 +345,12 @@ static struct expr *parse_primary_expr(void)
 		expr = parse_expr();
 		expect_tok(CLOSE_PAREN);
 		return expr;
+	case IDENT:
+		return alloc_ident_expr(yytext);
 	default:
-		break;
+		fatal_error("Expected a primary expression, instead got %s",
+				tok_to_str);
 	}
-	expect_tok(IDENT);
-	return alloc_ident_expr(yytext);
 }
 
 static bool is_bin_op(enum tok tok)
