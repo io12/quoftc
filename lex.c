@@ -5,8 +5,6 @@
 #include "langc.h"
 #include "ds.h"
 
-#define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
-
 union {
 	uint32_t char_lit;
 	char string_lit[MAX_STRING_SIZE + 1];
@@ -398,6 +396,15 @@ static char *tok_to_str(enum tok tok)
 		internal_error();
 	}
 	return tok_names[tok];
+}
+
+bool accept_tok(enum tok tok)
+{
+	if (peek_tok() == tok) {
+		next_tok();
+		return true;
+	}
+	return false;
 }
 
 void expect_tok(enum tok expected_tok)

@@ -9,6 +9,7 @@
 #endif
 
 #define MAX_IDENT_SIZE 512
+#define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 
 #define xstr(x) str__(x)
 #define str__(x) #x
@@ -57,6 +58,7 @@ enum tok {
 
 enum tok next_tok(void);
 enum tok peek_tok(void);
+bool accept_tok(enum tok tok);
 void expect_tok(enum tok tok);
 
 NORETURN PRINTF_LIKE void fatal_error(char *, ...);
