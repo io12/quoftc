@@ -91,7 +91,7 @@ struct expr {
 			struct expr *subexpr;
 		} unary_op;
 		struct {
-			char param_name[MAX_STRING_SIZE + 1];
+			Vec *params;
 			struct expr *body;
 		} lambda;
 		Vec *array_lit;
@@ -139,14 +139,13 @@ static struct expr *alloc_unary_op_expr(enum tok op, struct expr *subexpr)
 	return expr;
 }
 
-static struct expr *alloc_lambda_expr(char param_name[MAX_STRING_SIZE + 1],
-		struct expr *body)
+static struct expr *alloc_lambda_expr(Vec *params, struct expr *body)
 {
 	struct expr *expr;
 
 	expr = NEW(struct expr);
 	expr->type = LAMBDA_EXPR;
-	strcpy(expr->u.lambda.param_name, param_name);
+	expr->u.lambda.params = params;
 	expr->u.lambda.body = body;
 	return expr;
 }
@@ -181,14 +180,25 @@ static struct decl *alloc_decl(bool is_mut, struct type *type,
 	return decl;
 }
 
-static bool is_primary_type_head(enum tok tok)
-{
-	return is_prim_type(tok) || tok == OPEN_PAREN || tok == IDENT;
-}
+static bool is_prim_type(enum tok);
+static bool is_primary_type_head(enum tok);
+static struct type *parse_primary_type(void);
+static struct type *parse_type(void);
+static struct expr *parse_lambda_expr(void);
+static struct expr *parse_array_lit_expr(void);
+static struct expr *parse_primary_expr(void);
+static struct expr *parse_expr__(struct expr *, int);
+static struct expr *parse_expr(void);
+static struct decl *parse_decl(void);
 
 static bool is_prim_type(enum tok tok)
 {
 	return IN_RANGE(tok, U8, CHAR);
+}
+
+static bool is_primary_type_head(enum tok tok)
+{
+	return is_prim_type(tok) || tok == OPEN_PAREN || tok == IDENT;
 }
 
 static struct type *parse_primary_type(void)
@@ -243,6 +253,15 @@ static struct type *parse_type(void)
 
 static struct expr *parse_lambda_expr(void)
 {
+	Vec *params;
+
+	expect_tok(BACKSLASH);
+	params = alloc_vec();
+	while (accept_tok(IDENT)) {
+		vec_push(params, estrdup(yytext));
+	}
+	expect_tok(ARROW);
+	return alloc_lambda_expr(params, parse_expr());
 }
 
 static struct expr *parse_array_lit_expr(void)
@@ -254,7 +273,9 @@ static struct expr *parse_array_lit_expr(void)
 	do {
 		// TODO: Tuples break this
 		vec_push(items, parse_expr());
-	} while ();
+	} while (accept_tok(COMMA));
+	expect_tok(CLOSE_BRACKET);
+	return alloc_array_lit_expr(items);
 }
 
 static struct expr *parse_primary_expr(void)
@@ -278,7 +299,7 @@ static struct expr *parse_primary_expr(void)
 		return alloc_char_lit_expr(yylval.char_lit);
 	case STRING_LIT:
 		next_tok();
-		return alloc_char_lit_expr(yylval.string_lit);
+		return alloc_string_lit_expr(yylval.string_lit);
 	case PLUS_PLUS:
 	case MINUS_MINUS:
 	case STAR:
@@ -296,6 +317,8 @@ static struct expr *parse_primary_expr(void)
 		expr = parse_expr();
 		expect_tok(CLOSE_PAREN);
 		return expr;
+	default:
+		break;
 	}
 	// TODO: IDENT
 }
