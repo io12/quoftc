@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include "langc.h"
 
+bool is_valid_code_point(uint32_t c)
+{
+	return c <= 0xD7FF || IN_RANGE(c, 0xE000, 0x10FFFF);
+}
+
 #define MAX_UTF8_BYTES 6
 
 static const uint8_t shift_trailing = 6;
@@ -38,6 +43,9 @@ int str_to_code_point(uint32_t *code_point, const char *src)
 		}
 		*code_point <<= shift_trailing;
 		*code_point |= s[i] & mask_trailing;
+	}
+	if (!is_valid_code_point(*code_point)) {
+		goto invalid;
 	}
 	return nbytes;
 invalid:

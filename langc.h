@@ -14,7 +14,7 @@
 #define xstr(x) str__(x)
 #define str__(x) #x
 #define LEN(x) (sizeof(x) / sizeof((x)[0]))
-#define IN_RANGE(x, min, max) (x >= min && x <= max)
+#define IN_RANGE(x, min, max) ((x) >= min && (x) <= max)
 #define NEW(type) ((type *) emalloc(sizeof(type)))
 #define NEWC(type) ((type *) ecalloc(sizeof(type)))
 
@@ -73,6 +73,7 @@ MALLOC_LIKE void *ecalloc(size_t);
 void *erealloc(void *, size_t);
 char *estrdup(const char *);
 
+bool is_valid_code_point(uint32_t);
 int str_to_code_point(uint32_t *, const char *);
 bool is_valid_utf8(const char *);
 
