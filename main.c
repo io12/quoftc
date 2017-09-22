@@ -82,20 +82,19 @@ int main(int argc, char *argv[])
 	for (i = 1; i < argc; i++) {
 		filename = argv[1];
 		fd = open(filename, O_RDONLY);
-		if (fd == -1) {
-			fprintf(stderr, "%s: error: %s: %s\n",
-					argv0, filename, strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-		if (fstat(fd, &stat) == -1) {
-			// TODO: Make less repetitive
-			fprintf(stderr, "%s: error: %s: %s\n",
-					argv0, filename, strerror(errno));
-			exit(EXIT_FAILURE);
+		if (fd == -1 || fstat(fd, &stat) == -1) {
+			goto file_error;
 		}
 		inp = mmap(NULL, stat.st_size + 1, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE, fd, 0);
+		if (inp == MAP_FAILED) {
+			goto file_error;
+		}
 		inp[stat.st_size] = '\0';
 		lineno = 1;
 	}
+file_error:
+	fprintf(stderr, "%s: error: %s: %s\n", argv0, filename,
+			strerror(errno));
+	exit(EXIT_FAILURE);
 }
