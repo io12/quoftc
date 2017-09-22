@@ -384,7 +384,7 @@ static int get_bin_op_prec(enum tok op)
 		return 10;
 	case AMP:
 		return 9;
-	case CAROT:
+	case CARET:
 		return 8;
 	case PIPE:
 		return 7;
@@ -394,7 +394,7 @@ static int get_bin_op_prec(enum tok op)
 		return 5;
 	case AMP_AMP:
 		return 4;
-	case CAROT_CAROT:
+	case CARET_CARET:
 		return 3;
 	case PIPE_PIPE:
 		return 2;
@@ -404,7 +404,7 @@ static int get_bin_op_prec(enum tok op)
 	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
 	case PLUS_EQ: case MINUS_EQ:
 	case LT_LT_EQ: case GT_GT_EQ:
-	case AMP_EQ: case CAROT_EQ: case PIPE_EQ:
+	case AMP_EQ: case CARET_EQ: case PIPE_EQ:
 		return 0;
 	default:
 		internal_error();
@@ -423,11 +423,11 @@ static enum assoc get_bin_op_assoc(enum tok op)
 	case PLUS: case MINUS:
 	case LT_LT: case GT_GT:
 	case AMP:
-	case CAROT:
+	case CARET:
 	case PIPE:
 	case EQ_EQ: case BANG_EQ:
 	case AMP_AMP:
-	case CAROT_CAROT:
+	case CARET_CARET:
 	case PIPE_PIPE:
 		return L_ASSOC;
 	case LT: case GT: case LT_EQ: case GT_EQ:
@@ -437,7 +437,7 @@ static enum assoc get_bin_op_assoc(enum tok op)
 	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
 	case PLUS_EQ: case MINUS_EQ:
 	case LT_LT_EQ: case GT_GT_EQ:
-	case AMP_EQ: case CAROT_EQ: case PIPE_EQ:
+	case AMP_EQ: case CARET_EQ: case PIPE_EQ:
 		return R_ASSOC;
 	default:
 		internal_error();
