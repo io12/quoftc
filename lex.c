@@ -148,6 +148,7 @@ static enum tok lookup_keyword(char *keyword)
 		K(";", SEMICOLON);
 		K(",", COMMA);
 		K("->", ARROW);
+		K("\\", BACKSLASH);
 		K("[", OPEN_BRACKET);
 		K("]", CLOSE_BRACKET);
 		K("(", OPEN_PAREN);
@@ -383,6 +384,7 @@ static char *tok_to_str(enum tok tok)
 		[SEMICOLON] = "`;`",
 		[COMMA] = "`,`",
 		[ARROW] = "`->`",
+		[BACKSLASH] = "`\\`",
 		[OPEN_BRACKET] = "`[`",
 		[CLOSE_BRACKET] = "`]`",
 		[OPEN_PAREN] = "`(`",
