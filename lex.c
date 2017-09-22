@@ -285,9 +285,12 @@ enum tok next_tok(void)
 {
 	skipspaces();
 	switch (*inp) {
-	case '\'': return char_lit();
-	case '"': return string_lit();
-	case '\0': return TEOF;
+	case '\'':
+		return char_lit();
+	case '"':
+		return string_lit();
+	case '\0':
+		return TEOF;
 	}
 	if (is_op_char(*inp)) {
 		return op();
