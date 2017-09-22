@@ -275,68 +275,7 @@ static enum tok op(void)
 	return tok;
 }
 
-enum tok next_tok(void)
-{
-	skipspaces();
-	switch (*inp) {
-	case '\'':
-		return char_lit();
-	case '"':
-		return string_lit();
-	case '[':
-		inp++;
-		return OPEN_BRACKET;
-	case ']':
-		inp++;
-		return CLOSE_BRACKET;
-	case '(':
-		inp++;
-		return OPEN_PAREN;
-	case ')':
-		inp++;
-		return CLOSE_PAREN;
-	case '{':
-		inp++;
-		return OPEN_BRACE;
-	case '}':
-		inp++;
-		return CLOSE_BRACE;
-	case '\0':
-		return TEOF;
-	}
-	if (is_op_char(*inp)) {
-		return op();
-	}
-	if (is_ident_head(*inp)) {
-		return ident();
-	}
-	if (isdigit(*inp)) {
-		return num_lit();
-	}
-	fatal_error("Invalid token");
-}
-
-enum tok peek_tok(void)
-{
-	char *inp_save;
-	enum tok tok;
-
-	inp_save = inp;
-	tok = next_tok();
-	inp = inp_save;
-	return tok;
-}
-
-bool accept_tok(enum tok tok)
-{
-	if (peek_tok() == tok) {
-		next_tok();
-		return true;
-	}
-	return false;
-}
-
-static char *tok_to_str(enum tok tok)
+char *tok_to_str(enum tok tok)
 {
 	static char *tok_names[] = {
 		[MUT] = "`mut`",
@@ -425,6 +364,67 @@ static char *tok_to_str(enum tok tok)
 		internal_error();
 	}
 	return tok_names[tok];
+}
+
+enum tok next_tok(void)
+{
+	skipspaces();
+	switch (*inp) {
+	case '\'':
+		return char_lit();
+	case '"':
+		return string_lit();
+	case '[':
+		inp++;
+		return OPEN_BRACKET;
+	case ']':
+		inp++;
+		return CLOSE_BRACKET;
+	case '(':
+		inp++;
+		return OPEN_PAREN;
+	case ')':
+		inp++;
+		return CLOSE_PAREN;
+	case '{':
+		inp++;
+		return OPEN_BRACE;
+	case '}':
+		inp++;
+		return CLOSE_BRACE;
+	case '\0':
+		return TEOF;
+	}
+	if (is_op_char(*inp)) {
+		return op();
+	}
+	if (is_ident_head(*inp)) {
+		return ident();
+	}
+	if (isdigit(*inp)) {
+		return num_lit();
+	}
+	fatal_error("Invalid token");
+}
+
+enum tok peek_tok(void)
+{
+	char *inp_save;
+	enum tok tok;
+
+	inp_save = inp;
+	tok = next_tok();
+	inp = inp_save;
+	return tok;
+}
+
+bool accept_tok(enum tok tok)
+{
+	if (peek_tok() == tok) {
+		next_tok();
+		return true;
+	}
+	return false;
 }
 
 void expect_tok(enum tok expected_tok)

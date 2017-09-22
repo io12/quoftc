@@ -61,6 +61,7 @@ union yystype {
 	long num_lit;
 };
 
+char *tok_to_str(enum tok);
 enum tok next_tok(void);
 enum tok peek_tok(void);
 bool accept_tok(enum tok);
