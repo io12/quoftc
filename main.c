@@ -1,13 +1,14 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "langc.h"
 
 char *argv0, *filename, *inp;
@@ -70,7 +71,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	for (i = 1; i < argc; i++) {
-		filename = argv[1];
+		filename = argv[i];
 		fd = open(filename, O_RDONLY);
 		if (fd == -1 || fstat(fd, &stat) == -1) {
 			goto file_error;
@@ -82,7 +83,12 @@ int main(int argc, char *argv[])
 		}
 		inp[stat.st_size] = '\0';
 		lineno = 1;
+		// TODO: Compile file
+		if (munmap(inp, stat.st_size + 1) == -1 || close(fd) == -1) {
+			goto file_error;
+		}
 	}
+	exit(EXIT_SUCCESS);
 file_error:
 	fprintf(stderr, "%s: error: %s: %s\n", argv0, filename,
 			strerror(errno));
