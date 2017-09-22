@@ -312,6 +312,15 @@ enum tok peek_tok(void)
 	return tok;
 }
 
+bool accept_tok(enum tok tok)
+{
+	if (peek_tok() == tok) {
+		next_tok();
+		return true;
+	}
+	return false;
+}
+
 static char *tok_to_str(enum tok tok)
 {
 	static char *tok_names[] = {
@@ -401,15 +410,6 @@ static char *tok_to_str(enum tok tok)
 		internal_error();
 	}
 	return tok_names[tok];
-}
-
-bool accept_tok(enum tok tok)
-{
-	if (peek_tok() == tok) {
-		next_tok();
-		return true;
-	}
-	return false;
 }
 
 void expect_tok(enum tok expected_tok)
