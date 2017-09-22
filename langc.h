@@ -2,10 +2,14 @@
 #define NORETURN __attribute__((noreturn))
 #define PRINTF_LIKE __attribute__((format(printf, 1, 2)))
 #define MALLOC_LIKE __attribute__((malloc))
+
+#define UNLIKELY(x) __builtin_expect((x), false)
 #else
 #define NORETURN
 #define PRINTF_LIKE
 #define MALLOC_LIKE
+
+#define UNLIKELY(x) x
 #endif
 
 #define MAX_IDENT_SIZE 512

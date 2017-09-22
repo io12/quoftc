@@ -83,7 +83,7 @@ static enum tok lookup_keyword(char *keyword)
 {
 	static HashTable *keywords = NULL;
 
-	if (keywords == NULL) {
+	if (UNLIKELY(keywords == NULL)) {
 		keywords = alloc_hash_table();
 #define K(keyword, tok) hash_table_set(keywords, keyword, (void *) tok)
 		K("mut", MUT);
