@@ -64,6 +64,11 @@ void *erealloc(void *p, size_t size)
 	return p;
 }
 
+char *estrdup(const char *s)
+{
+	return strcpy(emalloc(strlen(s) + 1), s);
+}
+
 int main(int argc, char *argv[])
 {
 	int i, fd;

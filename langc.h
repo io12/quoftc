@@ -66,6 +66,7 @@ NORETURN void internal_error(void);
 MALLOC_LIKE void *emalloc(size_t);
 MALLOC_LIKE void *ecalloc(size_t);
 void *erealloc(void *, size_t);
+char *estrdup(const char *);
 
 int str_to_code_point(uint32_t *, const char *);
 bool is_valid_utf8(const char *);
