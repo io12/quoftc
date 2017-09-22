@@ -347,9 +347,10 @@ static struct expr *parse_primary_expr(void)
 		expect_tok(CLOSE_PAREN);
 		return expr;
 	default:
-		expect_tok(IDENT);
-		return alloc_ident_expr(yytext);
+		break;
 	}
+	expect_tok(IDENT);
+	return alloc_ident_expr(yytext);
 }
 
 static bool is_bin_op(enum tok tok)
@@ -458,9 +459,9 @@ static struct expr *parse_expr__(struct expr *l, int min_prec)
 		peek = peek_tok();
 		while (is_bin_op(peek) &&
 				(get_bin_op_prec(peek) > get_bin_op_prec(op)
-				|| get_bin_op_assoc(peek) == R_ASSOC
+				|| (get_bin_op_assoc(peek) == R_ASSOC
 				&& get_bin_op_prec(peek)
-				== get_bin_op_prec(op))) {
+				== get_bin_op_prec(op)))) {
 			r = parse_expr__(r, get_bin_op_prec(peek));
 			peek = peek_tok();
 		}
