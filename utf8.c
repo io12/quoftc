@@ -23,7 +23,7 @@ static const uint8_t masks[MAX_UTF8_BYTES] = {
 	0x7F, 0x1F, 0x0F, 0x07, 0x03, 0x01
 };
 
-int str_to_code_point(uint32_t *code_point, const char *src)
+int str_to_code_point(uint32_t *c, const char *src)
 {
 	int nbytes, i;
 	const uint8_t *s = (uint8_t *) src;
@@ -36,15 +36,15 @@ int str_to_code_point(uint32_t *code_point, const char *src)
 	if (nbytes > MAX_UTF8_BYTES) {
 		goto invalid;
 	}
-	*code_point = s[0] & masks[0];
+	*c = s[0] & masks[0];
 	for (i = 1; i < nbytes; i++) {
 		if (s[i] >> shift_trailing != header_trailing) {
 			goto invalid;
 		}
-		*code_point <<= shift_trailing;
-		*code_point |= s[i] & mask_trailing;
+		*c <<= shift_trailing;
+		*c |= s[i] & mask_trailing;
 	}
-	if (!is_valid_code_point(*code_point)) {
+	if (!is_valid_code_point(*c)) {
 		goto invalid;
 	}
 	return nbytes;
