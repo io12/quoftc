@@ -5,13 +5,8 @@
 #include "langc.h"
 #include "ds.h"
 
-union {
-	uint32_t char_lit;
-	char string_lit[MAX_STRING_SIZE + 1];
-	long num_lit;
-} yylval;
-
 char yytext[MAX_IDENT_SIZE + 1];
+union yystype yylval;
 
 static void inc_lineno(void)
 {
