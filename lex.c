@@ -25,19 +25,33 @@ static void skipspaces(void)
 	}
 }
 
+static enum tok num_lit__(bool (*)(int), int);
+static bool is_hex_digit(int);
+
 static enum tok char_lit(void)
 {
+	long c;
+
 	if (*inp++ != '\'') {
 		internal_error();
 	}
 	if (inp[0] == 'U' && inp[1] == '+') {
-		// TODO:
+		inp += 2;
+		num_lit__(is_hex_digit, 16);
+		c = yylval.num_lit;
+		if (c < 0 || !is_valid_code_point(c)) {
+			goto invalid;
+		}
+		yylval.char_lit = c;
+		return CHAR_LIT;
 	}
 	inp += str_to_code_point(&yylval.char_lit, inp);
 	if (*inp++ != '\'') {
-		fatal_error("Invalid char literal");
+		goto invalid;
 	}
 	return CHAR_LIT;
+invalid:
+	fatal_error("Invalid char literal");
 }
 
 static enum tok string_lit(void)
@@ -210,36 +224,32 @@ static int value_of_digit(int c)
 	return is_dec_digit(c) ? c - '0' : c - 'A' + 10;
 }
 
-static enum tok num_lit(void)
+static enum tok num_lit__(bool (*is_valid_digit)(int c), int base)
 {
-	bool (*is_valid_digit)(int c) = is_dec_digit;
-	int base = 10;
-
-	if (*inp == '0') {
-		inp++;
-		switch (*inp++) {
-		case 'b':
-			is_valid_digit = is_bin_digit;
-			base = 2;
-			break;
-		case 'o':
-			is_valid_digit = is_oct_digit;
-			base = 8;
-			break;
-		case 'x':
-			is_valid_digit = is_hex_digit;
-			base = 16;
-			break;
-		default:
-			fatal_error("Numerical literal has a leading zero");
-		}
-	}
 	yylval.num_lit = 0;
 	while (is_valid_digit(*inp)) {
 		yylval.num_lit *= base;
 		yylval.num_lit += value_of_digit(*inp++);
 	}
 	return NUM_LIT;
+}
+
+static enum tok num_lit(void)
+{
+	if (*inp == '0') {
+		inp++;
+		switch (*inp++) {
+		case 'b':
+			return num_lit__(is_bin_digit, 2);
+		case 'o':
+			return num_lit__(is_oct_digit, 8);
+		case 'x':
+			return num_lit__(is_hex_digit, 16);
+		default:
+			fatal_error("Numerical literal has a leading zero");
+		}
+	}
+	return num_lit__(is_dec_digit, 10);
 }
 
 static bool is_op_char(int c)
