@@ -80,7 +80,8 @@ static struct type *alloc_func_type(struct type *l, struct type *r)
 struct expr {
 	enum {
 		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
-		UNARY_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR
+		UNARY_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
+		IDENT_EXPR
 	} type;
 	union {
 		bool bool_lit;
@@ -95,6 +96,7 @@ struct expr {
 			struct expr *body;
 		} lambda;
 		Vec *array_lit;
+		char ident[MAX_IDENT_SIZE + 1];
 	} u;
 };
 
@@ -157,6 +159,16 @@ static struct expr *alloc_array_lit_expr(Vec *array_lit)
 	expr = NEW(struct expr);
 	expr->type = ARRAY_LIT_EXPR;
 	expr->u.array_lit = array_lit;
+	return expr;
+}
+
+static struct expr *alloc_ident_expr(char ident[IDENT_MAX_SIZE + 1])
+{
+	struct expr *expr;
+
+	expr = NEW(struct expr);
+	expr->type = IDENT_EXPR;
+	strcpy(expr->u.ident, ident);
 	return expr;
 }
 
@@ -318,9 +330,9 @@ static struct expr *parse_primary_expr(void)
 		expect_tok(CLOSE_PAREN);
 		return expr;
 	default:
-		break;
+		expect_tok(IDENT);
+		return alloc_ident_expr(yytext);
 	}
-	// TODO: IDENT
 }
 
 static struct expr *parse_expr__(struct expr *l, int min_prec)
