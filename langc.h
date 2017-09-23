@@ -9,7 +9,7 @@
 	#define PRINTF_LIKE
 	#define MALLOC_LIKE
 
-	#define UNLIKELY(x) x
+	#define UNLIKELY(x) (x)
 #endif
 
 #define MAX_IDENT_SIZE 512
