@@ -5,6 +5,19 @@
 #include "langc.h"
 #include "ds.h"
 
+#define ALLOC_STRUCT(struct_tag, ...) \
+	((struct struct_tag *) \
+		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
+			__VA_ARGS__ \
+		}, sizeof(struct struct_tag)))
+
+#define ALLOC_UNION(struct_tag, enum_tag, sub_struct_name, ...) \
+	((struct struct_tag *) \
+		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
+			.type = enum_tag, \
+			.u.sub_struct_name = { __VA_ARGS__ }, \
+		}, sizeof(struct struct_tag)))
+
 struct type {
 	enum { PRIM_TYPE, ALIAS_TYPE, PARAM_TYPE, TUPLE_TYPE, FUNC_TYPE } type;
 	union {
@@ -24,58 +37,16 @@ struct type {
 	} u;
 };
 
-static struct type *alloc_prim_type(enum tok tok)
-{
-	struct type *type;
-	
-	type = NEW(struct type);
-	type->type = PRIM_TYPE;
-	type->u.prim.tok = tok;
-	return type;
-}
-
-static struct type *alloc_alias_type(char name[MAX_IDENT_SIZE + 1])
-{
-	struct type *type;
-	
-	type = NEW(struct type);
-	type->type = ALIAS_TYPE;
-	strcpy(type->u.alias.name, name);
-	return type;
-}
-
-static struct type *alloc_param_type(char name[MAX_IDENT_SIZE + 1], Vec *params)
-{
-	struct type *type;
-	
-	type = NEW(struct type);
-	type->type = PARAM_TYPE;
-	strcpy(type->u.param.name, name);
-	type->u.param.params = params;
-	return type;
-}
-
-static struct type *alloc_tuple_type(struct type *l, struct type *r)
-{
-	struct type *type;
-	
-	type = NEW(struct type);
-	type->type = TUPLE_TYPE;
-	type->u.tuple.l = l;
-	type->u.tuple.r = r;
-	return type;
-}
-
-static struct type *alloc_func_type(struct type *l, struct type *r)
-{
-	struct type *type;
-	
-	type = NEW(struct type);
-	type->type = FUNC_TYPE;
-	type->u.func.l = l;
-	type->u.func.r = r;
-	return type;
-}
+#define ALLOC_PRIM_TYPE(...) \
+	ALLOC_UNION(type, PRIM_TYPE, prim, __VA_ARGS__)
+#define ALLOC_ALIAS_TYPE(...) \
+	ALLOC_UNION(type, ALIAS_TYPE, alias, __VA_ARGS__)
+#define ALLOC_PARAM_TYPE(...) \
+	ALLOC_UNION(type, PARAM_TYPE, param, __VA_ARGS__)
+#define ALLOC_TUPLE_TYPE(...) \
+	ALLOC_UNION(type, TUPLE_TYPE, tuple, __VA_ARGS__)
+#define ALLOC_FUNC_TYPE(...) \
+	ALLOC_UNION(type, FUNC_TYPE, func, __VA_ARGS__)
 
 struct expr {
 	enum {
@@ -84,9 +55,15 @@ struct expr {
 		IDENT_EXPR, BLOCK_EXPR
 	} type;
 	union {
-		bool bool_lit;
-		uint32_t char_lit;
-		char string_lit[MAX_STRING_SIZE + 1];
+		struct {
+			bool val;
+		} bool_lit;
+		struct {
+			uint32_t val;
+		} char_lit;
+		struct {
+			char *val;
+		} string_lit;
 		struct {
 			enum tok op;
 			struct expr *subexpr;
@@ -99,108 +76,36 @@ struct expr {
 			Vec *params;
 			struct expr *body;
 		} lambda;
-		Vec *array_lit;
-		char *ident;
+		struct {
+			Vec *val;
+		} array_lit;
+		struct {
+			char *name;
+		} ident;
 		struct {
 			Vec *stmts;
 		} block;
 	} u;
 };
 
-static struct expr *alloc_bool_lit_expr(bool val)
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = BOOL_LIT_EXPR;
-	expr->u.bool_lit = val;
-	return expr;
-}
-
-static struct expr *alloc_char_lit_expr(uint32_t char_lit)
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = CHAR_LIT_EXPR;
-	expr->u.char_lit = char_lit;
-	return expr;
-}
-
-static struct expr *alloc_string_lit_expr(char string_lit[MAX_STRING_SIZE + 1])
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = STRING_LIT_EXPR;
-	strcpy(expr->u.string_lit, string_lit);
-	return expr;
-}
-
-static struct expr *alloc_unary_op_expr(enum tok op, struct expr *subexpr)
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = UNARY_OP_EXPR;
-	expr->u.unary_op.op = op;
-	expr->u.unary_op.subexpr = subexpr;
-	return expr;
-}
-
-static struct expr *alloc_bin_op_expr(enum tok op, struct expr *l,
-		struct expr *r)
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = BIN_OP_EXPR;
-	expr->u.bin_op.op = op;
-	expr->u.bin_op.l = l;
-	expr->u.bin_op.r = r;
-	return expr;
-}
-
-static struct expr *alloc_lambda_expr(Vec *params, struct expr *body)
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = LAMBDA_EXPR;
-	expr->u.lambda.params = params;
-	expr->u.lambda.body = body;
-	return expr;
-}
-
-static struct expr *alloc_array_lit_expr(Vec *array_lit)
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = ARRAY_LIT_EXPR;
-	expr->u.array_lit = array_lit;
-	return expr;
-}
-
-static struct expr *alloc_ident_expr(char ident[MAX_IDENT_SIZE + 1])
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = IDENT_EXPR;
-	strcpy(expr->u.ident, ident);
-	return expr;
-}
-
-static struct expr *alloc_block_expr(Vec *stmts)
-{
-	struct expr *expr;
-
-	expr = NEW(struct expr);
-	expr->type = BLOCK_EXPR;
-	expr->u.block.stmts = stmts;
-	return expr;
-}
+#define ALLOC_BOOL_LIT_EXPR(...) \
+	ALLOC_UNION(expr, BOOL_LIT_EXPR, bool_lit, __VA_ARGS__)
+#define ALLOC_CHAR_LIT_EXPR(...) \
+	ALLOC_UNION(expr, CHAR_LIT_EXPR, char_lit, __VA_ARGS__)
+#define ALLOC_STRING_LIT_EXPR(...) \
+	ALLOC_UNION(expr, STRING_LIT_EXPR, string_lit, __VA_ARGS__)
+#define ALLOC_UNARY_OP_EXPR(...) \
+	ALLOC_UNION(expr, UNARY_OP_EXPR, unary_op, __VA_ARGS__)
+#define ALLOC_BIN_OP_EXPR(...) \
+	ALLOC_UNION(expr, BIN_OP_EXPR, bin_op, __VA_ARGS__)
+#define ALLOC_LAMBDA_EXPR(...) \
+	ALLOC_UNION(expr, LAMBDA_EXPR, lambda, __VA_ARGS__)
+#define ALLOC_ARRAY_LIT_EXPR(...) \
+	ALLOC_UNION(expr, ARRAY_LIT_EXPR, array_lit, __VA_ARGS__)
+#define ALLOC_IDENT_EXPR(...) \
+	ALLOC_UNION(expr, IDENT_EXPR, ident, __VA_ARGS__)
+#define ALLOC_BLOCK_EXPR(...) \
+	ALLOC_UNION(expr, BLOCK_EXPR, block, __VA_ARGS__)
 
 struct decl {
 	bool is_mut;
@@ -209,18 +114,8 @@ struct decl {
 	struct expr *val;
 };
 
-static struct decl *alloc_decl(bool is_mut, struct type *type,
-		char name[MAX_IDENT_SIZE + 1], struct expr *val)
-{
-	struct decl *decl;
-
-	decl = NEW(struct decl);
-	decl->is_mut = is_mut;
-	decl->type = type;
-	strcpy(decl->name, name);
-	decl->val = val;
-	return decl;
-}
+#define ALLOC_DECL(...) \
+	ALLOC_STRUCT(decl, __VA_ARGS__)
 
 struct stmt {
 	enum {
@@ -228,8 +123,12 @@ struct stmt {
 		WHILE_STMT, FOR_STMT, MATCH_STMT
 	} type;
 	union {
-		struct decl *decl;
-		struct expr *expr;
+		struct {
+			struct decl *decl;
+		} decl;
+		struct {
+			struct expr *expr;
+		} expr;
 		struct {
 			struct expr *cond;
 			Vec *then_stmts, *else_stmts;
@@ -244,88 +143,21 @@ struct stmt {
 		} for_;
 		struct {
 			// TODO
+			int x;
 		} match;
 	} u;
 };
 
-/*
-static struct stmt *alloc_decl_stmt(struct decl *decl)
-{
-	struct stmt *stmt;
-
-	stmt = NEW(struct stmt);
-	stmt->type = DECL_STMT;
-	stmt->u.decl = decl;
-	return stmt;
-}
-
-static struct stmt *alloc_expr_stmt(struct expr *expr)
-{
-	struct stmt *stmt;
-
-	stmt = NEW(struct stmt);
-	stmt->type = EXPR_STMT;
-	stmt->u.expr = expr;
-	return stmt;
-}
-
-static struct stmt *alloc_if_stmt(struct expr *cond, Vec *then_stmts,
-		Vec *else_stmts)
-{
-	struct stmt *stmt;
-
-	stmt = NEW(struct stmt);
-	stmt->type = IF_STMT;
-	stmt->u.if_.cond = cond;
-	stmt->u.if_.then_stmts = then_stmts;
-	stmt->u.if_.else_stmts = else_stmts;
-	return stmt;
-}
-
-static struct stmt *alloc_do_stmt(Vec *stmts, struct expr *cond)
-{
-	struct stmt *stmt;
-
-	stmt = NEW(struct stmt);
-	stmt->type = DO_STMT;
-	stmt->u.do_.stmts = stmts;
-	stmt->u.do_.cond = cond;
-	return stmt;
-}
-
-static struct stmt *alloc_while_stmt(Vec *stmts, struct expr *cond)
-{
-	struct stmt *stmt;
-
-	stmt = NEW(struct stmt);
-	stmt->type = WHILE_STMT;
-	stmt->u.while_.stmts = stmts;
-	stmt->u.while_.cond = cond;
-	return stmt;
-}
-
-static struct stmt *alloc_for_stmt(struct expr *init, struct expr *cond,
-		struct expr *post, Vec *stmts)
-{
-	struct stmt *stmt;
-
-	stmt = NEW(struct stmt);
-	stmt->type = FOR_STMT;
-	stmt->u.for_.init = init;
-	stmt->u.for_.cond = cond;
-	stmt->u.for_.post = post;
-	stmt->u.for_.stmts = stmts;
-	return stmt;
-}
-
-static struct stmt *alloc_match_stmt(/* TODO */)
-{
-	struct stmt *stmt;
-
-	stmt = NEW(struct stmt);
-	// TODO
-}
-*/
+#define ALLOC_DECL_STMT(...) \
+	ALLOC_UNION(stmt, DECL_STMT, decl, __VA_ARGS__)
+#define ALLOC_EXPR_STMT(...) \
+	ALLOC_UNION(stmt, EXPR_STMT, expr, __VA_ARGS__)
+#define ALLOC_IF_STMT(...) \
+	ALLOC_UNION(stmt, IF_STMT, if_, __VA_ARGS__)
+#define ALLOC_DO_STMT(...) \
+	ALLOC_UNION(stmt, DO_STMT, do_, __VA_ARGS__)
+#define ALLOC_WHILE_STMT(...) \
+	ALLOC_UNION(stmt, WHILE_STMT, while_, __VA_ARGS__)
 
 static bool is_prim_type(enum tok);
 static bool is_primary_type_head(enum tok);
@@ -367,14 +199,14 @@ static struct type *parse_primary_type(void)
 			do {
 				vec_push(params, parse_primary_type());
 			} while (is_primary_type_head(peek_tok()));
-			return alloc_param_type(yytext, params);
+			return ALLOC_PARAM_TYPE(estrdup(yytext), params);
 		}
-		return alloc_alias_type(yytext);
+		return ALLOC_ALIAS_TYPE(estrdup(yytext));
 	default:
 		break;
 	}
 	if (is_prim_type(tok)) {
-		return alloc_prim_type(tok);
+		return ALLOC_PRIM_TYPE(tok);
 	}
 	fatal_error("Expected a primary type, instead got %s", tok_to_str(tok));
 }
@@ -387,10 +219,10 @@ static struct type *parse_type(void)
 	switch (peek_tok()) {
 	case COMMA:
 		next_tok();
-		return alloc_tuple_type(l, parse_type());
+		return ALLOC_TUPLE_TYPE(l, parse_type());
 	case ARROW:
 		next_tok();
-		return alloc_func_type(l, parse_type());
+		return ALLOC_FUNC_TYPE(l, parse_type());
 	default:
 		return l;
 	}
@@ -406,7 +238,7 @@ static struct expr *parse_lambda_expr(void)
 		vec_push(params, estrdup(yytext));
 	}
 	expect_tok(ARROW);
-	return alloc_lambda_expr(params, parse_expr());
+	return ALLOC_LAMBDA_EXPR(params, parse_expr());
 }
 
 static struct expr *parse_array_lit_expr(void)
@@ -420,12 +252,13 @@ static struct expr *parse_array_lit_expr(void)
 		vec_push(items, parse_expr());
 	} while (accept_tok(COMMA));
 	expect_tok(CLOSE_BRACKET);
-	return alloc_array_lit_expr(items);
+	return ALLOC_ARRAY_LIT_EXPR(items);
 }
 
 static struct expr *parse_block_expr(void)
 {
 	expect_tok(OPEN_BRACE);
+	return NULL; // TODO
 }
 
 static struct expr *parse_primary_expr(void)
@@ -436,22 +269,22 @@ static struct expr *parse_primary_expr(void)
 	tok = peek_tok();
 	switch (tok) {
 	case IDENT:
-		return alloc_ident_expr(yytext);
+		return ALLOC_IDENT_EXPR(estrdup(yytext));
 	case TRUE:
 		next_tok();
-		return alloc_bool_lit_expr(true);
+		return ALLOC_BOOL_LIT_EXPR(true);
 	case FALSE:
 		next_tok();
-		return alloc_bool_lit_expr(false);
+		return ALLOC_BOOL_LIT_EXPR(false);
 	case NUM_LIT:
 		// TODO
 		break;
 	case CHAR_LIT:
 		next_tok();
-		return alloc_char_lit_expr(yylval.char_lit);
+		return ALLOC_CHAR_LIT_EXPR(yylval.char_lit);
 	case STRING_LIT:
 		next_tok();
-		return alloc_string_lit_expr(yylval.string_lit);
+		return ALLOC_STRING_LIT_EXPR(estrdup(yylval.string_lit));
 	case PLUS_PLUS:
 	case MINUS_MINUS:
 	case STAR:
@@ -459,7 +292,7 @@ static struct expr *parse_primary_expr(void)
 	case TILDE:
 	case BANG:
 		next_tok();
-		return alloc_unary_op_expr(tok, parse_primary_expr());
+		return ALLOC_UNARY_OP_EXPR(tok, parse_primary_expr());
 	case BACKSLASH:
 		return parse_lambda_expr();
 	case OPEN_BRACKET:
@@ -590,7 +423,7 @@ static struct expr *parse_expr__(struct expr *l, int min_prec)
 			r = parse_expr__(r, get_bin_op_prec(peek));
 			peek = peek_tok();
 		}
-		l = alloc_bin_op_expr(op, l, r);
+		l = ALLOC_BIN_OP_EXPR(op, l, r);
 	}
 	return l;
 }
@@ -604,7 +437,7 @@ static struct decl *parse_decl(void)
 {
 	bool is_mut;
 	struct type *type;
-	char name[MAX_IDENT_SIZE + 1];
+	char *name;
 	struct expr *val;
 
 	if (accept_tok(MUT)) {
@@ -614,12 +447,12 @@ static struct decl *parse_decl(void)
 	}
 	type = parse_type();
 	expect_tok(IDENT);
-	strcpy(name, yytext);
+	name = estrdup(yytext);
 	if (accept_tok(SEMICOLON)) {
 		val = NULL;
 	} else {
 		val = parse_expr();
 		expect_tok(SEMICOLON);
 	}
-	return alloc_decl(is_mut, type, name, val);
+	return ALLOC_DECL(is_mut, type, name, val);
 }
