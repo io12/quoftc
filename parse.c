@@ -12,10 +12,10 @@ struct type {
 			enum tok tok;
 		} prim;
 		struct {
-			char name[MAX_IDENT_SIZE + 1];
+			char *name;
 		} alias;
 		struct {
-			char name[MAX_IDENT_SIZE + 1];
+			char *name;
 			Vec *params;
 		} param;
 		struct {
@@ -81,7 +81,7 @@ struct expr {
 	enum {
 		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
 		UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
-		IDENT_EXPR
+		IDENT_EXPR, BLOCK_EXPR
 	} type;
 	union {
 		bool bool_lit;
@@ -100,7 +100,10 @@ struct expr {
 			struct expr *body;
 		} lambda;
 		Vec *array_lit;
-		char ident[MAX_IDENT_SIZE + 1];
+		char *ident;
+		struct {
+			Vec *stmts;
+		} block;
 	} u;
 };
 
@@ -189,10 +192,20 @@ static struct expr *alloc_ident_expr(char ident[MAX_IDENT_SIZE + 1])
 	return expr;
 }
 
+static struct expr *alloc_block_expr(Vec *stmts)
+{
+	struct expr *expr;
+
+	expr = NEW(struct expr);
+	expr->type = BLOCK_EXPR;
+	expr->u.block.stmts = stmts;
+	return expr;
+}
+
 struct decl {
 	bool is_mut;
 	struct type *type;
-	char name[MAX_IDENT_SIZE + 1];
+	char *name;
 	struct expr *val;
 };
 
@@ -208,6 +221,111 @@ static struct decl *alloc_decl(bool is_mut, struct type *type,
 	decl->val = val;
 	return decl;
 }
+
+struct stmt {
+	enum {
+		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
+		WHILE_STMT, FOR_STMT, MATCH_STMT
+	} type;
+	union {
+		struct decl *decl;
+		struct expr *expr;
+		struct {
+			struct expr *cond;
+			Vec *then_stmts, *else_stmts;
+		} if_;
+		struct {
+			Vec *stmts;
+			struct expr *cond;
+		} do_, while_;
+		struct {
+			struct expr *init, *cond, *post;
+			Vec *stmts;
+		} for_;
+		struct {
+			// TODO
+		} match;
+	} u;
+};
+
+/*
+static struct stmt *alloc_decl_stmt(struct decl *decl)
+{
+	struct stmt *stmt;
+
+	stmt = NEW(struct stmt);
+	stmt->type = DECL_STMT;
+	stmt->u.decl = decl;
+	return stmt;
+}
+
+static struct stmt *alloc_expr_stmt(struct expr *expr)
+{
+	struct stmt *stmt;
+
+	stmt = NEW(struct stmt);
+	stmt->type = EXPR_STMT;
+	stmt->u.expr = expr;
+	return stmt;
+}
+
+static struct stmt *alloc_if_stmt(struct expr *cond, Vec *then_stmts,
+		Vec *else_stmts)
+{
+	struct stmt *stmt;
+
+	stmt = NEW(struct stmt);
+	stmt->type = IF_STMT;
+	stmt->u.if_.cond = cond;
+	stmt->u.if_.then_stmts = then_stmts;
+	stmt->u.if_.else_stmts = else_stmts;
+	return stmt;
+}
+
+static struct stmt *alloc_do_stmt(Vec *stmts, struct expr *cond)
+{
+	struct stmt *stmt;
+
+	stmt = NEW(struct stmt);
+	stmt->type = DO_STMT;
+	stmt->u.do_.stmts = stmts;
+	stmt->u.do_.cond = cond;
+	return stmt;
+}
+
+static struct stmt *alloc_while_stmt(Vec *stmts, struct expr *cond)
+{
+	struct stmt *stmt;
+
+	stmt = NEW(struct stmt);
+	stmt->type = WHILE_STMT;
+	stmt->u.while_.stmts = stmts;
+	stmt->u.while_.cond = cond;
+	return stmt;
+}
+
+static struct stmt *alloc_for_stmt(struct expr *init, struct expr *cond,
+		struct expr *post, Vec *stmts)
+{
+	struct stmt *stmt;
+
+	stmt = NEW(struct stmt);
+	stmt->type = FOR_STMT;
+	stmt->u.for_.init = init;
+	stmt->u.for_.cond = cond;
+	stmt->u.for_.post = post;
+	stmt->u.for_.stmts = stmts;
+	return stmt;
+}
+
+static struct stmt *alloc_match_stmt(/* TODO */)
+{
+	struct stmt *stmt;
+
+	stmt = NEW(struct stmt);
+	// TODO
+}
+*/
 
 static bool is_prim_type(enum tok);
 static bool is_primary_type_head(enum tok);
@@ -305,6 +423,11 @@ static struct expr *parse_array_lit_expr(void)
 	return alloc_array_lit_expr(items);
 }
 
+static struct expr *parse_block_expr(void)
+{
+	expect_tok(OPEN_BRACE);
+}
+
 static struct expr *parse_primary_expr(void)
 {
 	enum tok tok;
@@ -312,6 +435,8 @@ static struct expr *parse_primary_expr(void)
 
 	tok = peek_tok();
 	switch (tok) {
+	case IDENT:
+		return alloc_ident_expr(yytext);
 	case TRUE:
 		next_tok();
 		return alloc_bool_lit_expr(true);
@@ -344,8 +469,8 @@ static struct expr *parse_primary_expr(void)
 		expr = parse_expr();
 		expect_tok(CLOSE_PAREN);
 		return expr;
-	case IDENT:
-		return alloc_ident_expr(yytext);
+	case OPEN_BRACE:
+		return parse_block_expr();
 	default:
 		break;
 	}
