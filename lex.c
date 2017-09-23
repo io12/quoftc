@@ -12,7 +12,7 @@ static void inc_lineno(void)
 {
 	if (++lineno == 0) {
 		lineno--;
-		fatal_error("Source file longer than "xstr(UINT16_MAX)" lines");
+		fatal_error("Source file longer than "XSTR(UINT16_MAX)" lines");
 	}
 }
 
@@ -66,7 +66,7 @@ static enum tok string_lit(void)
 		// TODO: Fix this
 		if (p - yylval.string_lit == MAX_STRING_SIZE) {
 			fatal_error("String literal is longer than the maximum "
-			            "allowed length ("xstr(MAX_STRING_SIZE)
+			            "allowed length ("XSTR(MAX_STRING_SIZE)
 			            " bytes)");
 		}
 		*p++ = *inp++;
@@ -184,7 +184,7 @@ static enum tok ident(void)
 		if (i == MAX_IDENT_SIZE) {
 			fatal_error("Identifier longer than the "
 			            "maximum allowed size "
-			            "("xstr(MAX_IDENT_SIZE)")");
+			            "("XSTR(MAX_IDENT_SIZE)")");
 		}
 		yytext[i] = *inp++;
 	}
@@ -263,7 +263,7 @@ static enum tok op(void)
 		if (i == MAX_IDENT_SIZE) {
 			fatal_error("Operator longer than the "
 			            "maximum allowed size "
-			            "("xstr(MAX_IDENT_SIZE)")");
+			            "("XSTR(MAX_IDENT_SIZE)")");
 		}
 		yytext[i++] = *inp++;
 	} while (is_op_char(*inp));
