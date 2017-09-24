@@ -177,7 +177,8 @@ static bool is_prim_type(enum tok tok)
 
 static bool is_primary_type_head(enum tok tok)
 {
-	return is_prim_type(tok) || tok == OPEN_PAREN || tok == IDENT;
+	return tok == OPEN_PAREN || tok == IDENT || tok == IMPURE
+		|| is_prim_type(tok);
 }
 
 static struct type *parse_primary_type(void)
@@ -261,6 +262,16 @@ static struct expr *parse_block_expr(void)
 	return NULL; // TODO
 }
 
+static struct expr *parse_paren_expr(void)
+{
+	struct expr *expr;
+
+	expect_tok(OPEN_PAREN);
+	expr = parse_expr();
+	expect_tok(CLOSE_PAREN);
+	return expr;
+}
+
 static struct expr *parse_primary_expr(void)
 {
 	enum tok tok;
@@ -298,10 +309,7 @@ static struct expr *parse_primary_expr(void)
 	case OPEN_BRACKET:
 		return parse_array_lit_expr();
 	case OPEN_PAREN:
-		next_tok();
-		expr = parse_expr();
-		expect_tok(CLOSE_PAREN);
-		return expr;
+		return parse_paren_expr();
 	case OPEN_BRACE:
 		return parse_block_expr();
 	default:
@@ -455,4 +463,124 @@ static struct decl *parse_decl(void)
 		expect_tok(SEMICOLON);
 	}
 	return ALLOC_DECL(is_mut, type, name, val);
+}
+
+static Vec *parse_compound_stmt(void)
+{
+	Vec *stmts;
+
+	expect_tok(OPEN_BRACE);
+	stmts = alloc_vec();
+	while (!accept_tok(CLOSE_BRACE)) {
+		vec_push(stmts, parse_stmt());
+	}
+	return stmts;
+}
+
+static struct stmt *parse_if_stmt(void)
+{
+	struct expr *cond;
+	Vec *then_stmts, *else_stmts;
+	enum tok peek;
+
+	expect_tok(IF);
+	cond = parse_paren_expr();
+	then_stmts = parse_compound_stmt();
+	if (accept_tok(ELSE)) {
+		peek = peek_tok();
+		switch (peek) {
+		case IF:
+			else_stmts = alloc_vec();
+			vec_push(else_stmts, parse_if_stmt());
+			break;
+		case OPEN_BRACE:
+			else_stmts = parse_compound_stmt();
+			break;
+		default:
+			fatal_error("Expected %s or %s, instead got %s",
+					tok_to_str(IF),
+					tok_to_str(OPEN_BRACE),
+					tok_to_str(peek));
+		}
+	} else {
+		else_stmts = NULL;
+	}
+	return ALLOC_IF_STMT(cond, then_stmts, else_stmts);
+}
+
+static struct stmt *parse_do_stmt(void)
+{
+	Vec *stmts;
+	struct expr *cond;
+
+	expect_tok(DO);
+	stmts = parse_compound_stmt();
+	expect_tok(WHILE);
+	cond = parse_paren_expr();
+	expect_tok(SEMICOLON);
+	return ALLOC_DO_STMT(stmts, cond);
+}
+
+static struct stmt *parse_while_stmt(void)
+{
+	Vec *stmts;
+	struct expr *cond;
+
+	expect_tok(WHILE);
+	cond = parse_paren_expr();
+	stmts = parse_compound_stmt();
+	return ALLOC_WHILE_STMT(stmts, cond);
+}
+
+static struct stmt *parse_for_stmt(void)
+{
+	struct expr *init, *cond, *post;
+	Vec *stmts;
+
+	expect_tok(FOR);
+	expect_tok(OPEN_PAREN);
+	if (accept_tok(SEMICOLON)) {
+		init = NULL;
+	} else {
+		init = parse_expr();
+		expect_tok(SEMICOLON);
+	}
+	if (accept_tok(SEMICOLON)) {
+		cond = NULL;
+	} else {
+		cond = parse_expr();
+		expect_tok(SEMICOLON);
+	}
+	if (accept_tok(CLOSE_PAREN)) {
+		post = NULL;
+	} else {
+		post = parse_expr();
+		expect_tok(CLOSE_PAREN);
+	}
+	stmts = parse_compound_stmt();
+	return ALLOC_FOR_STMT(init, cond, post, stmts);
+}
+
+static struct stmt *parse_match_stmt(void)
+{
+	return NULL; // TODO
+}
+
+static struct stmt *parse_stmt(void)
+{
+	switch (peek_tok()) {
+	case IF:
+		return parse_if_stmt();
+	case DO:
+		return parse_do_stmt();
+	case WHILE:
+		return parse_while_stmt();
+	case FOR:
+		return parse_for_stmt();
+	case MATCH:
+		return parse_match_stmt();
+	default:
+		break;
+	}
+	// TODO: Decl and expr stmts
 }
