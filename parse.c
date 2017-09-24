@@ -158,6 +158,10 @@ struct stmt {
 	ALLOC_UNION(stmt, DO_STMT, do_, __VA_ARGS__)
 #define ALLOC_WHILE_STMT(...) \
 	ALLOC_UNION(stmt, WHILE_STMT, while_, __VA_ARGS__)
+#define ALLOC_FOR_STMT(...) \
+	ALLOC_UNION(stmt, FOR_STMT, for_, __VA_ARGS__)
+#define ALLOC_MATCH_STMT(...) \
+	ALLOC_UNION(stmt, MATCH_STMT, match, __VA_ARGS__)
 
 static bool is_prim_type(enum tok);
 static bool is_primary_type_head(enum tok);
