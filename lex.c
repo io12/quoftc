@@ -420,10 +420,13 @@ enum tok peek_tok(void)
 
 bool accept_tok(enum tok tok)
 {
-	if (peek_tok() == tok) {
-		next_tok();
+	char *inp_save;
+
+	inp_save = inp;
+	if (next_tok() == tok) {
 		return true;
 	}
+	inp = inp_save;
 	return false;
 }
 
