@@ -36,7 +36,7 @@ int str_to_code_point(uint32_t *c, const char *src)
 	if (nbytes > MAX_UTF8_BYTES) {
 		goto invalid;
 	}
-	*c = s[0] & masks[0];
+	*c = s[0] & masks[nbytes - 1];
 	for (i = 1; i < nbytes; i++) {
 		if (s[i] >> shift_trailing != header_trailing) {
 			goto invalid;
