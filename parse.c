@@ -182,6 +182,7 @@ static struct type *parse_primary_type(void)
 {
 	enum tok tok;
 	struct type *type;
+	char *name;
 	Vec *params;
 
 	tok = next_tok();
@@ -192,14 +193,15 @@ static struct type *parse_primary_type(void)
 		return type;
 	case IDENT:
 	case IMPURE:
+		name = estrdup(yytext);
 		if (is_primary_type_head(peek_tok())) {
 			params = alloc_vec();
 			do {
 				vec_push(params, parse_primary_type());
 			} while (is_primary_type_head(peek_tok()));
-			return ALLOC_PARAM_TYPE(estrdup(yytext), params);
+			return ALLOC_PARAM_TYPE(name, params);
 		}
-		return ALLOC_ALIAS_TYPE(estrdup(yytext));
+		return ALLOC_ALIAS_TYPE(name);
 	default:
 		break;
 	}
