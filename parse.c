@@ -163,16 +163,9 @@ struct stmt {
 #define ALLOC_MATCH_STMT(...) \
 	ALLOC_UNION(stmt, MATCH_STMT, match, __VA_ARGS__)
 
-static bool is_prim_type(enum tok);
-static bool is_primary_type_head(enum tok);
-static struct type *parse_primary_type(void);
 static struct type *parse_type(void);
-static struct expr *parse_lambda_expr(void);
-static struct expr *parse_array_lit_expr(void);
-static struct expr *parse_primary_expr(void);
-static struct expr *parse_expr__(struct expr *, int);
 static struct expr *parse_expr(void);
-static struct decl *parse_decl(void);
+static struct stmt *parse_stmt(void);
 
 static bool is_prim_type(enum tok tok)
 {
