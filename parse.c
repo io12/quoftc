@@ -278,11 +278,10 @@ static struct expr *parse_paren_expr(void)
 
 static struct expr *parse_primary_expr(void)
 {
-	enum tok tok;
-	struct expr *expr;
+	enum tok peek;
 
-	tok = peek_tok();
-	switch (tok) {
+	peek = peek_tok();
+	switch (peek) {
 	case IDENT:
 		return ALLOC_IDENT_EXPR(estrdup(yytext));
 	case TRUE:
@@ -307,7 +306,7 @@ static struct expr *parse_primary_expr(void)
 	case TILDE:
 	case BANG:
 		next_tok();
-		return ALLOC_UNARY_OP_EXPR(tok, parse_primary_expr());
+		return ALLOC_UNARY_OP_EXPR(peek, parse_primary_expr());
 	case BACKSLASH:
 		return parse_lambda_expr();
 	case OPEN_BRACKET:
@@ -320,7 +319,7 @@ static struct expr *parse_primary_expr(void)
 		break;
 	}
 	fatal_error("Expected a primary expression, instead got %s",
-			tok_to_str(tok));
+			tok_to_str(peek));
 }
 
 static bool is_bin_op(enum tok tok)
