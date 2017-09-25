@@ -172,12 +172,6 @@ static bool is_prim_type(enum tok tok)
 	return IN_RANGE(tok, U8, CHAR);
 }
 
-static bool is_primary_type_head(enum tok tok)
-{
-	return tok == OPEN_PAREN || tok == IDENT || tok == IMPURE
-		|| is_prim_type(tok);
-}
-
 static struct type *parse_primary_type(void)
 {
 	enum tok tok;
@@ -194,11 +188,12 @@ static struct type *parse_primary_type(void)
 	case IDENT:
 	case IMPURE:
 		name = estrdup(yytext);
-		if (is_primary_type_head(peek_tok())) {
+		if (accept_tok(LT)) {
 			params = alloc_vec();
 			do {
 				vec_push(params, parse_primary_type());
-			} while (is_primary_type_head(peek_tok()));
+			} while (accept_tok(COMMA));
+			expect_tok(GT);
 			return ALLOC_PARAM_TYPE(name, params);
 		}
 		return ALLOC_ALIAS_TYPE(name);
