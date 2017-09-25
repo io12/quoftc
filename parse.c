@@ -19,7 +19,10 @@
 		}, sizeof(struct struct_tag)))
 
 struct type {
-	enum { PRIM_TYPE, ALIAS_TYPE, PARAM_TYPE, TUPLE_TYPE, FUNC_TYPE } type;
+	enum {
+		PRIM_TYPE, ALIAS_TYPE, PARAM_TYPE, ARRAY_TYPE, POINTER_TYPE,
+		TUPLE_TYPE, FUNC_TYPE
+	} type;
 	union {
 		struct {
 			enum tok tok;
@@ -32,6 +35,14 @@ struct type {
 			Vec *params;
 		} param;
 		struct {
+			// len is 0 if unknown
+			size_t len; // TODO: Make a BigInt
+			struct type *l;
+		} array;
+		struct {
+			struct type *l;
+		} pointer;
+		struct {
 			struct type *l, *r;
 		} tuple, func;
 	} u;
@@ -43,6 +54,10 @@ struct type {
 	ALLOC_UNION(type, ALIAS_TYPE, alias, __VA_ARGS__)
 #define ALLOC_PARAM_TYPE(...) \
 	ALLOC_UNION(type, PARAM_TYPE, param, __VA_ARGS__)
+#define ALLOC_ARRAY_TYPE(...) \
+	ALLOC_UNION(type, ARRAY_TYPE, array, __VA_ARGS__)
+#define ALLOC_POINTER_TYPE(...) \
+	ALLOC_UNION(type, POINTER_TYPE, pointer, __VA_ARGS__)
 #define ALLOC_TUPLE_TYPE(...) \
 	ALLOC_UNION(type, TUPLE_TYPE, tuple, __VA_ARGS__)
 #define ALLOC_FUNC_TYPE(...) \
@@ -184,7 +199,7 @@ static struct type *parse_primary_type(void)
 	case OPEN_PAREN:
 		type = parse_type();
 		expect_tok(CLOSE_PAREN);
-		return type;
+		break;
 	case IDENT:
 	case IMPURE:
 		name = estrdup(yytext);
@@ -194,16 +209,30 @@ static struct type *parse_primary_type(void)
 				vec_push(params, parse_primary_type());
 			} while (accept_tok(COMMA));
 			expect_tok(GT);
-			return ALLOC_PARAM_TYPE(name, params);
+			type = ALLOC_PARAM_TYPE(name, params);
+		} else {
+			type = ALLOC_ALIAS_TYPE(name);
 		}
-		return ALLOC_ALIAS_TYPE(name);
-	default:
 		break;
+	default:
+		if (is_prim_type(tok)) {
+			type = ALLOC_PRIM_TYPE(tok);
+		} else {
+			fatal_error("Expected a primary type, instead got %s",
+					tok_to_str(tok));
+		}
 	}
-	if (is_prim_type(tok)) {
-		return ALLOC_PRIM_TYPE(tok);
+	for (;;) {
+		if (accept_tok(OPEN_BRACKET)) {
+			// TODO: Static sized arrays
+			expect_tok(CLOSE_BRACKET);
+			type = ALLOC_ARRAY_TYPE(0, type);
+		} else if (accept_tok(STAR)) {
+			type = ALLOC_POINTER_TYPE(type);
+		} else {
+			return type;
+		}
 	}
-	fatal_error("Expected a primary type, instead got %s", tok_to_str(tok));
 }
 
 static struct type *parse_type(void)
