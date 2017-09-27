@@ -131,7 +131,7 @@ static enum tok lookup_keyword(char *keyword)
 		K("do", DO);
 		K("while", WHILE);
 		K("for", FOR);
-		K("match", MATCH);
+		K("switch", SWITCH);
 		K("cond", COND);
 		K("break", BREAK);
 		K("continue", CONTINUE);
@@ -327,7 +327,7 @@ char *tok_to_str(enum tok tok)
 		[DO] = "`do`",
 		[WHILE] = "`while`",
 		[FOR] = "`for`",
-		[MATCH] = "`match`",
+		[SWITCH] = "`switch`",
 		[BREAK] = "`break`",
 		[CONTINUE] = "`continue`",
 		[DEFER] = "`defer`",
