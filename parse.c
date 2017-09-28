@@ -67,7 +67,7 @@ struct expr {
 	enum {
 		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
 		UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
-		IDENT_EXPR, BLOCK_EXPR
+		IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR
 	} type;
 	union {
 		struct {
@@ -100,6 +100,13 @@ struct expr {
 		struct {
 			Vec *stmts;
 		} block;
+		struct {
+			struct expr *cond, *then, *else_;
+		} if_;
+		struct {
+			// TODO
+			int x;
+		} switch_;
 	} u;
 };
 
@@ -121,6 +128,10 @@ struct expr {
 	ALLOC_UNION(expr, IDENT_EXPR, ident, __VA_ARGS__)
 #define ALLOC_BLOCK_EXPR(...) \
 	ALLOC_UNION(expr, BLOCK_EXPR, block, __VA_ARGS__)
+#define ALLOC_IF_EXPR(...) \
+	ALLOC_UNION(expr, IF_EXPR, if_, __VA_ARGS__)
+#define ALLOC_SWITCH_EXPR(...) \
+	ALLOC_UNION(expr, SWITCH_EXPR, switch_, __VA_ARGS__)
 
 struct decl {
 	bool is_mut;
@@ -295,6 +306,24 @@ static struct expr *parse_paren_expr(void)
 	return expr;
 }
 
+static struct expr *parse_if_expr(void)
+{
+	struct expr *cond, *then, *else_;
+
+	expect_tok(IF);
+	cond = parse_paren_expr();
+	expect_tok(THEN);
+	then = parse_expr();
+	expect_tok(ELSE);
+	else_ = parse_expr();
+	return ALLOC_IF_EXPR(cond, then, else_);
+}
+
+static struct expr *parse_switch_expr(void)
+{
+	return NULL; // TODO
+}
+
 static struct expr *parse_primary_expr(void)
 {
 	enum tok peek;
@@ -334,6 +363,10 @@ static struct expr *parse_primary_expr(void)
 		return parse_paren_expr();
 	case OPEN_BRACE:
 		return parse_block_expr();
+	case IF:
+		return parse_if_expr();
+	case SWITCH:
+		return parse_switch_expr();
 	default:
 		break;
 	}
