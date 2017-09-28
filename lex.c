@@ -132,7 +132,6 @@ static enum tok lookup_keyword(char *keyword)
 		K("while", WHILE);
 		K("for", FOR);
 		K("switch", SWITCH);
-		K("cond", COND);
 		K("break", BREAK);
 		K("continue", CONTINUE);
 		K("defer", DEFER);

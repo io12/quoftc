@@ -42,7 +42,7 @@ enum tok {
 	PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ, PERCENT_EQ,
 	AMP_EQ, PIPE_EQ, CARET_EQ, LT_LT_EQ, GT_GT_EQ,
 
-	IF, THEN, ELSE, DO, WHILE, FOR, SWITCH, COND,
+	IF, THEN, ELSE, DO, WHILE, FOR, SWITCH,
 	BREAK, CONTINUE, DEFER, RETURN,
 
 	// Changing the order of these may break something
