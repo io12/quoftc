@@ -290,12 +290,6 @@ static struct expr *parse_array_lit_expr(void)
 	return ALLOC_ARRAY_LIT_EXPR(items);
 }
 
-static struct expr *parse_block_expr(void)
-{
-	expect_tok(OPEN_BRACE);
-	return NULL; // TODO
-}
-
 static struct expr *parse_paren_expr(void)
 {
 	struct expr *expr;
@@ -304,6 +298,12 @@ static struct expr *parse_paren_expr(void)
 	expr = parse_expr();
 	expect_tok(CLOSE_PAREN);
 	return expr;
+}
+
+static struct expr *parse_block_expr(void)
+{
+	expect_tok(OPEN_BRACE);
+	return NULL; // TODO
 }
 
 static struct expr *parse_if_expr(void)
