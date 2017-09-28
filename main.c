@@ -71,6 +71,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	for (i = 1; i < argc; i++) {
+		// TODO: Move most of this to lex.c
 		filename = argv[i];
 		fd = open(filename, O_RDONLY);
 		if (fd == -1 || fstat(fd, &stat) == -1) {
