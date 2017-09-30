@@ -235,7 +235,6 @@ static struct type *parse_primary_type(void)
 	}
 	for (;;) {
 		if (accept_tok(OPEN_BRACKET)) {
-			// TODO: Static sized arrays
 			if (accept_tok(CLOSE_BRACKET)) {
 				len = NULL;
 			} else {
