@@ -338,7 +338,10 @@ static struct expr *parse_primary_expr(void)
 	case FALSE:
 		next_tok();
 		return ALLOC_BOOL_LIT_EXPR(false);
-	case NUM_LIT:
+	case INT_LIT:
+		// TODO
+		break;
+	case FLOAT_LIT:
 		// TODO
 		break;
 	case CHAR_LIT:

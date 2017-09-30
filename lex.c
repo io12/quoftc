@@ -38,7 +38,7 @@ static enum tok char_lit(void)
 	if (inp[0] == 'U' && inp[1] == '+') {
 		inp += 2;
 		num_lit__(is_hex_digit, 16);
-		c = yylval.num_lit;
+		c = yylval.int_lit;
 		if (c < 0 || !is_valid_code_point(c)) {
 			goto invalid;
 		}
@@ -219,12 +219,12 @@ static int value_of_digit(int c)
 
 static enum tok num_lit__(bool (*is_valid_digit)(int c), int base)
 {
-	yylval.num_lit = 0;
+	yylval.int_lit = 0;
 	while (is_valid_digit(*inp)) {
-		yylval.num_lit *= base;
-		yylval.num_lit += value_of_digit(*inp++);
+		yylval.int_lit *= base;
+		yylval.int_lit += value_of_digit(*inp++);
 	}
-	return NUM_LIT;
+	return INT_LIT;
 }
 
 static enum tok num_lit(void)
@@ -283,7 +283,8 @@ char *tok_to_str(enum tok tok)
 		[TYPEDEF] = "`typedef`",
 		[TRUE] = "`True`",
 		[FALSE] = "`False`",
-		[NUM_LIT] = "a numerical literal",
+		[INT_LIT] = "an integer literal",
+		[FLOAT_LIT] = "a float literal",
 		[CHAR_LIT] = "a character literal",
 		[STRING_LIT] = "a string literal",
 		[PLUS_PLUS] = "`++`",

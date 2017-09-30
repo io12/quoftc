@@ -31,7 +31,7 @@ enum tok {
 	TYPEDEF,
 
 	TRUE, FALSE,
-	NUM_LIT, CHAR_LIT, STRING_LIT,
+	INT_LIT, FLOAT_LIT, CHAR_LIT, STRING_LIT,
 
 	PLUS_PLUS, MINUS_MINUS,
 	PLUS, MINUS, STAR, SLASH, PERCENT,
@@ -62,7 +62,7 @@ enum tok {
 union yystype {
 	uint32_t char_lit;
 	char string_lit[MAX_STRING_SIZE + 1];
-	long num_lit;
+	uint64_t int_lit;
 };
 
 char *tok_to_str(enum tok);
