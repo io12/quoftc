@@ -35,9 +35,8 @@ struct type {
 			Vec *params;
 		} param;
 		struct {
-			// len is 0 if unknown
-			size_t len; // TODO: Make a BigInt
 			struct type *l;
+			struct expr *len;
 		} array;
 		struct {
 			struct type *l;
@@ -204,6 +203,7 @@ static struct type *parse_primary_type(void)
 	struct type *type;
 	char *name;
 	Vec *params;
+	struct expr *len;
 
 	tok = next_tok();
 	switch (tok) {
@@ -236,8 +236,13 @@ static struct type *parse_primary_type(void)
 	for (;;) {
 		if (accept_tok(OPEN_BRACKET)) {
 			// TODO: Static sized arrays
-			expect_tok(CLOSE_BRACKET);
-			type = ALLOC_ARRAY_TYPE(0, type);
+			if (accept_tok(CLOSE_BRACKET)) {
+				len = NULL;
+			} else {
+				len = parse_expr();
+				expect_tok(CLOSE_BRACKET);
+			}
+			type = ALLOC_ARRAY_TYPE(type, len);
 		} else if (accept_tok(STAR)) {
 			type = ALLOC_POINTER_TYPE(type);
 		} else {
