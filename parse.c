@@ -306,8 +306,14 @@ static struct expr *parse_paren_expr(void)
 
 static struct expr *parse_block_expr(void)
 {
+	Vec *stmts;
+
 	expect_tok(OPEN_BRACE);
-	return NULL; // TODO
+	stmts = alloc_vec();
+	while (!accept_tok(CLOSE_BRACE)) {
+		vec_push(stmts, parse_stmt());
+	}
+	return ALLOC_BLOCK_EXPR(stmts);
 }
 
 static struct expr *parse_if_expr(void)
