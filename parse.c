@@ -103,10 +103,14 @@ struct expr {
 			struct expr *cond, *then, *else_;
 		} if_;
 		struct {
-			// TODO
-			int x;
+			struct expr *ctrl;
+			Vec *cases;
 		} switch_;
 	} u;
+};
+
+struct switch_case {
+	struct expr *l, *r;
 };
 
 #define ALLOC_BOOL_LIT_EXPR(...) \
@@ -131,6 +135,8 @@ struct expr {
 	ALLOC_UNION(expr, IF_EXPR, if_, __VA_ARGS__)
 #define ALLOC_SWITCH_EXPR(...) \
 	ALLOC_UNION(expr, SWITCH_EXPR, switch_, __VA_ARGS__)
+#define ALLOC_SWITCH_CASE(...) \
+	ALLOC_STRUCT(switch_case, __VA_ARGS__)
 
 struct decl {
 	bool is_mut;
@@ -329,9 +335,30 @@ static struct expr *parse_if_expr(void)
 	return ALLOC_IF_EXPR(cond, then, else_);
 }
 
+static struct switch_case *parse_switch_case(void)
+{
+	struct expr *l, *r;
+
+	l = parse_expr();
+	expect_tok(BIG_ARROW); // TODO: What if the programmer overloads this?
+	r = parse_expr();
+	return ALLOC_SWITCH_CASE(l, r);
+}
+
 static struct expr *parse_switch_expr(void)
 {
-	return NULL; // TODO
+	struct expr *ctrl;
+	Vec *cases;
+
+	expect_tok(SWITCH);
+	ctrl = peek_tok() == OPEN_PAREN ? parse_paren_expr() : NULL;
+	expect_tok(OPEN_BRACE);
+	cases = alloc_vec();
+	while (!accept_tok(CLOSE_BRACE)) {
+		// TODO: The case list may need a delimiter
+		vec_push(cases, parse_switch_case());
+	}
+	return ALLOC_SWITCH_EXPR(ctrl, cases);
 }
 
 static struct expr *parse_primary_expr(void)
