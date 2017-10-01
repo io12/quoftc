@@ -91,7 +91,7 @@ static enum tok string_lit(void)
 	return STRING_LIT;
 }
 
-static enum tok lookup_keyword(char *keyword)
+static enum tok lookup_keyword(const char *keyword)
 {
 	static HashTable *keywords = NULL;
 
@@ -453,7 +453,7 @@ void expect_tok(enum tok expected_tok)
 	}
 }
 
-NORETURN PRINTF_LIKE void fatal_error(char *fmt, ...)
+NORETURN PRINTF_LIKE void fatal_error(const char *fmt, ...)
 {
 	va_list ap;
 
