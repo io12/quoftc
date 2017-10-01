@@ -109,10 +109,6 @@ struct expr {
 	} u;
 };
 
-struct switch_case {
-	struct expr *l, *r;
-};
-
 #define ALLOC_BOOL_LIT_EXPR(...) \
 	ALLOC_UNION(expr, BOOL_LIT_EXPR, bool_lit, __VA_ARGS__)
 #define ALLOC_CHAR_LIT_EXPR(...) \
@@ -135,6 +131,40 @@ struct switch_case {
 	ALLOC_UNION(expr, IF_EXPR, if_, __VA_ARGS__)
 #define ALLOC_SWITCH_EXPR(...) \
 	ALLOC_UNION(expr, SWITCH_EXPR, switch_, __VA_ARGS__)
+
+struct switch_pattern {
+	enum {
+		EXPR_SWITCH_PATTERN, DESTRUCT_SWITCH_PATTERN,
+		AND_SWITCH_PATTERN, OR_SWITCH_PATTERN
+	} type;
+	union {
+		struct {
+			struct expr *expr;
+		} expr;
+		struct {
+			char *name;
+			Vec *params;
+		} destruct;
+		struct {
+			struct switch_pattern *l, *r;
+		} and, or;
+	} u;
+};
+
+#define ALLOC_EXPR_SWITCH_PATTERN(...) \
+	ALLOC_UNION(switch_pattern, EXPR_SWITCH_PATTERN, expr, __VA_ARGS__)
+#define ALLOC_DESTRUCT_SWITCH_PATTERN(...) \
+	ALLOC_UNION(switch_pattern, DESTRUCT_SWITCH_PATTERN, destruct, __VA_ARGS__)
+#define ALLOC_AND_SWITCH_PATTERN(...) \
+	ALLOC_UNION(switch_pattern, AND_SWITCH_PATTERN, and, __VA_ARGS__)
+#define ALLOC_OR_SWITCH_PATTERN(...) \
+	ALLOC_UNION(switch_pattern, OR_SWITCH_PATTERN, or, __VA_ARGS__)
+
+struct switch_case {
+	struct switch_pattern *l;
+	struct expr *r;
+};
+
 #define ALLOC_SWITCH_CASE(...) \
 	ALLOC_STRUCT(switch_case, __VA_ARGS__)
 
@@ -337,12 +367,15 @@ static struct expr *parse_if_expr(void)
 
 static struct switch_case *parse_switch_case(void)
 {
+	/*
 	struct expr *l, *r;
 
 	l = parse_expr();
 	expect_tok(BIG_ARROW); // TODO: What if the programmer overloads this?
 	r = parse_expr();
 	return ALLOC_SWITCH_CASE(l, r);
+	*/
+	return NULL;
 }
 
 static struct expr *parse_switch_expr(void)
