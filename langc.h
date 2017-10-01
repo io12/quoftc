@@ -70,9 +70,11 @@ enum tok next_tok(void);
 enum tok peek_tok(void);
 bool accept_tok(enum tok);
 void expect_tok(enum tok);
-
 NORETURN PRINTF_LIKE void fatal_error(char *, ...);
 NORETURN void internal_error(void);
+void init_lex(const char *);
+void cleanup_lex(void);
+
 MALLOC_LIKE void *emalloc(size_t);
 MALLOC_LIKE void *ecalloc(size_t);
 void *erealloc(void *, size_t);
@@ -85,5 +87,4 @@ bool is_valid_utf8(const char *);
 extern char yytext[MAX_IDENT_SIZE + 1];
 extern union yystype yylval;
 
-extern char *inp, *filename;
-extern uint16_t lineno;
+extern const char *argv0;

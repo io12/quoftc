@@ -1,12 +1,22 @@
 #include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "langc.h"
 #include "ds.h"
 
 char yytext[MAX_IDENT_SIZE + 1];
 union yystype yylval;
+static const char *filename;
+static uint16_t lineno;
+static char *inp;
 
 static void inc_lineno(void)
 {
@@ -438,5 +448,58 @@ void expect_tok(enum tok expected_tok)
 	if (tok != expected_tok) {
 		fatal_error("Expected %s, instead got %s",
 				tok_to_str(expected_tok), tok_to_str(tok));
+	}
+}
+
+NORETURN PRINTF_LIKE void fatal_error(char *fmt, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, "%s:%"PRIu16": error: ", filename, lineno);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	exit(EXIT_FAILURE);
+}
+
+NORETURN void internal_error(void)
+{
+	fatal_error("Internal error");
+}
+
+static NORETURN void file_error(void)
+{
+	fprintf(stderr, "%s: error: %s: %s\n", argv0, filename,
+			strerror(errno));
+	exit(EXIT_FAILURE);
+}
+
+static size_t file_len;
+
+void init_lex(const char *filename_)
+{
+	int fd;
+	struct stat stat;
+
+	filename = filename_;
+	fd = open(filename, O_RDONLY);
+	if (fd == -1 || fstat(fd, &stat) == -1) {
+		file_error();
+	}
+	file_len = stat.st_size;
+	inp = mmap(NULL, file_len + 1, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE, fd, 0);
+	if (inp == MAP_FAILED || close(fd) == -1) {
+		file_error();
+	}
+	inp[file_len] = '\0';
+	lineno = 1;
+}
+
+void cleanup_lex(void)
+{
+	if (munmap(inp, file_len + 1) == -1) {
+		file_error();
 	}
 }
