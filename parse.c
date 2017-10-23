@@ -627,6 +627,11 @@ static struct decl *parse_decl(void)
 	return ALLOC_DECL(is_mut, type, name, val);
 }
 
+static struct stmt *parse_decl_stmt(void)
+{
+	return ALLOC_DECL_STMT(parse_decl());
+}
+
 static Vec *parse_compound_stmt(void)
 {
 	Vec *stmts;
@@ -728,9 +733,17 @@ static struct stmt *parse_switch_stmt(void)
 	return NULL; // TODO
 }
 
+static struct stmt *parse_expr_stmt(void)
+{
+	return ALLOC_EXPR_STMT(parse_expr());
+}
+
 static struct stmt *parse_stmt(void)
 {
 	switch (peek_tok()) {
+	case CONST:
+	case VAR:
+		return parse_decl_stmt();
 	case IF:
 		return parse_if_stmt();
 	case DO:
@@ -742,7 +755,6 @@ static struct stmt *parse_stmt(void)
 	case SWITCH:
 		return parse_switch_stmt();
 	default:
-		break;
+		return parse_expr_stmt();
 	}
-	// TODO: Decl and expr stmts
 }
