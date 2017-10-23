@@ -98,7 +98,8 @@ static enum tok lookup_keyword(const char *keyword)
 	if (UNLIKELY(keywords == NULL)) {
 		keywords = alloc_hash_table();
 #define K(keyword, tok) hash_table_set(keywords, keyword, (void *) tok)
-		K("mut", MUT);
+		K("const", CONST);
+		K("var", VAR);
 		K("impure", IMPURE);
 		K("typedef", TYPEDEF);
 		K("True", TRUE);
@@ -290,7 +291,8 @@ static enum tok op(void)
 char *tok_to_str(enum tok tok)
 {
 	static char *tok_names[] = {
-		[MUT] = "`mut`",
+		[CONST] = "`const`",
+		[VAR] = "`var`",
 		[IMPURE] = "`impure`",
 		[IDENT] = "an identifier",
 		[TYPEDEF] = "`typedef`",

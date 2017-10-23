@@ -608,10 +608,12 @@ static struct decl *parse_decl(void)
 	char *name;
 	struct expr *val;
 
-	if (accept_tok(MUT)) {
+	if (accept_tok(CONST)) {
+		is_mut = false;
+	} else if (accept_tok(VAR)) {
 		is_mut = true;
 	} else {
-		is_mut = false;
+		// TODO: Expected
 	}
 	type = parse_type();
 	expect_tok(IDENT);

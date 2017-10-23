@@ -25,7 +25,7 @@
 enum tok {
 	INVALID_TOK,
 
-	MUT,
+	CONST, VAR,
 	IMPURE,
 	IDENT,
 	TYPEDEF,
