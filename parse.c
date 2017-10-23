@@ -134,8 +134,7 @@ struct expr {
 
 struct switch_pattern {
 	enum {
-		EXPR_SWITCH_PATTERN, DESTRUCT_SWITCH_PATTERN,
-		AND_SWITCH_PATTERN, OR_SWITCH_PATTERN
+		EXPR_SWITCH_PATTERN, DESTRUCT_SWITCH_PATTERN, OR_SWITCH_PATTERN
 	} type;
 	union {
 		struct {
@@ -146,8 +145,8 @@ struct switch_pattern {
 			Vec *params;
 		} destruct;
 		struct {
-			struct switch_pattern *l, *r;
-		} and, or;
+			Vec *patterns;
+		} or;
 	} u;
 };
 
@@ -155,8 +154,6 @@ struct switch_pattern {
 	ALLOC_UNION(switch_pattern, EXPR_SWITCH_PATTERN, expr, __VA_ARGS__)
 #define ALLOC_DESTRUCT_SWITCH_PATTERN(...) \
 	ALLOC_UNION(switch_pattern, DESTRUCT_SWITCH_PATTERN, destruct, __VA_ARGS__)
-#define ALLOC_AND_SWITCH_PATTERN(...) \
-	ALLOC_UNION(switch_pattern, AND_SWITCH_PATTERN, and, __VA_ARGS__)
 #define ALLOC_OR_SWITCH_PATTERN(...) \
 	ALLOC_UNION(switch_pattern, OR_SWITCH_PATTERN, or, __VA_ARGS__)
 
@@ -316,17 +313,33 @@ static struct expr *parse_lambda_expr(void)
 	return ALLOC_LAMBDA_EXPR(params, parse_expr());
 }
 
+static Vec *tuple_to_vec__(struct expr *tuple, Vec *vec)
+{
+	if (tuple->type == BIN_OP_EXPR && tuple->u.bin_op.op == COMMA) {
+		vec_push(vec, tuple->u.bin_op.l);
+		return tuple_to_vec__(tuple->u.bin_op.r, vec);
+	}
+	return vec_push(vec, tuple);
+}
+
+static Vec *tuple_to_vec(struct expr *tuple)
+{
+	return tuple_to_vec__(tuple, alloc_vec());
+}
+
 static struct expr *parse_array_lit_expr(void)
 {
 	Vec *items;
+	struct expr *tuple;
 
 	expect_tok(OPEN_BRACKET);
-	items = alloc_vec();
-	do {
-		// TODO: Tuples break this
-		vec_push(items, parse_expr());
-	} while (accept_tok(COMMA));
-	expect_tok(CLOSE_BRACKET);
+	if (accept_tok(CLOSE_BRACKET)) {
+		items = NULL;
+	} else {
+		tuple = parse_expr();
+		expect_tok(CLOSE_BRACKET);
+		items = tuple_to_vec(tuple);
+	}
 	return ALLOC_ARRAY_LIT_EXPR(items);
 }
 
@@ -365,17 +378,36 @@ static struct expr *parse_if_expr(void)
 	return ALLOC_IF_EXPR(cond, then, else_);
 }
 
+static struct switch_pattern *parse_primary_switch_pattern(void)
+{
+	return NULL; // TODO: stub
+}
+
+static struct switch_pattern *parse_switch_pattern(void)
+{
+	struct switch_pattern *l;
+	Vec *patterns;
+
+	l = parse_primary_switch_pattern();
+	if (peek_tok() != PIPE) {
+		return l;
+	}
+	patterns = vec_push(alloc_vec(), l);
+	while (accept_tok(PIPE)) {
+		vec_push(patterns, parse_primary_switch_pattern());
+	}
+	return ALLOC_OR_SWITCH_PATTERN(patterns);
+}
+
 static struct switch_case *parse_switch_case(void)
 {
-	/*
-	struct expr *l, *r;
+	struct switch_pattern *l;
+	struct expr *r;
 
-	l = parse_expr();
+	l = parse_switch_pattern();
 	expect_tok(BIG_ARROW); // TODO: What if the programmer overloads this?
 	r = parse_expr();
 	return ALLOC_SWITCH_CASE(l, r);
-	*/
-	return NULL;
 }
 
 static struct expr *parse_switch_expr(void)
