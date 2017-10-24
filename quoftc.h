@@ -17,7 +17,6 @@
 
 #define XSTR(x) STR__(x)
 #define STR__(x) #x
-#define LEN(x) (sizeof(x) / sizeof((x)[0]))
 #define IN_RANGE(x, min, max) ((x) >= min && (x) <= max)
 #define NEW(type) ((type *) emalloc(sizeof(type)))
 #define NEWC(type) ((type *) ecalloc(sizeof(type)))
