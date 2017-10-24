@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "langc.h"
+#include "quoftc.h"
 #include "ds.h"
 
 typedef struct hash_table_pair HashTablePair;

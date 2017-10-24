@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include "langc.h"
+#include "quoftc.h"
 #include "ds.h"
 
 #define ALLOC_STRUCT(struct_tag, ...) \

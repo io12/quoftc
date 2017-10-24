@@ -11,7 +11,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "langc.h"
+#include "quoftc.h"
 #include "ds.h"
 
 char yytext[MAX_IDENT_SIZE + 1];
