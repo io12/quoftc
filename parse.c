@@ -327,6 +327,7 @@ static Vec *tuple_to_vec(struct expr *tuple)
 	return tuple_to_vec__(tuple, alloc_vec());
 }
 
+// TODO: Parens ruin this approach
 static struct expr *parse_array_lit_expr(void)
 {
 	Vec *items;
