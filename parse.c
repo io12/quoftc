@@ -618,17 +618,25 @@ static struct expr *parse_expr(void)
 
 static struct decl *parse_decl(void)
 {
+	enum tok tok;
 	bool is_mut;
 	struct type *type;
 	char *name;
 	struct expr *val;
 
-	if (accept_tok(CONST)) {
+	tok = next_tok();
+	switch (tok) {
+	case CONST:
 		is_mut = false;
-	} else if (accept_tok(VAR)) {
+		break;
+	case VAR:
 		is_mut = true;
-	} else {
-		// TODO: Expected
+		break;
+	default:
+		fatal_error("Expected %s or %s, instead got %s",
+				tok_to_str(CONST),
+				tok_to_str(VAR),
+				tok_to_str(tok));
 	}
 	type = parse_type();
 	expect_tok(IDENT);
