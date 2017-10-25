@@ -42,8 +42,11 @@ struct type {
 			struct type *l;
 		} pointer;
 		struct {
+			Vec *types;
+		} tuple;
+		struct {
 			struct type *l, *r;
-		} tuple, func;
+		} func;
 	} u;
 };
 
@@ -66,7 +69,7 @@ struct expr {
 	enum {
 		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
 		UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
-		IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR
+		IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR, TUPLE_EXPR
 	} type;
 	union {
 		struct {
@@ -106,6 +109,9 @@ struct expr {
 			struct expr *ctrl;
 			Vec *cases;
 		} switch_;
+		struct {
+			Vec *items;
+		} tuple;
 	} u;
 };
 
@@ -131,6 +137,8 @@ struct expr {
 	ALLOC_UNION(expr, IF_EXPR, if_, __VA_ARGS__)
 #define ALLOC_SWITCH_EXPR(...) \
 	ALLOC_UNION(expr, SWITCH_EXPR, switch_, __VA_ARGS__)
+#define ALLOC_TUPLE_EXPR(...) \
+	ALLOC_UNION(expr, TUPLE_EXPR, tuple, __VA_ARGS__)
 
 struct switch_pattern {
 	enum {
@@ -240,6 +248,7 @@ static struct type *parse_primary_type(void)
 
 	tok = next_tok();
 	switch (tok) {
+	// TODO: Tuples
 	case OPEN_PAREN:
 		type = parse_type();
 		expect_tok(CLOSE_PAREN);
@@ -289,9 +298,11 @@ static struct type *parse_type(void)
 
 	l = parse_primary_type();
 	switch (peek_tok()) {
+	// TODO: Fix
 	case COMMA:
 		next_tok();
-		return ALLOC_TUPLE_TYPE(l, parse_type());
+		//return ALLOC_TUPLE_TYPE(l, parse_type());
+		return NULL;
 	case ARROW:
 		next_tok();
 		return ALLOC_FUNC_TYPE(l, parse_type());
@@ -313,43 +324,50 @@ static struct expr *parse_lambda_expr(void)
 	return ALLOC_LAMBDA_EXPR(params, parse_expr());
 }
 
-static Vec *tuple_to_vec__(struct expr *tuple, Vec *vec)
-{
-	if (tuple->type == BIN_OP_EXPR && tuple->u.bin_op.op == COMMA) {
-		vec_push(vec, tuple->u.bin_op.l);
-		return tuple_to_vec__(tuple->u.bin_op.r, vec);
-	}
-	return vec_push(vec, tuple);
-}
-
-static Vec *tuple_to_vec(struct expr *tuple)
-{
-	return tuple_to_vec__(tuple, alloc_vec());
-}
-
-// TODO: Parens ruin this approach
 static struct expr *parse_array_lit_expr(void)
 {
 	Vec *items;
-	struct expr *tuple;
 
 	expect_tok(OPEN_BRACKET);
 	if (accept_tok(CLOSE_BRACKET)) {
 		items = NULL;
 	} else {
-		tuple = parse_expr();
+		items = alloc_vec();
+		do {
+			vec_push(items, parse_expr());
+		} while (accept_tok(COMMA));
 		expect_tok(CLOSE_BRACKET);
-		items = tuple_to_vec(tuple);
 	}
 	return ALLOC_ARRAY_LIT_EXPR(items);
 }
 
+// TODO: Move this
 static struct expr *parse_paren_expr(void)
 {
 	struct expr *expr;
 
 	expect_tok(OPEN_PAREN);
 	expr = parse_expr();
+	expect_tok(CLOSE_PAREN);
+	return expr;
+}
+
+static struct expr *parse_tuple_or_paren_expr(void)
+{
+	struct expr *expr;
+	Vec *items;
+
+	expect_tok(OPEN_PAREN);
+	expr = parse_expr();
+	if (accept_tok(COMMA)) {
+		items = alloc_vec();
+		vec_push(items, expr);
+		do {
+			vec_push(items, parse_expr());
+		} while (accept_tok(COMMA));
+		expect_tok(CLOSE_PAREN);
+		return ALLOC_TUPLE_EXPR(items);
+	}
 	expect_tok(CLOSE_PAREN);
 	return expr;
 }
@@ -466,7 +484,7 @@ static struct expr *parse_primary_expr(void)
 	case OPEN_BRACKET:
 		return parse_array_lit_expr();
 	case OPEN_PAREN:
-		return parse_paren_expr();
+		return parse_tuple_or_paren_expr();
 	case OPEN_BRACE:
 		return parse_block_expr();
 	case IF:
@@ -492,7 +510,7 @@ static bool is_bin_op(enum tok tok)
 	case PLUS_EQ: case MINUS_EQ:
 	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
 	case AMP_EQ: case PIPE_EQ: case CARET_EQ: case LT_LT_EQ: case GT_GT_EQ:
-	case DOT: case COMMA:
+	case DOT:
 		return true;
 	default:
 		return false;
@@ -503,30 +521,28 @@ static int get_bin_op_prec(enum tok op)
 {
 	switch (op) {
 	case DOT:
-		return 13;
-	case STAR: case SLASH: case PERCENT:
 		return 12;
-	case PLUS: case MINUS:
+	case STAR: case SLASH: case PERCENT:
 		return 11;
-	case LT_LT: case GT_GT:
+	case PLUS: case MINUS:
 		return 10;
-	case AMP:
+	case LT_LT: case GT_GT:
 		return 9;
-	case CARET:
+	case AMP:
 		return 8;
-	case PIPE:
+	case CARET:
 		return 7;
-	case LT: case GT: case LT_EQ: case GT_EQ:
+	case PIPE:
 		return 6;
-	case EQ_EQ: case BANG_EQ:
+	case LT: case GT: case LT_EQ: case GT_EQ:
 		return 5;
-	case AMP_AMP:
+	case EQ_EQ: case BANG_EQ:
 		return 4;
-	case CARET_CARET:
+	case AMP_AMP:
 		return 3;
-	case PIPE_PIPE:
+	case CARET_CARET:
 		return 2;
-	case COMMA:
+	case PIPE_PIPE:
 		return 1;
 	case EQ:
 	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
@@ -560,7 +576,6 @@ static enum assoc get_bin_op_assoc(enum tok op)
 		return L_ASSOC;
 	case LT: case GT: case LT_EQ: case GT_EQ:
 		return NON_ASSOC;
-	case COMMA:
 	case EQ:
 	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
 	case PLUS_EQ: case MINUS_EQ:
