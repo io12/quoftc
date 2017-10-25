@@ -233,6 +233,19 @@ static struct type *parse_type(void);
 static struct expr *parse_expr(void);
 static struct stmt *parse_stmt(void);
 
+static struct type *parse_tuple_type(void)
+{
+	Vec *types;
+
+	expect_tok(OPEN_PAREN);
+	types = alloc_vec();
+	do {
+		vec_push(types, parse_type());
+	} while (accept_tok(COMMA));
+	expect_tok(CLOSE_PAREN);
+	return ALLOC_TUPLE_TYPE(types);
+}
+
 static bool is_prim_type(enum tok tok)
 {
 	return IN_RANGE(tok, U8, CHAR);
@@ -240,21 +253,20 @@ static bool is_prim_type(enum tok tok)
 
 static struct type *parse_primary_type(void)
 {
-	enum tok tok;
+	enum tok peek;
 	struct type *type;
 	char *name;
 	Vec *params;
 	struct expr *len;
 
-	tok = next_tok();
-	switch (tok) {
-	// TODO: Tuples
+	peek = peek_tok();
+	switch (peek) {
 	case OPEN_PAREN:
-		type = parse_type();
-		expect_tok(CLOSE_PAREN);
+		type = parse_tuple_type();
 		break;
 	case IDENT:
 	case IMPURE:
+		next_tok();
 		name = estrdup(yytext);
 		if (accept_tok(LT)) {
 			params = alloc_vec();
@@ -268,11 +280,12 @@ static struct type *parse_primary_type(void)
 		}
 		break;
 	default:
-		if (is_prim_type(tok)) {
-			type = ALLOC_PRIM_TYPE(tok);
+		if (is_prim_type(peek)) {
+			next_tok();
+			type = ALLOC_PRIM_TYPE(peek);
 		} else {
 			fatal_error("Expected a primary type, instead got %s",
-					tok_to_str(tok));
+					tok_to_str(peek));
 		}
 	}
 	for (;;) {
