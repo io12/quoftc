@@ -341,17 +341,6 @@ static struct expr *parse_array_lit_expr(void)
 	return ALLOC_ARRAY_LIT_EXPR(items);
 }
 
-// TODO: Move this
-static struct expr *parse_paren_expr(void)
-{
-	struct expr *expr;
-
-	expect_tok(OPEN_PAREN);
-	expr = parse_expr();
-	expect_tok(CLOSE_PAREN);
-	return expr;
-}
-
 static struct expr *parse_tuple_or_paren_expr(void)
 {
 	struct expr *expr;
@@ -382,6 +371,16 @@ static struct expr *parse_block_expr(void)
 		vec_push(stmts, parse_stmt());
 	}
 	return ALLOC_BLOCK_EXPR(stmts);
+}
+
+static struct expr *parse_paren_expr(void)
+{
+	struct expr *expr;
+
+	expect_tok(OPEN_PAREN);
+	expr = parse_expr();
+	expect_tok(CLOSE_PAREN);
+	return expr;
 }
 
 static struct expr *parse_if_expr(void)
