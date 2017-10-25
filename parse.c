@@ -310,18 +310,10 @@ static struct type *parse_type(void)
 	struct type *l;
 
 	l = parse_primary_type();
-	switch (peek_tok()) {
-	// TODO: Fix
-	case COMMA:
-		next_tok();
-		//return ALLOC_TUPLE_TYPE(l, parse_type());
-		return NULL;
-	case ARROW:
-		next_tok();
+	if (accept_tok(ARROW)) {
 		return ALLOC_FUNC_TYPE(l, parse_type());
-	default:
-		return l;
 	}
+	return l;
 }
 
 static struct expr *parse_lambda_expr(void)
