@@ -190,6 +190,13 @@ struct decl {
 #define ALLOC_DECL(...) \
 	ALLOC_STRUCT(decl, __VA_ARGS__)
 
+struct ast {
+	Vec *decls;
+};
+
+#define ALLOC_AST(...) \
+	ALLOC_STRUCT(ast, __VA_ARGS__)
+
 struct stmt {
 	enum {
 		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
@@ -825,4 +832,15 @@ static struct stmt *parse_stmt(void)
 	default:
 		return parse_expr_stmt();
 	}
+}
+
+struct ast *parse(void)
+{
+	Vec *decls;
+
+	decls = alloc_vec();
+	do {
+		vec_push(decls, parse_decl());
+	} while (peek_tok() != TEOF);
+	return ALLOC_AST(decls);
 }
