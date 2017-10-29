@@ -169,6 +169,7 @@ static enum tok lookup_keyword(const char *keyword)
 		K("->", ARROW);
 		K("=>", BIG_ARROW);
 		K("\\", BACKSLASH);
+		K("_", UNDERSCORE);
 #undef K
 	}
 	// Returns INVALID_TOK if not found
@@ -367,6 +368,7 @@ char *tok_to_str(enum tok tok)
 		[ARROW] = "`->`",
 		[BIG_ARROW] = "`=>`",
 		[BACKSLASH] = "`\\`",
+		[UNDERSCORE] = "`_`",
 		[OPEN_BRACKET] = "`[`",
 		[CLOSE_BRACKET] = "`]`",
 		[OPEN_PAREN] = "`(`",
