@@ -14,21 +14,21 @@
 #define ALLOC_UNION(struct_tag, enum_tag, sub_struct_name, ...) \
 	((struct struct_tag *) \
 		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
-			.type = enum_tag, \
+			.kind = enum_tag, \
 			.u.sub_struct_name = { __VA_ARGS__ }, \
 		}, sizeof(struct struct_tag)))
 
 #define ALLOC_UNION_TAG_ONLY(struct_tag, enum_tag) \
 	((struct struct_tag *) \
 		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
-			.type = enum_tag \
+			.kind = enum_tag \
 		}, sizeof(struct struct_tag)))
 
 struct type {
 	enum {
 		PRIM_TYPE, ALIAS_TYPE, PARAM_TYPE, ARRAY_TYPE, POINTER_TYPE,
 		TUPLE_TYPE, FUNC_TYPE
-	} type;
+	} kind;
 	union {
 		struct {
 			enum tok tok;
@@ -76,7 +76,7 @@ struct expr {
 		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
 		UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
 		IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR, TUPLE_EXPR
-	} type;
+	} kind;
 	union {
 		struct {
 			bool val;
@@ -150,7 +150,7 @@ struct switch_pattern {
 	enum {
 		UNDERSCORE_SWITCH_PATTERN, OR_SWITCH_PATTERN,
 		ARRAY_SWITCH_PATTERN, TUPLE_SWITCH_PATTERN, EXPR_SWITCH_PATTERN
-	} type;
+	} kind;
 	union {
 		struct {
 			Vec *patterns;
@@ -201,7 +201,7 @@ struct stmt {
 	enum {
 		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
 		WHILE_STMT, FOR_STMT, SWITCH_STMT
-	} type;
+	} kind;
 	union {
 		struct {
 			struct decl *decl;
