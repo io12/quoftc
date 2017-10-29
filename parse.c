@@ -237,6 +237,7 @@ struct stmt {
 	ALLOC_UNION(stmt, SWITCH_STMT, switch, __VA_ARGS__)
 
 static struct type *parse_type(void);
+static struct switch_pattern *parse_switch_pattern(void);
 static struct expr *parse_expr(void);
 static struct stmt *parse_stmt(void);
 
@@ -341,15 +342,11 @@ static struct expr *parse_array_lit_expr(void)
 	Vec *items;
 
 	expect_tok(OPEN_BRACKET);
-	if (accept_tok(CLOSE_BRACKET)) {
-		items = NULL;
-	} else {
-		items = alloc_vec();
-		do {
-			vec_push(items, parse_expr());
-		} while (accept_tok(COMMA));
-		expect_tok(CLOSE_BRACKET);
-	}
+	items = alloc_vec();
+	do {
+		vec_push(items, parse_expr());
+	} while (accept_tok(COMMA));
+	expect_tok(CLOSE_BRACKET);
 	return ALLOC_ARRAY_LIT_EXPR(items);
 }
 
@@ -408,9 +405,45 @@ static struct expr *parse_if_expr(void)
 	return ALLOC_IF_EXPR(cond, then, else_);
 }
 
+static struct switch_pattern *parse_array_switch_pattern(void)
+{
+	Vec *patterns;
+
+	expect_tok(OPEN_BRACKET);
+	patterns = alloc_vec();
+	do {
+		vec_push(patterns, parse_switch_pattern());
+	} while (accept_tok(COMMA));
+	expect_tok(CLOSE_BRACKET);
+	return ALLOC_ARRAY_SWITCH_PATTERN(patterns);
+}
+
+static struct switch_pattern *parse_tuple_switch_pattern(void)
+{
+	Vec *patterns;
+
+	expect_tok(OPEN_PAREN);
+	patterns = alloc_vec();
+	do {
+		vec_push(patterns, parse_switch_pattern());
+	} while (accept_tok(COMMA));
+	expect_tok(CLOSE_PAREN);
+	return ALLOC_TUPLE_SWITCH_PATTERN(patterns);
+}
+
 static struct switch_pattern *parse_primary_switch_pattern(void)
 {
-	return NULL; // TODO: stub
+	switch(peek_tok()) {
+	case UNDERSCORE:
+		next_tok();
+		return ALLOC_UNDERSCORE_SWITCH_PATTERN();
+	case OPEN_BRACKET:
+		return parse_array_switch_pattern();
+	case OPEN_PAREN:
+		return parse_tuple_switch_pattern();
+	default:
+		return ALLOC_EXPR_SWITCH_PATTERN(parse_expr());
+	}
 }
 
 static struct switch_pattern *parse_switch_pattern(void)
