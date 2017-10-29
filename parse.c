@@ -18,6 +18,12 @@
 			.u.sub_struct_name = { __VA_ARGS__ }, \
 		}, sizeof(struct struct_tag)))
 
+#define ALLOC_UNION_TAG_ONLY(struct_tag, enum_tag) \
+	((struct struct_tag *) \
+		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
+			.type = enum_tag \
+		}, sizeof(struct struct_tag)))
+
 struct type {
 	enum {
 		PRIM_TYPE, ALIAS_TYPE, PARAM_TYPE, ARRAY_TYPE, POINTER_TYPE,
@@ -142,28 +148,29 @@ struct expr {
 
 struct switch_pattern {
 	enum {
-		EXPR_SWITCH_PATTERN, DESTRUCT_SWITCH_PATTERN, OR_SWITCH_PATTERN
+		UNDERSCORE_SWITCH_PATTERN, OR_SWITCH_PATTERN,
+		ARRAY_SWITCH_PATTERN, TUPLE_SWITCH_PATTERN, EXPR_SWITCH_PATTERN
 	} type;
 	union {
 		struct {
+			Vec *patterns;
+		} or, array, tuple;
+		struct {
 			struct expr *expr;
 		} expr;
-		struct {
-			char *name;
-			Vec *params;
-		} destruct;
-		struct {
-			Vec *patterns;
-		} or;
 	} u;
 };
 
-#define ALLOC_EXPR_SWITCH_PATTERN(...) \
-	ALLOC_UNION(switch_pattern, EXPR_SWITCH_PATTERN, expr, __VA_ARGS__)
-#define ALLOC_DESTRUCT_SWITCH_PATTERN(...) \
-	ALLOC_UNION(switch_pattern, DESTRUCT_SWITCH_PATTERN, destruct, __VA_ARGS__)
+#define ALLOC_UNDERSCORE_SWITCH_PATTERN() \
+	ALLOC_UNION_TAG_ONLY(switch_pattern, UNDERSCORE_SWITCH_PATTERN)
 #define ALLOC_OR_SWITCH_PATTERN(...) \
 	ALLOC_UNION(switch_pattern, OR_SWITCH_PATTERN, or, __VA_ARGS__)
+#define ALLOC_ARRAY_SWITCH_PATTERN(...) \
+	ALLOC_UNION(switch_pattern, ARRAY_SWITCH_PATTERN, array, __VA_ARGS__)
+#define ALLOC_TUPLE_SWITCH_PATTERN(...) \
+	ALLOC_UNION(switch_pattern, TUPLE_SWITCH_PATTERN, tuple, __VA_ARGS__)
+#define ALLOC_EXPR_SWITCH_PATTERN(...) \
+	ALLOC_UNION(switch_pattern, EXPR_SWITCH_PATTERN, expr, __VA_ARGS__)
 
 struct switch_case {
 	struct switch_pattern *l;
