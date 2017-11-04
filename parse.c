@@ -51,7 +51,8 @@ struct type {
 			Vec *types;
 		} tuple;
 		struct {
-			struct type *l, *r;
+			struct type *ret;
+			Vec *params;
 		} func;
 	} u;
 };
@@ -248,17 +249,36 @@ static struct switch_pattern *parse_switch_pattern(void);
 static struct expr *parse_expr(void);
 static struct stmt *parse_stmt(void);
 
-static struct type *parse_tuple_type(void)
+static struct type *parse_tuple_or_func_type(void)
 {
+	struct type *first_type;
 	Vec *types;
+	enum tok tok;
 
 	expect_tok(OPEN_PAREN);
+	first_type = parse_type();
 	types = alloc_vec();
-	do {
-		vec_push(types, parse_type());
-	} while (accept_tok(COMMA));
-	expect_tok(CLOSE_PAREN);
-	return ALLOC_TUPLE_TYPE(types);
+	tok = next_tok();
+	switch (tok) {
+	case COMMA:
+		vec_push(types, first_type);
+		do {
+			vec_push(types, parse_type());
+		} while (accept_tok(COMMA));
+		expect_tok(CLOSE_PAREN);
+		return ALLOC_TUPLE_TYPE(types);
+	case BACK_ARROW:
+		do {
+			vec_push(types, parse_type());
+		} while (accept_tok(COMMA));
+		expect_tok(CLOSE_PAREN);
+		return ALLOC_FUNC_TYPE(first_type, types);
+	default:
+		fatal_error("Expected %s or %s, instead got %s",
+				tok_to_str(COMMA),
+				tok_to_str(BACK_ARROW),
+				tok_to_str(tok));
+	}
 }
 
 static bool is_prim_type(enum tok tok)
@@ -266,7 +286,7 @@ static bool is_prim_type(enum tok tok)
 	return IN_RANGE(tok, U8, CHAR);
 }
 
-static struct type *parse_primary_type(void)
+static struct type *parse_type(void)
 {
 	enum tok peek;
 	struct type *type;
@@ -277,7 +297,7 @@ static struct type *parse_primary_type(void)
 	peek = peek_tok();
 	switch (peek) {
 	case OPEN_PAREN:
-		type = parse_tuple_type();
+		type = parse_tuple_or_func_type();
 		break;
 	case IDENT:
 	case IMPURE:
@@ -286,7 +306,7 @@ static struct type *parse_primary_type(void)
 		if (accept_tok(LT)) {
 			params = alloc_vec();
 			do {
-				vec_push(params, parse_primary_type());
+				vec_push(params, parse_type());
 			} while (accept_tok(COMMA));
 			expect_tok(GT);
 			type = ALLOC_PARAM_TYPE(name, params);
@@ -318,17 +338,6 @@ static struct type *parse_primary_type(void)
 			return type;
 		}
 	}
-}
-
-static struct type *parse_type(void)
-{
-	struct type *l;
-
-	l = parse_primary_type();
-	if (accept_tok(ARROW)) {
-		return ALLOC_FUNC_TYPE(l, parse_type());
-	}
-	return l;
 }
 
 static struct expr *parse_lambda_expr(void)
