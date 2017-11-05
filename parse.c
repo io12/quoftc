@@ -313,11 +313,6 @@ static struct type *parse_tuple_or_func_type(void)
 	}
 }
 
-static bool is_prim_type(enum tok tok)
-{
-	return IN_RANGE(tok, U8, CHAR);
-}
-
 static struct type *parse_type(void)
 {
 	uint16_t lineno;
