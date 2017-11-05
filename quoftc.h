@@ -65,6 +65,7 @@ union yystype {
 	uint64_t int_lit;
 };
 
+uint16_t get_lineno(void);
 char *tok_to_str(enum tok);
 enum tok next_tok(void);
 enum tok peek_tok(void);

@@ -20,6 +20,11 @@ static const char *filename;
 static uint16_t lineno;
 static char *inp;
 
+uint16_t get_lineno(void)
+{
+	return lineno;
+}
+
 static void inc_lineno(void)
 {
 	if (++lineno == 0) {

@@ -5,26 +5,30 @@
 #include "quoftc.h"
 #include "ds.h"
 
-#define ALLOC_STRUCT(struct_tag, ...) \
+#define ALLOC_STRUCT(struct_tag, lineno, ...) \
 	((struct struct_tag *) \
 		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
+			.lineno = lineno, \
 			__VA_ARGS__ \
 		}, sizeof(struct struct_tag)))
 
-#define ALLOC_UNION(struct_tag, enum_tag, sub_struct_name, ...) \
+#define ALLOC_UNION(struct_tag, enum_tag, sub_struct_name, lineno, ...) \
 	((struct struct_tag *) \
 		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
+			.lineno = lineno, \
 			.kind = enum_tag, \
 			.u.sub_struct_name = { __VA_ARGS__ }, \
 		}, sizeof(struct struct_tag)))
 
-#define ALLOC_UNION_TAG_ONLY(struct_tag, enum_tag) \
+#define ALLOC_UNION_TAG_ONLY(struct_tag, enum_tag, lineno) \
 	((struct struct_tag *) \
 		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
+			.lineno = lineno, \
 			.kind = enum_tag \
 		}, sizeof(struct struct_tag)))
 
 struct type {
+	int lineno;
 	enum {
 		PRIM_TYPE, ALIAS_TYPE, PARAM_TYPE, ARRAY_TYPE, POINTER_TYPE,
 		TUPLE_TYPE, FUNC_TYPE
@@ -73,6 +77,7 @@ struct type {
 	ALLOC_UNION(type, FUNC_TYPE, func, __VA_ARGS__)
 
 struct expr {
+	int lineno;
 	enum {
 		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
 		UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
@@ -148,6 +153,7 @@ struct expr {
 	ALLOC_UNION(expr, TUPLE_EXPR, tuple, __VA_ARGS__)
 
 struct switch_pattern {
+	int lineno;
 	enum {
 		UNDERSCORE_SWITCH_PATTERN, OR_SWITCH_PATTERN,
 		ARRAY_SWITCH_PATTERN, TUPLE_SWITCH_PATTERN, EXPR_SWITCH_PATTERN
@@ -162,8 +168,8 @@ struct switch_pattern {
 	} u;
 };
 
-#define ALLOC_UNDERSCORE_SWITCH_PATTERN() \
-	ALLOC_UNION_TAG_ONLY(switch_pattern, UNDERSCORE_SWITCH_PATTERN)
+#define ALLOC_UNDERSCORE_SWITCH_PATTERN(lineno) \
+	ALLOC_UNION_TAG_ONLY(switch_pattern, UNDERSCORE_SWITCH_PATTERN, lineno)
 #define ALLOC_OR_SWITCH_PATTERN(...) \
 	ALLOC_UNION(switch_pattern, OR_SWITCH_PATTERN, or, __VA_ARGS__)
 #define ALLOC_ARRAY_SWITCH_PATTERN(...) \
@@ -174,6 +180,7 @@ struct switch_pattern {
 	ALLOC_UNION(switch_pattern, EXPR_SWITCH_PATTERN, expr, __VA_ARGS__)
 
 struct switch_case {
+	int lineno;
 	struct switch_pattern *l;
 	struct expr *r;
 };
@@ -182,6 +189,7 @@ struct switch_case {
 	ALLOC_STRUCT(switch_case, __VA_ARGS__)
 
 struct decl {
+	int lineno;
 	bool is_mut;
 	struct type *type;
 	char *name;
@@ -195,10 +203,8 @@ struct ast {
 	Vec *decls;
 };
 
-#define ALLOC_AST(...) \
-	ALLOC_STRUCT(ast, __VA_ARGS__)
-
 struct stmt {
+	int lineno;
 	enum {
 		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
 		WHILE_STMT, FOR_STMT, SWITCH_STMT
@@ -251,10 +257,12 @@ static struct stmt *parse_stmt(void);
 
 static struct type *parse_tuple_or_func_type(void)
 {
+	uint16_t lineno;
 	struct type *first_type;
 	Vec *types;
 	enum tok tok;
 
+	lineno = get_lineno();
 	expect_tok(OPEN_PAREN);
 	first_type = parse_type();
 	types = alloc_vec();
@@ -266,13 +274,13 @@ static struct type *parse_tuple_or_func_type(void)
 			vec_push(types, parse_type());
 		} while (accept_tok(COMMA));
 		expect_tok(CLOSE_PAREN);
-		return ALLOC_TUPLE_TYPE(types);
+		return ALLOC_TUPLE_TYPE(lineno, types);
 	case BACK_ARROW:
 		do {
 			vec_push(types, parse_type());
 		} while (accept_tok(COMMA));
 		expect_tok(CLOSE_PAREN);
-		return ALLOC_FUNC_TYPE(first_type, types);
+		return ALLOC_FUNC_TYPE(lineno, first_type, types);
 	default:
 		fatal_error("Expected %s or %s, instead got %s",
 				tok_to_str(COMMA),
@@ -288,12 +296,14 @@ static bool is_prim_type(enum tok tok)
 
 static struct type *parse_type(void)
 {
+	uint16_t lineno;
 	enum tok peek;
 	struct type *type;
 	char *name;
 	Vec *params;
 	struct expr *len;
 
+	lineno = get_lineno();
 	peek = peek_tok();
 	switch (peek) {
 	case OPEN_PAREN:
@@ -309,15 +319,15 @@ static struct type *parse_type(void)
 				vec_push(params, parse_type());
 			} while (accept_tok(COMMA));
 			expect_tok(GT);
-			type = ALLOC_PARAM_TYPE(name, params);
+			type = ALLOC_PARAM_TYPE(lineno, name, params);
 		} else {
-			type = ALLOC_ALIAS_TYPE(name);
+			type = ALLOC_ALIAS_TYPE(lineno, name);
 		}
 		break;
 	default:
 		if (is_prim_type(peek)) {
 			next_tok();
-			type = ALLOC_PRIM_TYPE(peek);
+			type = ALLOC_PRIM_TYPE(lineno, peek);
 		} else {
 			fatal_error("Expected a primary type, instead got %s",
 					tok_to_str(peek));
@@ -331,9 +341,9 @@ static struct type *parse_type(void)
 				len = parse_expr();
 				expect_tok(CLOSE_BRACKET);
 			}
-			type = ALLOC_ARRAY_TYPE(type, len);
+			type = ALLOC_ARRAY_TYPE(lineno, type, len);
 		} else if (accept_tok(STAR)) {
-			type = ALLOC_POINTER_TYPE(type);
+			type = ALLOC_POINTER_TYPE(lineno, type);
 		} else {
 			return type;
 		}
@@ -342,35 +352,41 @@ static struct type *parse_type(void)
 
 static struct expr *parse_lambda_expr(void)
 {
+	uint16_t lineno;
 	Vec *params;
 
+	lineno = get_lineno();
 	expect_tok(BACKSLASH);
 	params = alloc_vec();
 	while (accept_tok(IDENT)) {
 		vec_push(params, estrdup(yytext));
 	}
 	expect_tok(ARROW);
-	return ALLOC_LAMBDA_EXPR(params, parse_expr());
+	return ALLOC_LAMBDA_EXPR(lineno, params, parse_expr());
 }
 
 static struct expr *parse_array_lit_expr(void)
 {
+	uint16_t lineno;
 	Vec *items;
 
+	lineno = get_lineno();
 	expect_tok(OPEN_BRACKET);
 	items = alloc_vec();
 	do {
 		vec_push(items, parse_expr());
 	} while (accept_tok(COMMA));
 	expect_tok(CLOSE_BRACKET);
-	return ALLOC_ARRAY_LIT_EXPR(items);
+	return ALLOC_ARRAY_LIT_EXPR(lineno, items);
 }
 
 static struct expr *parse_tuple_or_paren_expr(void)
 {
+	uint16_t lineno;
 	struct expr *expr;
 	Vec *items;
 
+	lineno = get_lineno();
 	expect_tok(OPEN_PAREN);
 	expr = parse_expr();
 	if (accept_tok(COMMA)) {
@@ -380,7 +396,7 @@ static struct expr *parse_tuple_or_paren_expr(void)
 			vec_push(items, parse_expr());
 		} while (accept_tok(COMMA));
 		expect_tok(CLOSE_PAREN);
-		return ALLOC_TUPLE_EXPR(items);
+		return ALLOC_TUPLE_EXPR(lineno, items);
 	}
 	expect_tok(CLOSE_PAREN);
 	return expr;
@@ -388,14 +404,16 @@ static struct expr *parse_tuple_or_paren_expr(void)
 
 static struct expr *parse_block_expr(void)
 {
+	uint16_t lineno;
 	Vec *stmts;
 
+	lineno = get_lineno();
 	expect_tok(OPEN_BRACE);
 	stmts = alloc_vec();
 	while (!accept_tok(CLOSE_BRACE)) {
 		vec_push(stmts, parse_stmt());
 	}
-	return ALLOC_BLOCK_EXPR(stmts);
+	return ALLOC_BLOCK_EXPR(lineno, stmts);
 }
 
 static struct expr *parse_paren_expr(void)
@@ -410,63 +428,74 @@ static struct expr *parse_paren_expr(void)
 
 static struct expr *parse_if_expr(void)
 {
+	uint16_t lineno;
 	struct expr *cond, *then, *else_;
 
+	lineno = get_lineno();
 	expect_tok(IF);
 	cond = parse_paren_expr();
 	expect_tok(THEN);
 	then = parse_expr();
 	expect_tok(ELSE);
 	else_ = parse_expr();
-	return ALLOC_IF_EXPR(cond, then, else_);
+	return ALLOC_IF_EXPR(lineno, cond, then, else_);
 }
 
 static struct switch_pattern *parse_array_switch_pattern(void)
 {
+	uint16_t lineno;
 	Vec *patterns;
 
+	lineno = get_lineno();
 	expect_tok(OPEN_BRACKET);
 	patterns = alloc_vec();
 	do {
 		vec_push(patterns, parse_switch_pattern());
 	} while (accept_tok(COMMA));
 	expect_tok(CLOSE_BRACKET);
-	return ALLOC_ARRAY_SWITCH_PATTERN(patterns);
+	return ALLOC_ARRAY_SWITCH_PATTERN(lineno, patterns);
 }
 
 static struct switch_pattern *parse_tuple_switch_pattern(void)
 {
+	uint16_t lineno;
 	Vec *patterns;
 
+	lineno = get_lineno();
 	expect_tok(OPEN_PAREN);
 	patterns = alloc_vec();
 	do {
 		vec_push(patterns, parse_switch_pattern());
 	} while (accept_tok(COMMA));
 	expect_tok(CLOSE_PAREN);
-	return ALLOC_TUPLE_SWITCH_PATTERN(patterns);
+	return ALLOC_TUPLE_SWITCH_PATTERN(lineno, patterns);
 }
 
 static struct switch_pattern *parse_primary_switch_pattern(void)
 {
+	uint16_t lineno;
+
+	lineno = get_lineno();
 	switch(peek_tok()) {
 	case UNDERSCORE:
 		next_tok();
-		return ALLOC_UNDERSCORE_SWITCH_PATTERN();
+		return ALLOC_UNDERSCORE_SWITCH_PATTERN(lineno);
 	case OPEN_BRACKET:
 		return parse_array_switch_pattern();
 	case OPEN_PAREN:
 		return parse_tuple_switch_pattern();
 	default:
-		return ALLOC_EXPR_SWITCH_PATTERN(parse_expr());
+		return ALLOC_EXPR_SWITCH_PATTERN(lineno, parse_expr());
 	}
 }
 
 static struct switch_pattern *parse_switch_pattern(void)
 {
+	uint16_t lineno;
 	struct switch_pattern *l;
 	Vec *patterns;
 
+	lineno = get_lineno();
 	l = parse_primary_switch_pattern();
 	if (peek_tok() != PIPE) {
 		return l;
@@ -475,25 +504,29 @@ static struct switch_pattern *parse_switch_pattern(void)
 	while (accept_tok(PIPE)) {
 		vec_push(patterns, parse_primary_switch_pattern());
 	}
-	return ALLOC_OR_SWITCH_PATTERN(patterns);
+	return ALLOC_OR_SWITCH_PATTERN(lineno, patterns);
 }
 
 static struct switch_case *parse_switch_case(void)
 {
+	uint16_t lineno;
 	struct switch_pattern *l;
 	struct expr *r;
 
+	lineno = get_lineno();
 	l = parse_switch_pattern();
 	expect_tok(BIG_ARROW); // TODO: What if the programmer overloads this?
 	r = parse_expr();
-	return ALLOC_SWITCH_CASE(l, r);
+	return ALLOC_SWITCH_CASE(lineno, l, r);
 }
 
 static struct expr *parse_switch_expr(void)
 {
+	uint16_t lineno;
 	struct expr *ctrl;
 	Vec *cases;
 
+	lineno = get_lineno();
 	expect_tok(SWITCH);
 	ctrl = peek_tok() == OPEN_PAREN ? parse_paren_expr() : NULL;
 	expect_tok(OPEN_BRACE);
@@ -502,23 +535,25 @@ static struct expr *parse_switch_expr(void)
 		// TODO: The case list may need a delimiter
 		vec_push(cases, parse_switch_case());
 	}
-	return ALLOC_SWITCH_EXPR(ctrl, cases);
+	return ALLOC_SWITCH_EXPR(lineno, ctrl, cases);
 }
 
 static struct expr *parse_primary_expr(void)
 {
+	uint16_t lineno;
 	enum tok peek;
 
+	lineno = get_lineno();
 	peek = peek_tok();
 	switch (peek) {
 	case IDENT:
-		return ALLOC_IDENT_EXPR(estrdup(yytext));
+		return ALLOC_IDENT_EXPR(lineno, estrdup(yytext));
 	case TRUE:
 		next_tok();
-		return ALLOC_BOOL_LIT_EXPR(true);
+		return ALLOC_BOOL_LIT_EXPR(lineno, true);
 	case FALSE:
 		next_tok();
-		return ALLOC_BOOL_LIT_EXPR(false);
+		return ALLOC_BOOL_LIT_EXPR(lineno, false);
 	case INT_LIT:
 		// TODO
 		break;
@@ -527,10 +562,11 @@ static struct expr *parse_primary_expr(void)
 		break;
 	case CHAR_LIT:
 		next_tok();
-		return ALLOC_CHAR_LIT_EXPR(yylval.char_lit);
+		return ALLOC_CHAR_LIT_EXPR(lineno, yylval.char_lit);
 	case STRING_LIT:
 		next_tok();
-		return ALLOC_STRING_LIT_EXPR(estrdup(yylval.string_lit));
+		return ALLOC_STRING_LIT_EXPR(lineno,
+				estrdup(yylval.string_lit));
 	case PLUS_PLUS:
 	case MINUS_MINUS:
 	case STAR:
@@ -538,7 +574,7 @@ static struct expr *parse_primary_expr(void)
 	case TILDE:
 	case BANG:
 		next_tok();
-		return ALLOC_UNARY_OP_EXPR(peek, parse_primary_expr());
+		return ALLOC_UNARY_OP_EXPR(lineno, peek, parse_primary_expr());
 	case BACKSLASH:
 		return parse_lambda_expr();
 	case OPEN_BRACKET:
@@ -650,9 +686,11 @@ static enum assoc get_bin_op_assoc(enum tok op)
 // Precedence climbing
 static struct expr *parse_expr__(struct expr *l, int min_prec)
 {
+	uint16_t lineno;
 	enum tok peek, op;
 	struct expr *r;
 
+	lineno = get_lineno();
 	peek = peek_tok();
 	while (is_bin_op(peek) && get_bin_op_prec(peek) >= min_prec) {
 		op = peek;
@@ -667,7 +705,7 @@ static struct expr *parse_expr__(struct expr *l, int min_prec)
 			r = parse_expr__(r, get_bin_op_prec(peek));
 			peek = peek_tok();
 		}
-		l = ALLOC_BIN_OP_EXPR(op, l, r);
+		l = ALLOC_BIN_OP_EXPR(lineno, op, l, r);
 	}
 	return l;
 }
@@ -679,12 +717,14 @@ static struct expr *parse_expr(void)
 
 static struct decl *parse_decl(void)
 {
+	uint16_t lineno;
 	enum tok tok;
 	bool is_mut;
 	struct type *type;
 	char *name;
 	struct expr *val;
 
+	lineno = get_lineno();
 	tok = next_tok();
 	switch (tok) {
 	case CONST:
@@ -708,12 +748,15 @@ static struct decl *parse_decl(void)
 		val = parse_expr();
 		expect_tok(SEMICOLON);
 	}
-	return ALLOC_DECL(is_mut, type, name, val);
+	return ALLOC_DECL(lineno, is_mut, type, name, val);
 }
 
 static struct stmt *parse_decl_stmt(void)
 {
-	return ALLOC_DECL_STMT(parse_decl());
+	uint16_t lineno;
+
+	lineno = get_lineno();
+	return ALLOC_DECL_STMT(lineno, parse_decl());
 }
 
 static Vec *parse_compound_stmt(void)
@@ -730,10 +773,12 @@ static Vec *parse_compound_stmt(void)
 
 static struct stmt *parse_if_stmt(void)
 {
+	uint16_t lineno;
 	struct expr *cond;
 	Vec *then_stmts, *else_stmts;
 	enum tok peek;
 
+	lineno = get_lineno();
 	expect_tok(IF);
 	cond = parse_paren_expr();
 	then_stmts = parse_compound_stmt();
@@ -756,38 +801,44 @@ static struct stmt *parse_if_stmt(void)
 	} else {
 		else_stmts = NULL;
 	}
-	return ALLOC_IF_STMT(cond, then_stmts, else_stmts);
+	return ALLOC_IF_STMT(lineno, cond, then_stmts, else_stmts);
 }
 
 static struct stmt *parse_do_stmt(void)
 {
+	uint16_t lineno;
 	Vec *stmts;
 	struct expr *cond;
 
+	lineno = get_lineno();
 	expect_tok(DO);
 	stmts = parse_compound_stmt();
 	expect_tok(WHILE);
 	cond = parse_paren_expr();
 	expect_tok(SEMICOLON);
-	return ALLOC_DO_STMT(stmts, cond);
+	return ALLOC_DO_STMT(lineno, stmts, cond);
 }
 
 static struct stmt *parse_while_stmt(void)
 {
+	uint16_t lineno;
 	Vec *stmts;
 	struct expr *cond;
 
+	lineno = get_lineno();
 	expect_tok(WHILE);
 	cond = parse_paren_expr();
 	stmts = parse_compound_stmt();
-	return ALLOC_WHILE_STMT(stmts, cond);
+	return ALLOC_WHILE_STMT(lineno, stmts, cond);
 }
 
 static struct stmt *parse_for_stmt(void)
 {
+	uint16_t lineno;
 	struct expr *init, *cond, *post;
 	Vec *stmts;
 
+	lineno = get_lineno();
 	expect_tok(FOR);
 	expect_tok(OPEN_PAREN);
 	if (accept_tok(SEMICOLON)) {
@@ -809,7 +860,7 @@ static struct stmt *parse_for_stmt(void)
 		expect_tok(CLOSE_PAREN);
 	}
 	stmts = parse_compound_stmt();
-	return ALLOC_FOR_STMT(init, cond, post, stmts);
+	return ALLOC_FOR_STMT(lineno, init, cond, post, stmts);
 }
 
 static struct stmt *parse_switch_stmt(void)
@@ -819,7 +870,10 @@ static struct stmt *parse_switch_stmt(void)
 
 static struct stmt *parse_expr_stmt(void)
 {
-	return ALLOC_EXPR_STMT(parse_expr());
+	uint16_t lineno;
+
+	lineno = get_lineno();
+	return ALLOC_EXPR_STMT(lineno, parse_expr());
 }
 
 static struct stmt *parse_stmt(void)
@@ -843,7 +897,7 @@ static struct stmt *parse_stmt(void)
 	}
 }
 
-struct ast *parse(void)
+struct ast parse(void)
 {
 	Vec *decls;
 
@@ -851,5 +905,5 @@ struct ast *parse(void)
 	do {
 		vec_push(decls, parse_decl());
 	} while (peek_tok() != TEOF);
-	return ALLOC_AST(decls);
+	return (struct ast){decls};
 }
