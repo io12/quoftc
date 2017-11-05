@@ -282,7 +282,7 @@ static struct type *parse_tuple_or_func_type(void)
 		expect_tok(CLOSE_PAREN);
 		return ALLOC_FUNC_TYPE(lineno, first_type, types);
 	default:
-		fatal_error("Expected %s or %s, instead got %s",
+		fatal_error(lineno, "Expected %s or %s, instead got %s",
 				tok_to_str(COMMA),
 				tok_to_str(BACK_ARROW),
 				tok_to_str(tok));
@@ -329,8 +329,8 @@ static struct type *parse_type(void)
 			next_tok();
 			type = ALLOC_PRIM_TYPE(lineno, peek);
 		} else {
-			fatal_error("Expected a primary type, instead got %s",
-					tok_to_str(peek));
+			fatal_error(lineno, "Expected a primary type, instead "
+			                    "got %s", tok_to_str(peek));
 		}
 	}
 	for (;;) {
@@ -590,7 +590,7 @@ static struct expr *parse_primary_expr(void)
 	default:
 		break;
 	}
-	fatal_error("Expected a primary expression, instead got %s",
+	fatal_error(lineno, "Expected a primary expression, instead got %s",
 			tok_to_str(peek));
 }
 
@@ -734,7 +734,7 @@ static struct decl *parse_decl(void)
 		is_mut = true;
 		break;
 	default:
-		fatal_error("Expected %s or %s, instead got %s",
+		fatal_error(lineno, "Expected %s or %s, instead got %s",
 				tok_to_str(CONST),
 				tok_to_str(VAR),
 				tok_to_str(tok));
@@ -793,7 +793,7 @@ static struct stmt *parse_if_stmt(void)
 			else_stmts = parse_compound_stmt();
 			break;
 		default:
-			fatal_error("Expected %s or %s, instead got %s",
+			fatal_error(lineno, "Expected %s or %s, instead got %s",
 					tok_to_str(IF),
 					tok_to_str(OPEN_BRACE),
 					tok_to_str(peek));

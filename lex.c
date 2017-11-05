@@ -28,8 +28,8 @@ uint16_t get_lineno(void)
 static void inc_lineno(void)
 {
 	if (++lineno == 0) {
-		lineno--;
-		fatal_error("Source file longer than "XSTR(UINT16_MAX)" lines");
+		fatal_error(lineno - 1, "Source file longer than "
+				XSTR(UINT16_MAX)" lines");
 	}
 }
 
@@ -68,7 +68,7 @@ static enum tok char_lit(void)
 	}
 	return CHAR_LIT;
 invalid:
-	fatal_error("Invalid char literal");
+	fatal_error(lineno, "Invalid char literal");
 }
 
 static enum tok string_lit(void)
@@ -82,15 +82,15 @@ static enum tok string_lit(void)
 	do {
 		// TODO: Fix this
 		if (p - yylval.string_lit == MAX_STRING_SIZE) {
-			fatal_error("String literal is longer than the maximum "
-			            "allowed length ("XSTR(MAX_STRING_SIZE)
-			            " bytes)");
+			fatal_error(lineno, "String literal is longer than the "
+			                    "maximum allowed length "
+					    "("XSTR(MAX_STRING_SIZE)" bytes)");
 		}
 		*p++ = *inp++;
 	} while (*inp != '"');
 	*p = '\0';
 	if (!is_valid_utf8(yylval.string_lit)) {
-		fatal_error("Invalid string literal");
+		fatal_error(lineno, "Invalid string literal");
 	}
 	inp++;
 	return STRING_LIT;
@@ -202,9 +202,9 @@ static enum tok ident(void)
 	}
 	for (i = 0; is_ident_tail(inp[i]); i++) {
 		if (i == MAX_IDENT_SIZE) {
-			fatal_error("Identifier longer than the "
-			            "maximum allowed size "
-			            "("XSTR(MAX_IDENT_SIZE)")");
+			fatal_error(lineno, "Identifier longer than the "
+			                    "maximum allowed size "
+			                    "("XSTR(MAX_IDENT_SIZE)")");
 		}
 		yytext[i] = *inp++;
 	}
@@ -260,7 +260,8 @@ static enum tok num_lit(void)
 		case 'x':
 			return num_lit__(is_hex_digit, 16);
 		default:
-			fatal_error("Numerical literal has a leading zero");
+			fatal_error(lineno,
+					"Numerical literal has a leading zero");
 		}
 	}
 	return num_lit__(is_dec_digit, 10);
@@ -281,16 +282,16 @@ static enum tok op(void)
 	}
 	do {
 		if (i == MAX_IDENT_SIZE) {
-			fatal_error("Operator longer than the "
-			            "maximum allowed size "
-			            "("XSTR(MAX_IDENT_SIZE)")");
+			fatal_error(lineno, "Operator longer than the "
+			                    "maximum allowed size "
+			                    "("XSTR(MAX_IDENT_SIZE)")");
 		}
 		yytext[i++] = *inp++;
 	} while (is_op_char(*inp));
 	yytext[i] = '\0';
 	tok = lookup_keyword(yytext);
 	if (tok == INVALID_TOK) {
-		fatal_error("`%s` is not a valid operator", yytext);
+		fatal_error(lineno, "`%s` is not a valid operator", yytext);
 	}
 	return tok;
 }
@@ -429,7 +430,7 @@ enum tok next_tok(void)
 	if (isdigit(*inp)) {
 		return num_lit();
 	}
-	fatal_error("Invalid token");
+	fatal_error(lineno, "Invalid token");
 }
 
 enum tok peek_tok(void)
@@ -461,12 +462,12 @@ void expect_tok(enum tok expected_tok)
 
 	tok = next_tok();
 	if (tok != expected_tok) {
-		fatal_error("Expected %s, instead got %s",
+		fatal_error(lineno, "Expected %s, instead got %s",
 				tok_to_str(expected_tok), tok_to_str(tok));
 	}
 }
 
-NORETURN PRINTF_LIKE void fatal_error(const char *fmt, ...)
+NORETURN PRINTF_LIKE(2, 3) void fatal_error(uint16_t lineno, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -480,7 +481,8 @@ NORETURN PRINTF_LIKE void fatal_error(const char *fmt, ...)
 
 NORETURN void internal_error(void)
 {
-	fatal_error("Internal error");
+	fprintf(stderr, "%s: Internal error\n", argv0);
+	exit(EXIT_FAILURE);
 }
 
 static NORETURN void file_error(void)
