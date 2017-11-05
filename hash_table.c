@@ -10,6 +10,10 @@ struct hash_table_pair {
 	void *val;
 };
 
+struct hash_table {
+	Vec *data[UINT8_MAX + 1];
+};
+
 HashTable *alloc_hash_table(void)
 {
 	return NEWC(HashTable);
