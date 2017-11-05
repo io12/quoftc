@@ -1,6 +1,6 @@
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include "quoftc.h"
 #include "ds.h"
 
@@ -15,6 +15,17 @@ Vec *alloc_vec(void)
 	vec->nalloc = 8;
 	vec->data = emalloc(VEC_SIZE * sizeof(void *));
 	return vec;
+}
+
+void free_vec(Vec *vec, void (*free_item_func)(void *))
+{
+	int i;
+
+	for (i = 0; i < vec->len; i++) {
+		free_item_func(vec_get(vec, i));
+	}
+	free(vec->data);
+	free(vec);
 }
 
 void *vec_get(Vec *vec, size_t n)
