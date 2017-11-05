@@ -30,13 +30,13 @@
 struct type {
 	int lineno;
 	enum {
-		PRIM_TYPE, ALIAS_TYPE, PARAM_TYPE, ARRAY_TYPE, POINTER_TYPE,
+		U8_TYPE, U16_TYPE, U32_TYPE, U64_TYPE,
+		I8_TYPE, I16_TYPE, I32_TYPE, I64_TYPE,
+		F32_TYPE, F64_TYPE, BOOL_TYPE, VOID_TYPE, CHAR_TYPE,
+		ALIAS_TYPE, PARAM_TYPE, ARRAY_TYPE, POINTER_TYPE,
 		TUPLE_TYPE, FUNC_TYPE
 	} kind;
 	union {
-		struct {
-			enum tok tok;
-		} prim;
 		struct {
 			char *name;
 		} alias;
@@ -61,8 +61,32 @@ struct type {
 	} u;
 };
 
-#define ALLOC_PRIM_TYPE(...) \
-	ALLOC_UNION(type, PRIM_TYPE, prim, __VA_ARGS__)
+#define ALLOC_U8_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, U8_TYPE, lineno)
+#define ALLOC_U16_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, U16_TYPE, lineno)
+#define ALLOC_U32_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, U32_TYPE, lineno)
+#define ALLOC_U64_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, U64_TYPE, lineno)
+#define ALLOC_I8_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, I8_TYPE, lineno)
+#define ALLOC_I16_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, I16_TYPE, lineno)
+#define ALLOC_I32_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, I32_TYPE, lineno)
+#define ALLOC_I64_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, I64_TYPE, lineno)
+#define ALLOC_F32_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, F32_TYPE, lineno)
+#define ALLOC_F64_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, F64_TYPE, lineno)
+#define ALLOC_BOOL_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, BOOL_TYPE, lineno)
+#define ALLOC_VOID_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, VOID_TYPE, lineno)
+#define ALLOC_CHAR_TYPE(lineno) \
+	ALLOC_UNION_TAG_ONLY(type, CHAR_TYPE, lineno)
 #define ALLOC_ALIAS_TYPE(...) \
 	ALLOC_UNION(type, ALIAS_TYPE, alias, __VA_ARGS__)
 #define ALLOC_PARAM_TYPE(...) \
@@ -324,14 +348,35 @@ static struct type *parse_type(void)
 			type = ALLOC_ALIAS_TYPE(lineno, name);
 		}
 		break;
+	case U8:
+		return ALLOC_U8_TYPE(lineno);
+	case U16:
+		return ALLOC_U16_TYPE(lineno);
+	case U32:
+		return ALLOC_U32_TYPE(lineno);
+	case U64:
+		return ALLOC_U64_TYPE(lineno);
+	case I8:
+		return ALLOC_I8_TYPE(lineno);
+	case I16:
+		return ALLOC_I16_TYPE(lineno);
+	case I32:
+		return ALLOC_I32_TYPE(lineno);
+	case I64:
+		return ALLOC_I64_TYPE(lineno);
+	case F32:
+		return ALLOC_F32_TYPE(lineno);
+	case F64:
+		return ALLOC_F64_TYPE(lineno);
+	case BOOL:
+		return ALLOC_BOOL_TYPE(lineno);
+	case VOID:
+		return ALLOC_VOID_TYPE(lineno);
+	case CHAR:
+		return ALLOC_CHAR_TYPE(lineno);
 	default:
-		if (is_prim_type(peek)) {
-			next_tok();
-			type = ALLOC_PRIM_TYPE(lineno, peek);
-		} else {
-			fatal_error(lineno, "Expected a primary type, instead "
-			                    "got %s", tok_to_str(peek));
-		}
+		fatal_error(lineno, "Expected a primary type, instead got %s",
+				tok_to_str(peek));
 	}
 	for (;;) {
 		if (accept_tok(OPEN_BRACKET)) {
