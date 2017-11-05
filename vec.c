@@ -6,6 +6,11 @@
 
 #define VEC_SIZE 8
 
+struct vec {
+	size_t len, nalloc;
+	void **data;
+};
+
 Vec *alloc_vec(void)
 {
 	Vec *vec;
@@ -26,6 +31,11 @@ void free_vec(Vec *vec, void (*free_item_func)(void *))
 	}
 	free(vec->data);
 	free(vec);
+}
+
+size_t vec_len(Vec *vec)
+{
+	return vec->len;
 }
 
 void *vec_get(Vec *vec, size_t n)

@@ -55,7 +55,7 @@ void *hash_table_get(HashTable *ht, const char *key)
 	HashTablePair *pair;
 
 	pairs = ht->data[hash(key)];
-	for (i = 0; i < pairs->len; i++) {
+	for (i = 0; i < vec_len(pairs); i++) {
 		pair = vec_get(pairs, i);
 		if (strcmp(key, pair->key) == 0) {
 			return pair->val;
