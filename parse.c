@@ -12,19 +12,19 @@
 			__VA_ARGS__ \
 		}, sizeof(struct struct_tag)))
 
-#define ALLOC_UNION(struct_tag, enum_tag, sub_struct_name, lineno, ...) \
+#define ALLOC_UNION(struct_tag, kind_, sub_struct_name, lineno, ...) \
 	((struct struct_tag *) \
 		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
 			.lineno = lineno, \
-			.kind = enum_tag, \
+			.kind = kind_, \
 			.u.sub_struct_name = { __VA_ARGS__ }, \
 		}, sizeof(struct struct_tag)))
 
-#define ALLOC_UNION_TAG_ONLY(struct_tag, enum_tag, lineno) \
+#define ALLOC_UNION_KIND_ONLY(struct_tag, kind_, lineno) \
 	((struct struct_tag *) \
 		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
 			.lineno = lineno, \
-			.kind = enum_tag \
+			.kind = kind_ \
 		}, sizeof(struct struct_tag)))
 
 struct type {
@@ -62,31 +62,31 @@ struct type {
 };
 
 #define ALLOC_U8_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, U8_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, U8_TYPE, lineno)
 #define ALLOC_U16_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, U16_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, U16_TYPE, lineno)
 #define ALLOC_U32_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, U32_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, U32_TYPE, lineno)
 #define ALLOC_U64_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, U64_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, U64_TYPE, lineno)
 #define ALLOC_I8_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, I8_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, I8_TYPE, lineno)
 #define ALLOC_I16_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, I16_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, I16_TYPE, lineno)
 #define ALLOC_I32_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, I32_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, I32_TYPE, lineno)
 #define ALLOC_I64_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, I64_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, I64_TYPE, lineno)
 #define ALLOC_F32_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, F32_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, F32_TYPE, lineno)
 #define ALLOC_F64_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, F64_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, F64_TYPE, lineno)
 #define ALLOC_BOOL_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, BOOL_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, BOOL_TYPE, lineno)
 #define ALLOC_VOID_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, VOID_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, VOID_TYPE, lineno)
 #define ALLOC_CHAR_TYPE(lineno) \
-	ALLOC_UNION_TAG_ONLY(type, CHAR_TYPE, lineno)
+	ALLOC_UNION_KIND_ONLY(type, CHAR_TYPE, lineno)
 #define ALLOC_ALIAS_TYPE(...) \
 	ALLOC_UNION(type, ALIAS_TYPE, alias, __VA_ARGS__)
 #define ALLOC_PARAM_TYPE(...) \
@@ -193,7 +193,7 @@ struct switch_pattern {
 };
 
 #define ALLOC_UNDERSCORE_SWITCH_PATTERN(lineno) \
-	ALLOC_UNION_TAG_ONLY(switch_pattern, UNDERSCORE_SWITCH_PATTERN, lineno)
+	ALLOC_UNION_KIND_ONLY(switch_pattern, UNDERSCORE_SWITCH_PATTERN, lineno)
 #define ALLOC_OR_SWITCH_PATTERN(...) \
 	ALLOC_UNION(switch_pattern, OR_SWITCH_PATTERN, or, __VA_ARGS__)
 #define ALLOC_ARRAY_SWITCH_PATTERN(...) \
