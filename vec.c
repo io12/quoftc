@@ -19,7 +19,7 @@ Vec *alloc_vec(void)
 
 void free_vec(Vec *vec, void (*free_item_func)(void *))
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < vec->len; i++) {
 		free_item_func(vec_get(vec, i));
