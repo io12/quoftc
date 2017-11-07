@@ -231,7 +231,7 @@ struct stmt {
 	int lineno;
 	enum {
 		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
-		WHILE_STMT, FOR_STMT, SWITCH_STMT
+		WHILE_STMT, FOR_STMT
 	} kind;
 	union {
 		struct {
@@ -252,10 +252,6 @@ struct stmt {
 			struct expr *init, *cond, *post;
 			Vec *stmts;
 		} for_;
-		struct {
-			// TODO
-			int x;
-		} switch_;
 	} u;
 };
 
@@ -271,8 +267,6 @@ struct stmt {
 	ALLOC_UNION(stmt, WHILE_STMT, while_, __VA_ARGS__)
 #define ALLOC_FOR_STMT(...) \
 	ALLOC_UNION(stmt, FOR_STMT, for_, __VA_ARGS__)
-#define ALLOC_SWITCH_STMT(...) \
-	ALLOC_UNION(stmt, SWITCH_STMT, switch, __VA_ARGS__)
 
 static struct type *parse_type(void);
 static struct switch_pattern *parse_switch_pattern(void);
@@ -903,11 +897,6 @@ static struct stmt *parse_for_stmt(void)
 	return ALLOC_FOR_STMT(lineno, init, cond, post, stmts);
 }
 
-static struct stmt *parse_switch_stmt(void)
-{
-	return NULL; // TODO
-}
-
 static struct stmt *parse_expr_stmt(void)
 {
 	uint16_t lineno;
@@ -930,8 +919,6 @@ static struct stmt *parse_stmt(void)
 		return parse_while_stmt();
 	case FOR:
 		return parse_for_stmt();
-	case SWITCH:
-		return parse_switch_stmt();
 	default:
 		return parse_expr_stmt();
 	}
