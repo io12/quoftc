@@ -240,10 +240,17 @@ static int value_of_digit(int c)
 
 static enum tok num_lit__(bool (*is_valid_digit)(int c), int base)
 {
+	uint64_t int_lit_old;
+
 	yylval.int_lit = 0;
 	while (is_valid_digit(*inp)) {
+		int_lit_old = yylval.int_lit;
 		yylval.int_lit *= base;
 		yylval.int_lit += value_of_digit(*inp++);
+		if (yylval.int_lit < int_lit_old) {
+			fatal_error(lineno, "Integer literal greater than "
+					XSTR(UINT64_MAX));
+		}
 	}
 	return INT_LIT;
 }
