@@ -50,7 +50,7 @@ enum tok next_tok(void);
 enum tok peek_tok(void);
 bool accept_tok(enum tok);
 void expect_tok(enum tok);
-NORETURN PRINTF_LIKE(2, 3) void fatal_error(uint16_t lineno, const char *, ...);
+NORETURN PRINTF_LIKE(2, 3) void fatal_error(uint16_t, const char *, ...);
 NORETURN void internal_error(void);
 void init_lex(const char *);
 void cleanup_lex(void);

@@ -1,1 +1,1 @@
-uint64_t eval_const_expr(struct expr *expr);
+uint64_t eval_const_expr(struct expr *);
