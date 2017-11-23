@@ -1,10 +1,10 @@
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include "ds.h"
+#include "lex.h"
+#include "ast.h"
 #include "symbol_table.h"
-
-struct symbol_table {
-	Vec *scopes; // Each scope is a hash table of types
-};
 
 static void free_scope(void *scope)
 {
@@ -32,4 +32,31 @@ void enter_new_scope(struct symbol_table sym_tbl)
 void leave_scope(struct symbol_table sym_tbl)
 {
 	vec_pop(sym_tbl.scopes);
+}
+
+bool is_global_scope(struct symbol_table sym_tbl)
+{
+	return vec_len(sym_tbl.scopes) == 1;
+}
+
+void add_symbol(struct symbol_table sym_tbl, char *ident, struct type *type)
+{
+	hash_table_set(vec_top(sym_tbl.scopes), ident, type);
+}
+
+struct type *lookup_symbol(struct symbol_table sym_tbl, char *ident)
+{
+	size_t i;
+	Vec *scopes = sym_tbl.scopes;
+	HashTable *scope;
+	struct type *type;
+
+	for (i = vec_len(scopes); i > 0; i--) {
+		scope = vec_get(scopes, i - 1);
+		type = hash_table_get(scope, ident);
+		if (type != NULL) {
+			return type;
+		}
+	}
+	return NULL;
 }

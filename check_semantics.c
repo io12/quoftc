@@ -6,7 +6,12 @@
 #include "quoftc.h"
 #include "lex.h"
 #include "parse.h"
+#include "ast.h"
 #include "eval.h"
+#include "symbol_table.h"
+#include "check_semantics.h"
+
+static struct symbol_table sym_tbl;
 
 static NORETURN void compat_error(struct expr *expr)
 {
@@ -322,35 +327,32 @@ static void check_expr_with_type(struct type *type, struct expr *expr)
 	}
 }
 
-static void check_decl(struct decl *decl, int nest_level)
+static void check_decl(struct decl *decl)
 // TODO: Add a maximum nest level
 {
-	HashTable *scope;
-
-	scope = vec_get(symbol_table.scopes, nest_level);
-	if (hash_table_get(scope, decl->name) != NULL) {
+	if (lookup_symbol(sym_tbl, decl->name) != NULL) {
 		fatal_error(decl->lineno, "Name `%s` already declared in scope",
 				decl->name);
 	}
-	if (nest_level == 0 && !is_pure_expr(decl->val)) {
+	if (is_global_scope(sym_tbl) && !is_pure_expr(decl->val)) {
 		fatal_error(decl->lineno, "Top level declaration of `%s` is "
 		                          "assigned to an impure expression",
 					  decl->name);
 	}
 	check_expr_with_type(decl->type, decl->val);
-	hash_table_set(scope, decl->name, decl->type);
+	add_symbol(sym_tbl, decl->name, decl->type);
 }
 
-void check_ast(struct ast *ast)
+void check_ast(struct ast ast)
 // TODO: Scan all top level decls first to remove the need for prototypes
 {
-	Vec *decls = ast->decls;
+	Vec *decls = ast.decls;
 	size_t i;
 
-	symbol_table.scopes = alloc_vec();
-	vec_push(symbol_table.scopes, alloc_hash_table());
+	sym_tbl = alloc_symbol_table();
+	enter_new_scope(sym_tbl); // Global scope
 	for (i = 0; i < vec_len(decls); i++) {
-		check_decl(vec_get(decls, i), 0);
+		check_decl(vec_get(decls, i));
 	}
-	free_vec(symbol_table.scopes, 0); // TODO: Dealloc func
+	free_symbol_table(sym_tbl);
 }
