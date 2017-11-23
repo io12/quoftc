@@ -5,7 +5,6 @@
 #include "quoftc.h"
 #include "lex.h"
 #include "ast.h"
-#include "parse.h"
 #include "eval.h"
 
 static NORETURN void eval_error(struct expr *expr)
