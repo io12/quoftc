@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "ds.h"
 #include "quoftc.h"
+#include "lex.h"
 #include "parse.h"
 #include "eval.h"
 

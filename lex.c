@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include "ds.h"
 #include "quoftc.h"
+#include "utf8.h"
+#include "lex.h"
 
 char yytext[MAX_IDENT_SIZE + 1];
 union yystype yylval;

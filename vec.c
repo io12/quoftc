@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "ds.h"
 #include "quoftc.h"
+#include "lex.h"
 
 #define VEC_SIZE 8
 
