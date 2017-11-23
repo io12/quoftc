@@ -21,10 +21,10 @@ HashTable *alloc_hash_table(void)
 
 void free_hash_table(HashTable *ht)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < ARRAY_LEN(ht->data); i++) {
-		free(ht->data[i]); // TODO: Free key/value?
+		free_vec(ht->data[i]);
 	}
 	free(ht);
 }
@@ -57,7 +57,7 @@ void hash_table_set(HashTable *ht, const char *key, void *val)
 	pair = alloc_key_val_pair(key, val);
 	pairs = &ht->data[hash(key)];
 	if (*pairs == NULL) {
-		*pairs = alloc_vec();
+		*pairs = alloc_vec(free); // TODO: Free key/value?
 	}
 	vec_push(*pairs, pair);
 }

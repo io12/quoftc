@@ -1,9 +1,11 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include "ds.h"
 #include "quoftc.h"
 #include "lex.h"
+#include "ast.h"
 #include "parse.h"
 
 static struct type *parse_type(void);
@@ -21,7 +23,7 @@ static struct type *parse_tuple_or_func_type(void)
 	lineno = get_lineno();
 	expect_tok(OPEN_PAREN);
 	first_type = parse_type();
-	types = alloc_vec();
+	types = alloc_vec(free_type);
 	tok = next_tok();
 	switch (tok) {
 	case COMMA:
@@ -65,7 +67,7 @@ static struct type *parse_type(void)
 		next_tok();
 		name = estrdup(yytext);
 		if (accept_tok(LT)) {
-			params = alloc_vec();
+			params = alloc_vec(free_type);
 			do {
 				vec_push(params, parse_type());
 			} while (accept_tok(COMMA));
@@ -129,7 +131,7 @@ static struct expr *parse_lambda_expr(void)
 
 	lineno = get_lineno();
 	expect_tok(BACKSLASH);
-	params = alloc_vec();
+	params = alloc_vec(free);
 	while (accept_tok(IDENT)) {
 		vec_push(params, estrdup(yytext));
 	}
@@ -144,7 +146,7 @@ static struct expr *parse_array_lit_expr(void)
 
 	lineno = get_lineno();
 	expect_tok(OPEN_BRACKET);
-	items = alloc_vec();
+	items = alloc_vec(free_expr);
 	do {
 		vec_push(items, parse_expr());
 	} while (accept_tok(COMMA));
@@ -162,7 +164,7 @@ static struct expr *parse_tuple_or_paren_expr(void)
 	expect_tok(OPEN_PAREN);
 	expr = parse_expr();
 	if (accept_tok(COMMA)) {
-		items = alloc_vec();
+		items = alloc_vec(free_expr);
 		vec_push(items, expr);
 		do {
 			vec_push(items, parse_expr());
@@ -181,7 +183,7 @@ static struct expr *parse_block_expr(void)
 
 	lineno = get_lineno();
 	expect_tok(OPEN_BRACE);
-	stmts = alloc_vec();
+	stmts = alloc_vec(free_stmt);
 	while (!accept_tok(CLOSE_BRACE)) {
 		vec_push(stmts, parse_stmt());
 	}
@@ -220,7 +222,7 @@ static struct switch_pattern *parse_array_switch_pattern(void)
 
 	lineno = get_lineno();
 	expect_tok(OPEN_BRACKET);
-	patterns = alloc_vec();
+	patterns = alloc_vec(free_switch_pattern);
 	do {
 		vec_push(patterns, parse_switch_pattern());
 	} while (accept_tok(COMMA));
@@ -235,7 +237,7 @@ static struct switch_pattern *parse_tuple_switch_pattern(void)
 
 	lineno = get_lineno();
 	expect_tok(OPEN_PAREN);
-	patterns = alloc_vec();
+	patterns = alloc_vec(free_switch_pattern);
 	do {
 		vec_push(patterns, parse_switch_pattern());
 	} while (accept_tok(COMMA));
@@ -272,7 +274,8 @@ static struct switch_pattern *parse_switch_pattern(void)
 	if (peek_tok() != PIPE) {
 		return l;
 	}
-	patterns = vec_push(alloc_vec(), l);
+	patterns = alloc_vec(free_switch_pattern);
+	vec_push(patterns, l);
 	while (accept_tok(PIPE)) {
 		vec_push(patterns, parse_primary_switch_pattern());
 	}
@@ -302,7 +305,7 @@ static struct expr *parse_switch_expr(void)
 	expect_tok(SWITCH);
 	ctrl = peek_tok() == OPEN_PAREN ? parse_paren_expr() : NULL;
 	expect_tok(OPEN_BRACE);
-	cases = alloc_vec();
+	cases = alloc_vec(free_switch_case);
 	while (!accept_tok(CLOSE_BRACE)) {
 		// TODO: The case list may need a delimiter
 		vec_push(cases, parse_switch_case());
@@ -536,7 +539,7 @@ static Vec *parse_compound_stmt(void)
 	Vec *stmts;
 
 	expect_tok(OPEN_BRACE);
-	stmts = alloc_vec();
+	stmts = alloc_vec(free_stmt);
 	while (!accept_tok(CLOSE_BRACE)) {
 		vec_push(stmts, parse_stmt());
 	}
@@ -558,7 +561,7 @@ static struct stmt *parse_if_stmt(void)
 		peek = peek_tok();
 		switch (peek) {
 		case IF:
-			else_stmts = alloc_vec();
+			else_stmts = alloc_vec(free_stmt);
 			vec_push(else_stmts, parse_if_stmt());
 			break;
 		case OPEN_BRACE:
@@ -666,7 +669,7 @@ struct ast parse(void)
 {
 	Vec *decls;
 
-	decls = alloc_vec();
+	decls = alloc_vec(free_decl);
 	do {
 		vec_push(decls, parse_decl());
 	} while (peek_tok() != TEOF);
