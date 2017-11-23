@@ -22,6 +22,7 @@
 #define NEW(type) ((type *) emalloc(sizeof(type)))
 #define NEWC(type) ((type *) ecalloc(sizeof(type)))
 
+
 enum tok {
 	INVALID_TOK,
 
@@ -76,16 +77,18 @@ NORETURN void internal_error(void);
 void init_lex(const char *);
 void cleanup_lex(void);
 
+extern char yytext[MAX_IDENT_SIZE + 1];
+extern union yystype yylval;
+
+
 MALLOC_LIKE void *emalloc(size_t);
 MALLOC_LIKE void *ecalloc(size_t);
 void *erealloc(void *, size_t);
 char *estrdup(const char *);
 
+extern const char *argv0;
+
+
 bool is_valid_code_point(uint32_t);
 int str_to_code_point(uint32_t *, const char *);
 bool is_valid_utf8(const char *);
-
-extern char yytext[MAX_IDENT_SIZE + 1];
-extern union yystype yylval;
-
-extern const char *argv0;

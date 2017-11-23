@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "quoftc.h"
 #include "ds.h"
+#include "quoftc.h"
 
 typedef struct hash_table_pair HashTablePair;
 struct hash_table_pair {

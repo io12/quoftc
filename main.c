@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ds.h"
 #include "quoftc.h"
 
 const char *argv0;

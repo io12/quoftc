@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "quoftc.h"
 #include "ds.h"
+#include "quoftc.h"
 
 #define VEC_SIZE 8
 

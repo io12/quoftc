@@ -11,8 +11,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "quoftc.h"
 #include "ds.h"
+#include "quoftc.h"
 
 char yytext[MAX_IDENT_SIZE + 1];
 union yystype yylval;
