@@ -1,3 +1,5 @@
+#define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+
 struct vec;
 typedef struct vec Vec;
 
@@ -11,5 +13,6 @@ struct hash_table;
 typedef struct hash_table HashTable;
 
 HashTable *alloc_hash_table(void);
+void free_hash_table(HashTable *);
 void hash_table_set(HashTable *, const char *, void *);
 void *hash_table_get(HashTable *, const char *);
