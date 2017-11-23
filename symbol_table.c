@@ -39,7 +39,7 @@ bool is_global_scope(struct symbol_table sym_tbl)
 	return vec_len(sym_tbl.scopes) == 1;
 }
 
-void add_symbol(struct symbol_table sym_tbl, char *ident, struct type *type)
+void insert_symbol(struct symbol_table sym_tbl, char *ident, struct type *type)
 {
 	hash_table_set(vec_top(sym_tbl.scopes), ident, type);
 }

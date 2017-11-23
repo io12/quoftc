@@ -340,7 +340,7 @@ static void check_decl(struct decl *decl)
 					  decl->name);
 	}
 	check_expr_with_type(decl->type, decl->val);
-	add_symbol(sym_tbl, decl->name, decl->type);
+	insert_symbol(sym_tbl, decl->name, decl->type);
 }
 
 void check_ast(struct ast ast)
