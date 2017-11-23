@@ -8,7 +8,8 @@ void free_vec(Vec *);
 size_t vec_len(Vec *);
 void *vec_get(Vec *, size_t);
 Vec *vec_push(Vec *, void *);
-void *vec_pop(Vec *);
+void vec_pop(Vec *);
+void *vec_top(Vec *);
 
 struct hash_table;
 typedef struct hash_table HashTable;

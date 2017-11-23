@@ -58,8 +58,12 @@ Vec *vec_push(Vec *vec, void *val)
 	return vec;
 }
 
-void *vec_pop(Vec *vec)
+void vec_pop(Vec *vec)
 {
 	vec->free_item(vec->data[--vec->len]);
+}
+
+void *vec_top(Vec *vec)
+{
 	return vec->data[vec->len - 1];
 }
