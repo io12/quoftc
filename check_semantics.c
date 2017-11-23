@@ -169,6 +169,125 @@ static void check_unary_op_expr_with_type(struct type *type, struct expr *expr)
 	}
 }
 
+static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
+{
+	enum tok op = expr->u.bin_op.op;
+	struct expr *l = expr->u.bin_op.l,
+	            *r = expr->u.bin_op.r;
+
+	switch (op) {
+	case PLUS:
+	case MINUS:
+	case STAR:
+	case SLASH:
+	case PERCENT:
+		if (!is_num_type(type)) {
+			compat_error(expr);
+		}
+		check_expr_with_type(type, l);
+		check_expr_with_type(type, r);
+		return;
+	case LT:
+	case GT:
+	case LT_EQ:
+	case GT_EQ:
+		if (type->kind != BOOL_TYPE) {
+			compat_error(expr);
+		}
+		// TODO: Num type checking
+		return;
+	case EQ_EQ:
+	case BANG_EQ:
+		if (type->kind != BOOL_TYPE) {
+			compat_error(expr);
+		}
+		// TODO: Check l and r
+		return;
+	case AMP:
+	case PIPE:
+	case CARET:
+	case LT_LT:
+	case GT_GT:
+		if (!is_unsigned_type(type)) {
+			compat_error(expr);
+		}
+		check_expr_with_type(type, l);
+		check_expr_with_type(type, r);
+		return;
+	case AMP_AMP:
+	case PIPE_PIPE:
+	case CARET_CARET:
+		if (type->kind != BOOL_TYPE) {
+			compat_error(expr);
+		}
+		check_expr_with_type(type, l);
+		check_expr_with_type(type, r);
+		return;
+	case EQ:
+		if (!is_lvalue(l)) {
+			lvalue_error(expr);
+		}
+		check_expr_with_type(type, l);
+		check_expr_with_type(type, r);
+		return;
+	case PLUS_EQ:
+	case MINUS_EQ:
+	case STAR_EQ:
+	case SLASH_EQ:
+	case PERCENT_EQ:
+		if (!is_num_type(type)) {
+			lvalue_error(expr);
+		}
+		check_expr_with_type(type, l);
+		check_expr_with_type(type, r);
+		return;
+	case AMP_EQ:
+	case PIPE_EQ:
+	case CARET_EQ:
+	case LT_LT_EQ:
+	case GT_GT_EQ:
+		if (!is_unsigned_type(type)) {
+			lvalue_error(expr);
+		}
+		check_expr_with_type(type, l);
+		check_expr_with_type(type, r);
+		return;
+	case DOT:
+		return; // TODO: Dot operator
+	default:
+		internal_error();
+	}
+}
+
+static void check_lambda_expr_with_type(struct type *type, struct expr *expr)
+{
+	if (type->kind != FUNC_TYPE) {
+		compat_error(expr);
+	}
+	// TODO: Lambda expr checking
+}
+
+static void check_array_lit_expr_with_type(struct type *type, struct expr *expr)
+{
+	struct type *subtype;
+	struct expr *len;
+	Vec *items;
+	size_t i;
+
+	if (type->kind != ARRAY_TYPE) {
+		compat_error(expr);
+	}
+	subtype = type->u.array.l;
+	len = type->u.array.len;
+	items = expr->u.array_lit.val;
+	if (eval(len) != vec_len(items)) {
+		compat_error(expr);
+	}
+	for (i = 0; i < vec_len(items); i++) {
+		check_expr_with_type(subtype, vec_get(items, i));
+	}
+}
+
 static void check_expr_with_type(struct type *type, struct expr *expr)
 {
 	switch (expr->kind) {
@@ -182,7 +301,7 @@ static void check_expr_with_type(struct type *type, struct expr *expr)
 			compat_error(expr);
 		}
 		return;
-	case STRING_LIT_EXPR:
+	case STRING_LIT_EXPR: // TODO: Length agreement
 		if (type->kind != ARRAY_TYPE) {
 			compat_error(expr);
 		}
@@ -190,31 +309,15 @@ static void check_expr_with_type(struct type *type, struct expr *expr)
 	case UNARY_OP_EXPR:
 		check_unary_op_expr_with_type(type, expr);
 		return;
-	case BIN_OP_EXPR: {
-		enum tok op = expr->u.bin_op.op;
-		struct expr *l = expr->u.bin_op.l,
-		            *r = expr->u.bin_op.r;
-
-		(void) l;
-		(void) r;
-		switch (op) {
-	case PLUS: case MINUS:
-	case STAR: case SLASH: case PERCENT:
-	case LT: case GT: case LT_EQ: case GT_EQ: case EQ_EQ: case BANG_EQ:
-	case AMP: case PIPE: case CARET: case LT_LT: case GT_GT:
-	case AMP_AMP: case PIPE_PIPE: case CARET_CARET:
-	case EQ:
-	case PLUS_EQ: case MINUS_EQ:
-	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
-	case AMP_EQ: case PIPE_EQ: case CARET_EQ: case LT_LT_EQ: case GT_GT_EQ:
-	case DOT:
-		break;
-	default:
-		internal_error();
-		}
-	}
+	case BIN_OP_EXPR:
+		check_bin_op_expr_with_type(type, expr);
+		return;
 	case LAMBDA_EXPR:
+		check_lambda_expr_with_type(type, expr);
+		return;
 	case ARRAY_LIT_EXPR:
+		check_array_lit_expr_with_type(type, expr);
+		return;
 	case IDENT_EXPR:
 	case BLOCK_EXPR:
 	case IF_EXPR:
