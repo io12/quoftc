@@ -1,7 +1,6 @@
 #ifdef __GNUC__
 	#define NORETURN __attribute__((noreturn))
-	#define PRINTF(fmt, args) \
-		__attribute__((format(printf, fmt, args)))
+	#define PRINTF(fmt, args) __attribute__((format(printf, fmt, args)))
 	#define MALLOC __attribute__((malloc))
 
 	#define UNLIKELY(x) __builtin_expect((x), false)
