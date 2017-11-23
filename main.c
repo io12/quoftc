@@ -11,7 +11,7 @@
 
 const char *argv0;
 
-NORETURN PRINTF_LIKE(2, 3) void fatal_error(uint16_t lineno, const char *fmt, ...)
+NORETURN PRINTF(2, 3) void fatal_error(uint16_t lineno, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -38,12 +38,12 @@ static void *ptr_sanitize(void *p)
 	return p;
 }
 
-MALLOC_LIKE void *emalloc(size_t size)
+MALLOC void *emalloc(size_t size)
 {
 	return ptr_sanitize(malloc(size));
 }
 
-MALLOC_LIKE void *ecalloc(size_t size)
+MALLOC void *ecalloc(size_t size)
 {
 	return ptr_sanitize(calloc(1, size));
 }
