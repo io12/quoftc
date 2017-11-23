@@ -5,6 +5,7 @@
 #include "ds.h"
 #include "quoftc.h"
 #include "parse.h"
+#include "eval.h"
 
 struct symbol_info {
 	struct type *type;
@@ -13,12 +14,12 @@ struct symbol_info {
 
 static Vec *symbol_table;
 
-NORETURN static void compat_error(struct expr *expr)
+static NORETURN void compat_error(struct expr *expr)
 {
 	fatal_error(expr->lineno, "Expression not compatible with type");
 }
 
-NORETURN static void lvalue_error(struct expr *expr)
+static NORETURN void lvalue_error(struct expr *expr)
 {
 	fatal_error(expr->lineno, "Value mutated that is not an lvalue");
 }
@@ -280,7 +281,7 @@ static void check_array_lit_expr_with_type(struct type *type, struct expr *expr)
 	subtype = type->u.array.l;
 	len = type->u.array.len;
 	items = expr->u.array_lit.val;
-	if (eval(len) != vec_len(items)) {
+	if (eval_const_expr(len) != vec_len(items)) {
 		compat_error(expr);
 	}
 	for (i = 0; i < vec_len(items); i++) {

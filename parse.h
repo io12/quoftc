@@ -21,7 +21,7 @@
 		}, sizeof(struct struct_tag)))
 
 struct type {
-	int lineno;
+	uint16_t lineno;
 	enum {
 		U8_TYPE, U16_TYPE, U32_TYPE, U64_TYPE,
 		I8_TYPE, I16_TYPE, I32_TYPE, I64_TYPE,
@@ -94,7 +94,7 @@ struct type {
 	ALLOC_UNION(type, FUNC_TYPE, func, __VA_ARGS__)
 
 struct expr {
-	int lineno;
+	uint16_t lineno;
 	enum {
 		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
 		UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
@@ -170,7 +170,7 @@ struct expr {
 	ALLOC_UNION(expr, TUPLE_EXPR, tuple, __VA_ARGS__)
 
 struct switch_pattern {
-	int lineno;
+	uint16_t lineno;
 	enum {
 		UNDERSCORE_SWITCH_PATTERN, OR_SWITCH_PATTERN,
 		ARRAY_SWITCH_PATTERN, TUPLE_SWITCH_PATTERN, EXPR_SWITCH_PATTERN
@@ -197,7 +197,7 @@ struct switch_pattern {
 	ALLOC_UNION(switch_pattern, EXPR_SWITCH_PATTERN, expr, __VA_ARGS__)
 
 struct switch_case {
-	int lineno;
+	uint16_t lineno;
 	struct switch_pattern *l;
 	struct expr *r;
 };
@@ -206,7 +206,7 @@ struct switch_case {
 	ALLOC_STRUCT(switch_case, __VA_ARGS__)
 
 struct decl {
-	int lineno;
+	uint16_t lineno;
 	bool is_mut;
 	struct type *type;
 	char *name;
@@ -217,7 +217,7 @@ struct decl {
 	ALLOC_STRUCT(decl, __VA_ARGS__)
 
 struct stmt {
-	int lineno;
+	uint16_t lineno;
 	enum {
 		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
 		WHILE_STMT, FOR_STMT
