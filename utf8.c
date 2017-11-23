@@ -1,9 +1,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "ds.h"
 #include "quoftc.h"
-#include "utf8.h"
 
 bool is_valid_code_point(uint32_t c)
 {
