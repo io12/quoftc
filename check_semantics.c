@@ -8,13 +8,6 @@
 #include "parse.h"
 #include "eval.h"
 
-struct symbol_info {
-	struct type *type;
-	// TODO: Value
-};
-
-static Vec *symbol_table;
-
 static NORETURN void compat_error(struct expr *expr)
 {
 	fatal_error(expr->lineno, "Expression not compatible with type");
@@ -334,7 +327,7 @@ static void check_decl(struct decl *decl, int nest_level)
 {
 	HashTable *scope;
 
-	scope = vec_get(symbol_table, nest_level);
+	scope = vec_get(symbol_table.scopes, nest_level);
 	if (hash_table_get(scope, decl->name) != NULL) {
 		fatal_error(decl->lineno, "Name `%s` already declared in scope",
 				decl->name);
@@ -354,10 +347,10 @@ void check_ast(struct ast *ast)
 	Vec *decls = ast->decls;
 	size_t i;
 
-	symbol_table = alloc_vec();
-	vec_push(symbol_table, alloc_hash_table());
+	symbol_table.scopes = alloc_vec();
+	vec_push(symbol_table.scopes, alloc_hash_table());
 	for (i = 0; i < vec_len(decls); i++) {
 		check_decl(vec_get(decls, i), 0);
 	}
-	free_vec(symbol_table, 0); // TODO: Dealloc func
+	free_vec(symbol_table.scopes, 0); // TODO: Dealloc func
 }
