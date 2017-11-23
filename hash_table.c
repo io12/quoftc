@@ -1,10 +1,11 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include "ds.h"
 #include "quoftc.h"
 
-typedef struct hash_table_pair HashTablePair;
-struct hash_table_pair {
+typedef struct key_val_pair KeyValPair;
+struct key_val_pair {
 	const char *key;
 	void *val;
 };
@@ -18,11 +19,21 @@ HashTable *alloc_hash_table(void)
 	return NEWC(HashTable);
 }
 
-static HashTablePair *alloc_hash_table_pair(const char *key, void *val)
+void free_hash_table(HashTable *ht)
 {
-	HashTablePair *pair;
+	int i;
 
-	pair = NEW(HashTablePair);
+	for (i = 0; i < ARRAY_LEN(ht->data); i++) {
+		free(ht->data[i]); // TODO: Free key/value?
+	}
+	free(ht);
+}
+
+static KeyValPair *alloc_key_val_pair(const char *key, void *val)
+{
+	KeyValPair *pair;
+
+	pair = NEW(KeyValPair);
 	pair->key = key;
 	pair->val = val;
 	return pair;
@@ -41,9 +52,9 @@ static uint8_t hash(const char *s)
 void hash_table_set(HashTable *ht, const char *key, void *val)
 {
 	Vec **pairs;
-	HashTablePair *pair;
+	KeyValPair *pair;
 
-	pair = alloc_hash_table_pair(key, val);
+	pair = alloc_key_val_pair(key, val);
 	pairs = &ht->data[hash(key)];
 	if (*pairs == NULL) {
 		*pairs = alloc_vec();
@@ -55,7 +66,7 @@ void *hash_table_get(HashTable *ht, const char *key)
 {
 	Vec *pairs;
 	size_t i;
-	HashTablePair *pair;
+	KeyValPair *pair;
 
 	pairs = ht->data[hash(key)];
 	for (i = 0; i < vec_len(pairs); i++) {
