@@ -19,9 +19,11 @@
 #define NEW(type) ((type *) emalloc(sizeof(type)))
 #define NEWC(type) ((type *) ecalloc(sizeof(type)))
 
+NORETURN PRINTF_LIKE(2, 3) void fatal_error(uint16_t, const char *, ...);
+NORETURN void internal_error(void);
 MALLOC_LIKE void *emalloc(size_t);
 MALLOC_LIKE void *ecalloc(size_t);
 void *erealloc(void *, size_t);
 char *estrdup(const char *);
 
-extern const char *argv0;
+const char *argv0;

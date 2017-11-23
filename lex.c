@@ -1,7 +1,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <inttypes.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -21,6 +21,11 @@ union yystype yylval;
 static const char *filename;
 static uint16_t lineno;
 static char *inp;
+
+const char *get_filename(void)
+{
+	return filename;
+}
 
 uint16_t get_lineno(void)
 {
@@ -474,24 +479,6 @@ void expect_tok(enum tok expected_tok)
 		fatal_error(lineno, "Expected %s, instead got %s",
 				tok_to_str(expected_tok), tok_to_str(tok));
 	}
-}
-
-NORETURN PRINTF_LIKE(2, 3) void fatal_error(uint16_t lineno, const char *fmt, ...)
-{
-	va_list ap;
-
-	fprintf(stderr, "%s:%"PRIu16": error: ", filename, lineno);
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	fputc('\n', stderr);
-	exit(EXIT_FAILURE);
-}
-
-NORETURN void internal_error(void)
-{
-	fprintf(stderr, "%s: Internal error\n", argv0);
-	exit(EXIT_FAILURE);
 }
 
 static NORETURN void file_error(void)

@@ -1,13 +1,33 @@
 #include <errno.h>
+#include <stdarg.h>
 #include <stdbool.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ds.h"
+#include "lex.h"
 #include "quoftc.h"
 
 const char *argv0;
+
+NORETURN PRINTF_LIKE(2, 3) void fatal_error(uint16_t lineno, const char *fmt, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, "%s:%"PRIu16": error: ", get_filename(), lineno);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	exit(EXIT_FAILURE);
+}
+
+NORETURN void internal_error(void)
+{
+	fprintf(stderr, "%s: Internal error\n", argv0);
+	exit(EXIT_FAILURE);
+}
 
 static void *ptr_sanitize(void *p)
 {
