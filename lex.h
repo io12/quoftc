@@ -40,7 +40,10 @@ enum tok {
 };
 union yystype {
 	uint32_t char_lit;
-	char string_lit[MAX_STRING_SIZE + 1];
+	struct {
+		char val[MAX_STRING_SIZE + 1];
+		uint64_t len;
+	} string_lit;
 	uint64_t int_lit;
 };
 

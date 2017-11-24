@@ -342,10 +342,13 @@ static struct expr *parse_primary_expr(void)
 	case CHAR_LIT:
 		next_tok();
 		return ALLOC_CHAR_LIT_EXPR(lineno, yylval.char_lit);
-	case STRING_LIT:
+	case STRING_LIT: {
+		char *str = yylval.string_lit.val;
+		uint64_t len = yylval.string_lit.len;
+
 		next_tok();
-		return ALLOC_STRING_LIT_EXPR(lineno,
-				estrdup(yylval.string_lit));
+		return ALLOC_STRING_LIT_EXPR(lineno, estrdup(str), len);
+	}
 	case PLUS_PLUS:
 	case MINUS_MINUS:
 	case STAR:

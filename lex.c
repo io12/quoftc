@@ -80,25 +80,29 @@ invalid:
 static enum tok string_lit(void)
 {
 	char *p;
+	uint64_t len;
 
 	if (*inp++ != '"') {
 		internal_error();
 	}
-	p = yylval.string_lit;
+	p = yylval.string_lit.val;
+	len = 0;
 	do {
 		// TODO: Fix this
-		if (p - yylval.string_lit == MAX_STRING_SIZE) {
+		if (len == MAX_STRING_SIZE) {
 			fatal_error(lineno, "String literal is longer than the "
 			                    "maximum allowed length "
 					    "("XSTR(MAX_STRING_SIZE)" bytes)");
 		}
 		*p++ = *inp++;
+		len++;
 	} while (*inp != '"');
+	inp++;
 	*p = '\0';
-	if (!is_valid_utf8(yylval.string_lit)) {
+	yylval.string_lit.len = len;
+	if (!is_valid_utf8(yylval.string_lit.val)) {
 		fatal_error(lineno, "Invalid string literal");
 	}
-	inp++;
 	return STRING_LIT;
 }
 

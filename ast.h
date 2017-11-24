@@ -111,6 +111,7 @@ struct expr {
 		} char_lit;
 		struct {
 			char *val;
+			uint64_t len;
 		} string_lit;
 		struct {
 			enum tok op;
