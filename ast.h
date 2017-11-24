@@ -39,7 +39,7 @@ struct type {
 		} param;
 		struct {
 			struct type *l;
-			struct expr *len;
+			uint64_t len; // Zero if unspecified
 		} array;
 		struct {
 			struct type *l;

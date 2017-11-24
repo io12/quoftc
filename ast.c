@@ -33,7 +33,6 @@ void free_type(void *p)
 		break;
 	case ARRAY_TYPE:
 		free_type(type->u.array.l);
-		free_expr(type->u.array.len);
 		break;
 	case POINTER_TYPE:
 		free_type(type->u.pointer.l);

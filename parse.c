@@ -6,6 +6,7 @@
 #include "quoftc.h"
 #include "lex.h"
 #include "ast.h"
+#include "eval.h"
 #include "parse.h"
 
 static struct type *parse_type(void);
@@ -54,7 +55,8 @@ static struct type *parse_type(void)
 	struct type *type;
 	char *name;
 	Vec *params;
-	struct expr *len;
+	struct expr *array_len_expr;
+	uint64_t array_len;
 
 	lineno = get_lineno();
 	peek = peek_tok();
@@ -110,12 +112,14 @@ static struct type *parse_type(void)
 	for (;;) {
 		if (accept_tok(OPEN_BRACKET)) {
 			if (accept_tok(CLOSE_BRACKET)) {
-				len = NULL;
+				array_len = 0;
 			} else {
-				len = parse_expr();
+				array_len_expr = parse_expr();
+				array_len = eval_const_expr(array_len_expr);
+				free(array_len_expr);
 				expect_tok(CLOSE_BRACKET);
 			}
-			type = ALLOC_ARRAY_TYPE(lineno, type, len);
+			type = ALLOC_ARRAY_TYPE(lineno, type, array_len);
 		} else if (accept_tok(STAR)) {
 			type = ALLOC_POINTER_TYPE(lineno, type);
 		} else {
