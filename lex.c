@@ -317,11 +317,15 @@ static enum tok num_lit(void)
 			return num_lit__(is_oct_digit, 8);
 		case 'x':
 			return num_lit__(is_hex_digit, 16);
+		case '.':
+			inp -= 2;
+			goto decimal;
 		default:
 			fatal_error(lineno,
 					"Numerical literal has a leading zero");
 		}
 	}
+decimal:
 	return num_lit__(is_dec_digit, 10);
 }
 
