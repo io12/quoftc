@@ -96,6 +96,7 @@ struct type {
 void free_type(void *);
 
 struct expr {
+	struct type *type; // Uninitialized until semantic analysis
 	uint16_t lineno;
 	enum {
 		BOOL_LIT_EXPR, INT_LIT_EXPR, FLOAT_LIT_EXPR, CHAR_LIT_EXPR,

@@ -94,6 +94,7 @@ void free_expr(void *p)
 		free_vec(expr->u.tuple.items);
 		break;
 	}
+	free_type(expr->type); // TODO: Is this safe?
 	free(expr);
 }
 
