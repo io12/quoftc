@@ -243,6 +243,7 @@ static bool is_hex_digit(int c)
 	return is_dec_digit(c) || IN_RANGE(c, 'A', 'F');
 }
 
+// TODO: Split this into multiple functions
 static enum tok num_lit__(bool (*is_valid_digit)(int c), int base)
 {
 	char num_text[MAX_NUM_CHARS];
