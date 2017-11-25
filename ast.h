@@ -98,14 +98,21 @@ void free_type(void *);
 struct expr {
 	uint16_t lineno;
 	enum {
-		BOOL_LIT_EXPR, CHAR_LIT_EXPR, STRING_LIT_EXPR,
-		UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR, ARRAY_LIT_EXPR,
-		IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR, TUPLE_EXPR
+		BOOL_LIT_EXPR, INT_LIT_EXPR, FLOAT_LIT_EXPR, CHAR_LIT_EXPR,
+		STRING_LIT_EXPR, UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR,
+		ARRAY_LIT_EXPR, IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR,
+		TUPLE_EXPR
 	} kind;
 	union {
 		struct {
 			bool val;
 		} bool_lit;
+		struct {
+			uint64_t val;
+		} int_lit;
+		struct {
+			double val;
+		} float_lit;
 		struct {
 			uint32_t val;
 		} char_lit;
@@ -149,6 +156,10 @@ struct expr {
 
 #define ALLOC_BOOL_LIT_EXPR(...) \
 	ALLOC_UNION(expr, BOOL_LIT_EXPR, bool_lit, __VA_ARGS__)
+#define ALLOC_INT_LIT_EXPR(...) \
+	ALLOC_UNION(expr, INT_LIT_EXPR, int_lit, __VA_ARGS__)
+#define ALLOC_FLOAT_LIT_EXPR(...) \
+	ALLOC_UNION(expr, FLOAT_LIT_EXPR, float_lit, __VA_ARGS__)
 #define ALLOC_CHAR_LIT_EXPR(...) \
 	ALLOC_UNION(expr, CHAR_LIT_EXPR, char_lit, __VA_ARGS__)
 #define ALLOC_STRING_LIT_EXPR(...) \

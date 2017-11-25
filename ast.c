@@ -54,6 +54,8 @@ void free_expr(void *p)
 
 	switch (expr->kind) {
 	case BOOL_LIT_EXPR:
+	case INT_LIT_EXPR:
+	case FLOAT_LIT_EXPR:
 	case CHAR_LIT_EXPR:
 		break;
 	case STRING_LIT_EXPR:

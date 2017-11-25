@@ -92,6 +92,7 @@ uint64_t eval_const_expr(struct expr *expr)
 {
 	switch (expr->kind) {
 	case BOOL_LIT_EXPR:
+	case FLOAT_LIT_EXPR:
 	case CHAR_LIT_EXPR:
 	case STRING_LIT_EXPR:
 	case LAMBDA_EXPR:
@@ -102,6 +103,8 @@ uint64_t eval_const_expr(struct expr *expr)
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
 		eval_error(expr);
+	case INT_LIT_EXPR:
+		return expr->u.int_lit.val;
 	case UNARY_OP_EXPR:
 		return eval_unary_op_const_expr(expr);
 	case BIN_OP_EXPR:

@@ -326,6 +326,7 @@ static struct expr *parse_primary_expr(void)
 	peek = peek_tok();
 	switch (peek) {
 	case IDENT:
+		next_tok();
 		return ALLOC_IDENT_EXPR(lineno, estrdup(yytext));
 	case TRUE:
 		next_tok();
@@ -334,11 +335,11 @@ static struct expr *parse_primary_expr(void)
 		next_tok();
 		return ALLOC_BOOL_LIT_EXPR(lineno, false);
 	case INT_LIT:
-		// TODO
-		break;
+		next_tok();
+		return ALLOC_INT_LIT_EXPR(lineno, yylval.int_lit);
 	case FLOAT_LIT:
-		// TODO
-		break;
+		next_tok();
+		return ALLOC_FLOAT_LIT_EXPR(lineno, yylval.float_lit);
 	case CHAR_LIT:
 		next_tok();
 		return ALLOC_CHAR_LIT_EXPR(lineno, yylval.char_lit);
