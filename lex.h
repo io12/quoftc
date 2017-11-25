@@ -1,5 +1,6 @@
 #define MAX_IDENT_SIZE 512
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
+#define MAX_NUM_CHARS 128 // TODO: Maybe change this?
 
 enum tok {
 	INVALID_TOK,
@@ -45,6 +46,7 @@ union yystype {
 		uint64_t len;
 	} string_lit;
 	uint64_t int_lit;
+	double float_lit;
 };
 
 const char *get_filename(void);

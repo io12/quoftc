@@ -243,26 +243,67 @@ static bool is_hex_digit(int c)
 	return is_dec_digit(c) || IN_RANGE(c, 'A', 'F');
 }
 
-static int value_of_digit(int c)
-{
-	return is_dec_digit(c) ? c - '0' : c - 'A' + 10;
-}
-
 static enum tok num_lit__(bool (*is_valid_digit)(int c), int base)
 {
-	uint64_t int_lit_old;
+	char num_text[MAX_NUM_CHARS];
+	int i;
+	bool found_radix_point;
+	unsigned long long inum;
+	double dnum;
 
-	yylval.int_lit = 0;
-	while (is_valid_digit(*inp)) {
-		int_lit_old = yylval.int_lit;
-		yylval.int_lit *= base;
-		yylval.int_lit += value_of_digit(*inp++);
-		if (yylval.int_lit < int_lit_old) {
+	i = 0;
+	found_radix_point = false;
+	while (is_valid_digit(*inp) || *inp == '.') {
+		if (*inp == '.') {
+			if (found_radix_point) {
+				fatal_error(lineno, "Floating point literal "
+						"has multiple radix points");
+			}
+			found_radix_point = true;
+		}
+		num_text[i++] = *inp++;
+		if (i == MAX_NUM_CHARS) {
+			fatal_error(lineno, "Numerical literal has more than "
+					XSTR(MAX_NUM_CHARS)" characters");
+		}
+	}
+	if (i == 0) {
+		fatal_error(lineno, "Numerical literal has no digits");
+	}
+	num_text[i] = '\0';
+	if (found_radix_point) {
+		// TODO: Floats
+		if (num_text[0] == '.') {
+			fatal_error(lineno, "Radix point at beginning of "
+					"floating point literal");
+		}
+		if (num_text[i - 1] == '.') {
+			fatal_error(lineno, "Radix point at end of floating "
+					"point literal");
+		}
+		if (base != 10) {
+			fatal_error(lineno, "Floating point literal is not "
+					"base 10");
+		}
+		dnum = strtod(num_text, NULL);
+		if (errno == ERANGE) {
+			fatal_error(lineno, "Floating point literal too large");
+		}
+		yylval.float_lit = dnum;
+		return FLOAT_LIT;
+	} else {
+		inum = strtoull(num_text, NULL, base);
+		/*
+		 * Compare inum with UINT64_MAX for the rare case when this
+		 * compiler is used on systems where ULLONG_MAX > UINT64_MAX
+		 */
+		if (errno == ERANGE || inum > UINT64_MAX) {
 			fatal_error(lineno, "Integer literal greater than "
 					XSTR(UINT64_MAX));
 		}
+		yylval.int_lit = inum;
+		return INT_LIT;
 	}
-	return INT_LIT;
 }
 
 static enum tok num_lit(void)
