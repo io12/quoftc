@@ -235,7 +235,7 @@ static void type_check_string_lit(struct type *type, struct expr *expr)
 
 static void type_check(struct type *, struct expr *);
 
-static void check_unary_op_expr_with_type(struct type *type, struct expr *expr)
+static void type_check_unary_op(struct type *type, struct expr *expr)
 {
 	enum unary_op op = expr->u.unary_op.op;
 	struct expr *operand = expr->u.unary_op.operand;
@@ -284,7 +284,7 @@ static void check_unary_op_expr_with_type(struct type *type, struct expr *expr)
 }
 
 #if 0
-static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
+static void type_check_bin_op(struct type *type, struct expr *expr)
 {
 	enum bin_op op = expr->u.bin_op.op;
 	struct expr *l = expr->u.bin_op.l,
@@ -373,7 +373,7 @@ static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
 }
 #endif
 
-static void check_lambda_expr_with_type(struct type *type, struct expr *expr)
+static void type_check_lambda(struct type *type, struct expr *expr)
 {
 	if (type->kind != FUNC_TYPE) {
 		compat_error(expr);
@@ -381,7 +381,7 @@ static void check_lambda_expr_with_type(struct type *type, struct expr *expr)
 	// TODO: Lambda expr checking
 }
 
-static void check_array_lit_expr_with_type(struct type *type, struct expr *expr)
+static void type_check_array_lit(struct type *type, struct expr *expr)
 {
 	struct type *subtype;
 	uint64_t type_len;
@@ -431,18 +431,18 @@ static void type_check(struct type *type, struct expr *expr)
 		type_check_string_lit(type, expr);
 		return;
 	case UNARY_OP_EXPR:
-		check_unary_op_expr_with_type(type, expr);
+		type_check_unary_op(type, expr);
 		return;
 	case BIN_OP_EXPR:
 #if 0
-		check_bin_op_expr_with_type(type, expr);
+		type_check_bin_op(type, expr);
 #endif
 		return;
 	case LAMBDA_EXPR:
-		check_lambda_expr_with_type(type, expr);
+		type_check_lambda(type, expr);
 		return;
 	case ARRAY_LIT_EXPR:
-		check_array_lit_expr_with_type(type, expr);
+		type_check_array_lit(type, expr);
 		return;
 	case IDENT_EXPR:
 	case BLOCK_EXPR:
