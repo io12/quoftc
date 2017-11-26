@@ -93,6 +93,8 @@ struct type {
 #define ALLOC_FUNC_TYPE(...) \
 	ALLOC_UNION(type, FUNC_TYPE, func, __VA_ARGS__)
 
+void *dup_type(void *);
+
 void free_type(void *);
 
 enum unary_op {

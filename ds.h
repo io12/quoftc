@@ -4,6 +4,7 @@ struct vec;
 typedef struct vec Vec;
 
 Vec *alloc_vec(void (*)(void *));
+Vec *dup_vec(Vec *, void *(*)(void *));
 void free_vec(Vec *);
 size_t vec_len(Vec *);
 void *vec_get(Vec *, size_t);

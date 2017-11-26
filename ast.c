@@ -1,8 +1,64 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include "ds.h"
+#include "quoftc.h"
 #include "ast.h"
+
+void *dup_type(void *p)
+{
+	struct type *src = p;
+
+	switch(src->kind) {
+	case U8_TYPE:
+		return ALLOC_U8_TYPE(src->lineno);
+	case U16_TYPE:
+		return ALLOC_U16_TYPE(src->lineno);
+	case U32_TYPE:
+		return ALLOC_U32_TYPE(src->lineno);
+	case U64_TYPE:
+		return ALLOC_U64_TYPE(src->lineno);
+	case I8_TYPE:
+		return ALLOC_I8_TYPE(src->lineno);
+	case I16_TYPE:
+		return ALLOC_I16_TYPE(src->lineno);
+	case I32_TYPE:
+		return ALLOC_I32_TYPE(src->lineno);
+	case I64_TYPE:
+		return ALLOC_I64_TYPE(src->lineno);
+	case F32_TYPE:
+		return ALLOC_F32_TYPE(src->lineno);
+	case F64_TYPE:
+		return ALLOC_F64_TYPE(src->lineno);
+	case BOOL_TYPE:
+		return ALLOC_BOOL_TYPE(src->lineno);
+	case VOID_TYPE:
+		return ALLOC_VOID_TYPE(src->lineno);
+	case CHAR_TYPE:
+		return ALLOC_CHAR_TYPE(src->lineno);
+	case ALIAS_TYPE:
+		return ALLOC_ALIAS_TYPE(src->lineno,
+				estrdup(src->u.alias.name));
+	case PARAM_TYPE:
+		return ALLOC_PARAM_TYPE(src->lineno,
+				estrdup(src->u.param.name),
+				dup_vec(src->u.param.params, dup_type));
+	case ARRAY_TYPE:
+		return ALLOC_ARRAY_TYPE(src->lineno, dup_type(src->u.array.l),
+				src->u.array.len);
+	case POINTER_TYPE:
+		return ALLOC_POINTER_TYPE(src->lineno,
+				dup_type(src->u.pointer.l));
+	case TUPLE_TYPE:
+		return ALLOC_TUPLE_TYPE(src->lineno,
+				dup_vec(src->u.tuple.types, dup_type));
+	case FUNC_TYPE:
+		return ALLOC_FUNC_TYPE(src->lineno, dup_type(src->u.func.ret),
+				dup_vec(src->u.func.params, dup_type));
+	}
+	internal_error();
+}
 
 void free_type(void *p)
 {

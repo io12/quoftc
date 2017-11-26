@@ -23,6 +23,18 @@ Vec *alloc_vec(void (*free_item)(void *))
 	return vec;
 }
 
+Vec *dup_vec(Vec *src, void *(*dup_item)(void *))
+{
+	Vec *dest;
+	size_t i;
+
+	dest = alloc_vec(src->free_item);
+	for (i = 0; i < src->len; i++) {
+		vec_push(dest, dup_item(vec_get(src, i)));
+	}
+	return dest;
+}
+
 void free_vec(Vec *vec)
 {
 	size_t i;
