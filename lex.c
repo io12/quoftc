@@ -246,7 +246,7 @@ static bool is_hex_digit(int c)
 // TODO: Split this into multiple functions
 static enum tok num_lit__(bool (*is_valid_digit)(int c), int base)
 {
-	char num_text[MAX_NUM_CHARS];
+	char num_text[MAX_NUM_CHARS + 1];
 	int i;
 	bool found_radix_point;
 	unsigned long long inum;
@@ -263,7 +263,7 @@ static enum tok num_lit__(bool (*is_valid_digit)(int c), int base)
 			found_radix_point = true;
 		}
 		num_text[i++] = *inp++;
-		if (i == MAX_NUM_CHARS) {
+		if (i == MAX_NUM_CHARS + 1) {
 			fatal_error(lineno, "Numerical literal has more than "
 					XSTR(MAX_NUM_CHARS)" characters");
 		}
