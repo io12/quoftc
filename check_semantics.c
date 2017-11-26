@@ -4,9 +4,7 @@
 #include <string.h>
 #include "ds.h"
 #include "quoftc.h"
-#include "lex.h"
 #include "ast.h"
-#include "eval.h"
 #include "symbol_table.h"
 #include "check_semantics.h"
 
@@ -22,7 +20,7 @@ static NORETURN void lvalue_error(struct expr *expr)
 	fatal_error(expr->lineno, "Value mutated that is not an lvalue");
 }
 
-static bool is_pure_expr(struct expr *expr);
+static bool is_pure_expr(struct expr *);
 
 static bool vec_has_pure_items(Vec *vec)
 {
@@ -39,9 +37,6 @@ static bool is_pure_block_expr(struct expr *expr)
 {
 	Vec *stmts;
 
-	if (expr->kind != BLOCK_EXPR) {
-		internal_error();
-	}
 	stmts = expr->u.block.stmts;
 	(void) stmts;
 	return false; // TODO
@@ -51,6 +46,8 @@ static bool is_pure_expr(struct expr *expr)
 {
 	switch (expr->kind) {
 	case BOOL_LIT_EXPR:
+	case INT_LIT_EXPR:
+	case FLOAT_LIT_EXPR:
 	case CHAR_LIT_EXPR:
 	case STRING_LIT_EXPR:
 	case LAMBDA_EXPR:
@@ -73,15 +70,59 @@ static bool is_pure_expr(struct expr *expr)
 		return NULL; // TODO
 	case TUPLE_EXPR:
 		return vec_has_pure_items(expr->u.tuple.items);
+	}
+	internal_error();
+}
+
+static bool is_lvalue_unary_op(struct expr *expr)
+{
+	enum unary_op op = expr->u.unary_op.op;
+
+	switch (op) {
+	case MULT_OP:
+		return true; // TODO: Check for mutability
 	default:
-		internal_error();
+		return false;
+	}
+}
+
+static bool is_lvalue_bin_op(struct expr *expr)
+{
+	enum bin_op op = expr->u.bin_op.op;
+
+	switch (op) {
+	case FIELD_OP:
+		return true; // TODO: Check for mutability
+	default:
+		return false;
 	}
 }
 
 static bool is_lvalue(struct expr *expr)
 {
-	(void) expr;
-	return false;
+	switch (expr->kind) {
+	case BOOL_LIT_EXPR:
+	case INT_LIT_EXPR:
+	case FLOAT_LIT_EXPR:
+	case CHAR_LIT_EXPR:
+	case STRING_LIT_EXPR:
+	case ARRAY_LIT_EXPR:
+	case LAMBDA_EXPR:
+		return false;
+	case UNARY_OP_EXPR:
+		return is_lvalue_unary_op(expr);
+	case BIN_OP_EXPR:
+		return is_lvalue_bin_op(expr);
+	case IDENT_EXPR:
+		return true; // TODO: Check for mutability
+	case BLOCK_EXPR:
+		// TODO: Stub
+	case IF_EXPR:
+	case SWITCH_EXPR:
+	case TUPLE_EXPR:
+		return false;
+	}
+	internal_error();
 }
 
 static bool is_num_type(struct type *type)
@@ -116,61 +157,136 @@ static bool is_unsigned_type(struct type *type)
 	}
 }
 
-static void check_expr_with_type(struct type *type, struct expr *expr);
+static void type_check_int_lit(struct type *type, struct expr *expr)
+{
+	uint64_t val = expr->u.int_lit.val;
+
+	switch (type->kind) {
+	case U8_TYPE:
+		if (val > UINT8_MAX) {
+			compat_error(expr);
+		}
+		expr->type = ALLOC_U8_TYPE(expr->lineno);
+		return;
+	case U16_TYPE:
+		if (val > UINT16_MAX) {
+			compat_error(expr);
+		}
+		expr->type = ALLOC_U16_TYPE(expr->lineno);
+		return;
+	case U32_TYPE:
+		if (val > UINT32_MAX) {
+			compat_error(expr);
+		}
+		expr->type = ALLOC_U32_TYPE(expr->lineno);
+		return;
+	case U64_TYPE:
+		expr->type = ALLOC_U64_TYPE(expr->lineno);
+		return;
+	case I8_TYPE:
+		if (val > INT8_MAX) {
+			compat_error(expr);
+		}
+		expr->type = ALLOC_I8_TYPE(expr->lineno);
+		return;
+	case I16_TYPE:
+		if (val > INT16_MAX) {
+			compat_error(expr);
+		}
+		expr->type = ALLOC_I16_TYPE(expr->lineno);
+		return;
+	case I32_TYPE:
+		if (val > INT32_MAX) {
+			compat_error(expr);
+		}
+		expr->type = ALLOC_I32_TYPE(expr->lineno);
+		return;
+	case I64_TYPE:
+		if (val > INT64_MAX) {
+			compat_error(expr);
+		}
+		expr->type = ALLOC_I64_TYPE(expr->lineno);
+		return;
+	default:
+		compat_error(expr);
+	}
+}
+
+static void type_check_string_lit(struct type *type, struct expr *expr)
+{
+	struct type *array_item_type;
+	uint64_t array_len;
+	uint64_t str_len = expr->u.string_lit.len;
+
+	if (type->kind != ARRAY_TYPE) {
+		compat_error(expr);
+	}
+	array_item_type = type->u.array.l;
+	array_len = type->u.array.len; // Zero if unspecified
+	if (array_item_type->kind != CHAR_TYPE) {
+		compat_error(expr);
+	}
+	if (array_len != 0 && array_len != str_len) {
+		compat_error(expr);
+	}
+	expr->type = ALLOC_ARRAY_TYPE(expr->lineno,
+			ALLOC_CHAR_TYPE(expr->lineno), str_len);
+}
+
+static void type_check(struct type *, struct expr *);
 
 static void check_unary_op_expr_with_type(struct type *type, struct expr *expr)
 {
-	enum tok op = expr->u.unary_op.op;
+	enum unary_op op = expr->u.unary_op.op;
 	struct expr *subexpr = expr->u.unary_op.subexpr;
 
 	switch (op) {
-	case PLUS_PLUS:
-	case MINUS_MINUS:
+	case INC_OP:
+	case DEC_OP:
 		if (!is_num_type(type)) {
 			compat_error(expr);
 		}
 		if (!is_lvalue(subexpr)) {
 			lvalue_error(expr);
 		}
-		check_expr_with_type(type, subexpr);
+		type_check(type, subexpr);
 		return;
-	case STAR: {
+	case DEREF_OP: {
 		struct type *subtype;
 
 		subtype = ALLOC_POINTER_TYPE(type->lineno, type);
-		check_expr_with_type(subtype, subexpr);
+		type_check(subtype, subexpr);
 		free(subtype);
 		return;
 	}
-	case AMP:
+	case REF_OP:
 		if (type->kind != POINTER_TYPE) {
 			compat_error(expr);
 		}
 		if (!is_lvalue(subexpr)) {
 			lvalue_error(expr);
 		}
-		check_expr_with_type(type->u.pointer.l, subexpr);
+		type_check(type->u.pointer.l, subexpr);
 		return;
-	case TILDE:
+	case BIT_NOT_OP:
 		if (!is_unsigned_type(type)) {
 			compat_error(expr);
 		}
-		check_expr_with_type(type, subexpr);
+		type_check(type, subexpr);
 		return;
-	case BANG:
+	case LOG_NOT_OP:
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
-		check_expr_with_type(type, subexpr);
+		type_check(type, subexpr);
 		return;
-	default:
-		internal_error();
 	}
 }
 
+#if 0
 static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
 {
-	enum tok op = expr->u.bin_op.op;
+	enum bin_op op = expr->u.bin_op.op;
 	struct expr *l = expr->u.bin_op.l,
 	            *r = expr->u.bin_op.r;
 
@@ -183,8 +299,8 @@ static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
 		if (!is_num_type(type)) {
 			compat_error(expr);
 		}
-		check_expr_with_type(type, l);
-		check_expr_with_type(type, r);
+		type_check(type, l);
+		type_check(type, r);
 		return;
 	case LT:
 	case GT:
@@ -210,8 +326,8 @@ static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
 		if (!is_unsigned_type(type)) {
 			compat_error(expr);
 		}
-		check_expr_with_type(type, l);
-		check_expr_with_type(type, r);
+		type_check(type, l);
+		type_check(type, r);
 		return;
 	case AMP_AMP:
 	case PIPE_PIPE:
@@ -219,15 +335,15 @@ static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
-		check_expr_with_type(type, l);
-		check_expr_with_type(type, r);
+		type_check(type, l);
+		type_check(type, r);
 		return;
 	case EQ:
 		if (!is_lvalue(l)) {
 			lvalue_error(expr);
 		}
-		check_expr_with_type(type, l);
-		check_expr_with_type(type, r);
+		type_check(type, l);
+		type_check(type, r);
 		return;
 	case PLUS_EQ:
 	case MINUS_EQ:
@@ -237,8 +353,8 @@ static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
 		if (!is_num_type(type)) {
 			lvalue_error(expr);
 		}
-		check_expr_with_type(type, l);
-		check_expr_with_type(type, r);
+		type_check(type, l);
+		type_check(type, r);
 		return;
 	case AMP_EQ:
 	case PIPE_EQ:
@@ -248,15 +364,14 @@ static void check_bin_op_expr_with_type(struct type *type, struct expr *expr)
 		if (!is_unsigned_type(type)) {
 			lvalue_error(expr);
 		}
-		check_expr_with_type(type, l);
-		check_expr_with_type(type, r);
+		type_check(type, l);
+		type_check(type, r);
 		return;
 	case DOT:
 		return; // TODO: Dot operator
-	default:
-		internal_error();
 	}
 }
+#endif
 
 static void check_lambda_expr_with_type(struct type *type, struct expr *expr)
 {
@@ -269,7 +384,7 @@ static void check_lambda_expr_with_type(struct type *type, struct expr *expr)
 static void check_array_lit_expr_with_type(struct type *type, struct expr *expr)
 {
 	struct type *subtype;
-	struct expr *len;
+	uint64_t type_len;
 	Vec *items;
 	size_t i;
 
@@ -277,39 +392,51 @@ static void check_array_lit_expr_with_type(struct type *type, struct expr *expr)
 		compat_error(expr);
 	}
 	subtype = type->u.array.l;
-	len = type->u.array.len;
+	type_len = type->u.array.len;
 	items = expr->u.array_lit.val;
-	if (eval_const_expr(len) != vec_len(items)) {
+	if (type_len != vec_len(items)) {
 		compat_error(expr);
 	}
 	for (i = 0; i < vec_len(items); i++) {
-		check_expr_with_type(subtype, vec_get(items, i));
+		type_check(subtype, vec_get(items, i));
 	}
 }
 
-static void check_expr_with_type(struct type *type, struct expr *expr)
+static void type_check(struct type *type, struct expr *expr)
 {
 	switch (expr->kind) {
 	case BOOL_LIT_EXPR:
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
+		expr->type = ALLOC_BOOL_TYPE(expr->lineno);
+		return;
+	case INT_LIT_EXPR:
+		type_check_int_lit(type, expr);
+		return;
+	case FLOAT_LIT_EXPR:
+		// TODO: Fix this
+		if (type->kind != F64_TYPE) {
+			compat_error(expr);
+		}
+		expr->type = ALLOC_F64_TYPE(expr->lineno);
 		return;
 	case CHAR_LIT_EXPR:
 		if (type->kind != CHAR_TYPE) {
 			compat_error(expr);
 		}
+		expr->type = ALLOC_CHAR_TYPE(expr->lineno);
 		return;
-	case STRING_LIT_EXPR: // TODO: Length agreement
-		if (type->kind != ARRAY_TYPE) {
-			compat_error(expr);
-		}
+	case STRING_LIT_EXPR:
+		type_check_string_lit(type, expr);
 		return;
 	case UNARY_OP_EXPR:
 		check_unary_op_expr_with_type(type, expr);
 		return;
 	case BIN_OP_EXPR:
+#if 0
 		check_bin_op_expr_with_type(type, expr);
+#endif
 		return;
 	case LAMBDA_EXPR:
 		check_lambda_expr_with_type(type, expr);
@@ -338,7 +465,7 @@ static void check_decl(struct decl *decl)
 		                          "assigned to an impure expression",
 					  decl->name);
 	}
-	check_expr_with_type(decl->type, decl->val);
+	type_check(decl->type, decl->val);
 	insert_symbol(sym_tbl, decl->name, decl->type);
 }
 
