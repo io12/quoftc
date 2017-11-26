@@ -128,6 +128,27 @@ static struct type *parse_type(void)
 	}
 }
 
+// TODO: Change this
+static enum unary_op tok_to_unary_op(enum tok tok)
+{
+	switch (tok) {
+	case PLUS_PLUS:
+		return INC_OP;
+	case MINUS_MINUS:
+		return DEC_OP;
+	case STAR:
+		return DEREF_OP;
+	case AMP:
+		return REF_OP;
+	case TILDE:
+		return BIT_NOT_OP;
+	case BANG:
+		return LOG_NOT_OP;
+	default:
+		internal_error();
+	}
+}
+
 static struct expr *parse_lambda_expr(void)
 {
 	uint16_t lineno;
@@ -357,7 +378,8 @@ static struct expr *parse_primary_expr(void)
 	case TILDE:
 	case BANG:
 		next_tok();
-		return ALLOC_UNARY_OP_EXPR(lineno, peek, parse_primary_expr());
+		return ALLOC_UNARY_OP_EXPR(lineno, tok_to_unary_op(peek),
+				parse_primary_expr());
 	case BACKSLASH:
 		return parse_lambda_expr();
 	case OPEN_BRACKET:
@@ -393,6 +415,76 @@ static bool is_bin_op(enum tok tok)
 		return true;
 	default:
 		return false;
+	}
+}
+
+static enum bin_op tok_to_bin_op(enum tok tok)
+{
+	switch (tok) {
+	case PLUS:
+		return ADD_OP;
+	case MINUS:
+		return SUB_OP;
+	case STAR:
+		return MULT_OP;
+	case SLASH:
+		return DIV_OP;
+	case PERCENT:
+		return MOD_OP;
+	case LT:
+		return LT_OP;
+	case GT:
+		return GT_OP;
+	case LT_EQ:
+		return LT_EQ_OP;
+	case GT_EQ:
+		return GT_EQ_OP;
+	case EQ_EQ:
+		return LOG_EQ_OP;
+	case BANG_EQ:
+		return NOT_EQ_OP;
+	case AMP:
+		return BIT_AND_OP;
+	case PIPE:
+		return BIT_OR_OP;
+	case CARET:
+		return BIT_XOR_OP;
+	case LT_LT:
+		return BIT_SHIFT_L_OP;
+	case GT_GT:
+		return BIT_SHIFT_R_OP;
+	case AMP_AMP:
+		return LOG_AND_OP;
+	case PIPE_PIPE:
+		return LOG_OR_OP;
+	case CARET_CARET:
+		return LOG_XOR_OP;
+	case EQ:
+		return ASSIGN_OP;
+	case PLUS_EQ:
+		return ADD_ASSIGN_OP;
+	case MINUS_EQ:
+		return SUB_ASSIGN_OP;
+	case STAR_EQ:
+		return MULT_ASSIGN_OP;
+	case SLASH_EQ:
+		return DIV_ASSIGN_OP;
+	case PERCENT_EQ:
+		return MOD_ASSIGN_OP;
+	case AMP_EQ:
+		return BIT_AND_ASSIGN_OP;
+	case PIPE_EQ:
+		return BIT_OR_ASSIGN_OP;
+	case CARET_EQ:
+		return BIT_XOR_ASSIGN_OP;
+	case LT_LT_EQ:
+		return BIT_SHIFT_L_ASSIGN_OP;
+	case GT_GT_EQ:
+		return BIT_SHIFT_R_ASSIGN_OP;
+	case DOT:
+		return FIELD_OP;
+	default:
+		internal_error();
 	}
 }
 
@@ -467,6 +559,7 @@ static enum assoc get_bin_op_assoc(enum tok op)
 }
 
 // Precedence climbing
+// TODO: Change this to do tok_to_bin_op() earlier
 static struct expr *parse_expr__(struct expr *l, int min_prec)
 {
 	uint16_t lineno;
@@ -488,7 +581,7 @@ static struct expr *parse_expr__(struct expr *l, int min_prec)
 			r = parse_expr__(r, get_bin_op_prec(peek));
 			peek = peek_tok();
 		}
-		l = ALLOC_BIN_OP_EXPR(lineno, op, l, r);
+		l = ALLOC_BIN_OP_EXPR(lineno, tok_to_bin_op(op), l, r);
 	}
 	return l;
 }

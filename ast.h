@@ -95,6 +95,19 @@ struct type {
 
 void free_type(void *);
 
+enum unary_op {
+	INC_OP, DEC_OP, DEREF_OP, REF_OP, BIT_NOT_OP, LOG_NOT_OP
+};
+
+enum bin_op {
+	ADD_OP, SUB_OP, MULT_OP, DIV_OP, MOD_OP, LT_OP, GT_OP, LT_EQ_OP,
+	GT_EQ_OP, LOG_EQ_OP, NOT_EQ_OP, BIT_AND_OP, BIT_OR_OP, BIT_XOR_OP,
+	BIT_SHIFT_L_OP, BIT_SHIFT_R_OP, LOG_AND_OP, LOG_OR_OP, LOG_XOR_OP,
+	ASSIGN_OP, ADD_ASSIGN_OP, SUB_ASSIGN_OP, MULT_ASSIGN_OP, DIV_ASSIGN_OP,
+	MOD_ASSIGN_OP, BIT_AND_ASSIGN_OP, BIT_OR_ASSIGN_OP, BIT_XOR_ASSIGN_OP,
+	BIT_SHIFT_L_ASSIGN_OP, BIT_SHIFT_R_ASSIGN_OP, FIELD_OP
+};
+
 struct expr {
 	struct type *type; // Uninitialized until semantic analysis
 	uint16_t lineno;
@@ -122,11 +135,11 @@ struct expr {
 			uint64_t len;
 		} string_lit;
 		struct {
-			enum tok op;
+			enum unary_op op;
 			struct expr *subexpr;
 		} unary_op;
 		struct {
-			enum tok op;
+			enum bin_op op;
 			struct expr *l, *r;
 		} bin_op;
 		struct {

@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "ds.h"
-#include "lex.h"
 #include "ast.h"
 
 void free_type(void *p)

@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include "ds.h"
 #include "quoftc.h"
-#include "lex.h"
 #include "ast.h"
 #include "eval.h"
 
@@ -15,76 +14,48 @@ static NORETURN void eval_error(struct expr *expr)
 
 static uint64_t eval_unary_op_const_expr(struct expr *expr)
 {
-	enum tok op = expr->u.unary_op.op;
+	enum unary_op op = expr->u.unary_op.op;
 	struct expr *subexpr = expr->u.unary_op.subexpr;
 
 	switch (op) {
-	case PLUS_PLUS:
-	case MINUS_MINUS:
-	case STAR:
-	case AMP:
-	case BANG:
-		eval_error(expr);
-	case TILDE:
+	case BIT_NOT_OP:
 		return ~eval_const_expr(subexpr);
 	default:
-		internal_error();
+		eval_error(expr);
 	}
 }
 
 static uint64_t eval_bin_op_const_expr(struct expr *expr)
 {
-	enum tok op = expr->u.bin_op.op;
+	enum bin_op op = expr->u.bin_op.op;
 	struct expr *l = expr->u.bin_op.l,
 	            *r = expr->u.bin_op.r;
 	uint64_t l_val = eval_const_expr(l),
 	         r_val = eval_const_expr(r);
 
 	switch (op) {
-	case PLUS:
+	case ADD_OP:
 		return l_val + r_val;
-	case MINUS:
+	case SUB_OP:
 		return l_val - r_val;
-	case STAR:
+	case MULT_OP:
 		return l_val * r_val;
-	case SLASH:
+	case DIV_OP:
 		return l_val / r_val;
-	case PERCENT:
+	case MOD_OP:
 		return l_val % r_val;
-	case AMP:
+	case BIT_AND_OP:
 		return l_val & r_val;
-	case PIPE:
+	case BIT_OR_OP:
 		return l_val | r_val;
-	case CARET:
+	case BIT_XOR_OP:
 		return l_val ^ r_val;
-	case LT_LT:
+	case BIT_SHIFT_L_OP:
 		return l_val << r_val;
-	case GT_GT:
+	case BIT_SHIFT_R_OP:
 		return l_val >> r_val;
-	case AMP_AMP:
-	case PIPE_PIPE:
-	case CARET_CARET:
-	case LT:
-	case GT:
-	case LT_EQ:
-	case GT_EQ:
-	case EQ_EQ:
-	case BANG_EQ:
-	case EQ:
-	case PLUS_EQ:
-	case MINUS_EQ:
-	case STAR_EQ:
-	case SLASH_EQ:
-	case PERCENT_EQ:
-	case AMP_EQ:
-	case PIPE_EQ:
-	case CARET_EQ:
-	case LT_LT_EQ:
-	case GT_GT_EQ:
-	case DOT:
-		eval_error(expr);
 	default:
-		internal_error();
+		eval_error(expr);
 	}
 }
 
