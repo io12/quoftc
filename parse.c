@@ -495,37 +495,99 @@ static struct {
 	int prec;
 	enum assoc assoc;
 } bin_op_info[] = {
-	[ADD_OP] = { .prec = 10, .assoc = L_ASSOC },
-	[SUB_OP] = { .prec = 10, .assoc = L_ASSOC },
-	[MULT_OP] = { .prec = 11, .assoc = L_ASSOC },
-	[DIV_OP] = { .prec = 11, .assoc = L_ASSOC },
-	[MOD_OP] = { .prec = 11, .assoc = L_ASSOC },
-	[LT_OP] = { .prec = 5, .assoc = NON_ASSOC },
-	[GT_OP] = { .prec = 5, .assoc = NON_ASSOC },
-	[LT_EQ_OP] = { .prec = 5, .assoc = NON_ASSOC },
-	[GT_EQ_OP] = { .prec = 5, .assoc = NON_ASSOC },
-	[LOG_EQ_OP] = { .prec = 4, .assoc = L_ASSOC },
-	[NOT_EQ_OP] = { .prec = 4, .assoc = L_ASSOC },
-	[BIT_AND_OP] = { .prec = 8, .assoc = L_ASSOC },
-	[BIT_OR_OP] = { .prec = 6, .assoc = L_ASSOC },
-	[BIT_XOR_OP] = { .prec = 7, .assoc = L_ASSOC },
-	[BIT_SHIFT_L_OP] = { .prec = 9, .assoc = L_ASSOC },
-	[BIT_SHIFT_R_OP] = { .prec = 9, .assoc = L_ASSOC },
-	[LOG_AND_OP] = { .prec = 3, .assoc = L_ASSOC },
-	[LOG_OR_OP] = { .prec = 1, .assoc = L_ASSOC },
-	[LOG_XOR_OP] = { .prec = 2, .assoc = L_ASSOC },
-	[ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[ADD_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[SUB_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[MULT_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[DIV_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[MOD_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[BIT_AND_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[BIT_OR_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[BIT_XOR_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[BIT_SHIFT_L_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[BIT_SHIFT_R_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
-	[FIELD_OP] = { .prec = 12, .assoc = L_ASSOC }
+	[ADD_OP] = {
+		.prec = 10, .assoc = L_ASSOC
+	},
+	[SUB_OP] = {
+		.prec = 10, .assoc = L_ASSOC
+	},
+	[MULT_OP] = {
+		.prec = 11, .assoc = L_ASSOC
+	},
+	[DIV_OP] = {
+		.prec = 11, .assoc = L_ASSOC
+	},
+	[MOD_OP] = {
+		.prec = 11, .assoc = L_ASSOC
+	},
+	[LT_OP] = {
+		.prec = 5, .assoc = NON_ASSOC
+	},
+	[GT_OP] = {
+		.prec = 5, .assoc = NON_ASSOC
+	},
+	[LT_EQ_OP] = {
+		.prec = 5, .assoc = NON_ASSOC
+	},
+	[GT_EQ_OP] = {
+		.prec = 5, .assoc = NON_ASSOC
+	},
+	[LOG_EQ_OP] = {
+		.prec = 4, .assoc = L_ASSOC
+	},
+	[NOT_EQ_OP] = {
+		.prec = 4, .assoc = L_ASSOC
+	},
+	[BIT_AND_OP] = {
+		.prec = 8, .assoc = L_ASSOC
+	},
+	[BIT_OR_OP] = {
+		.prec = 6, .assoc = L_ASSOC
+	},
+	[BIT_XOR_OP] = {
+		.prec = 7, .assoc = L_ASSOC
+	},
+	[BIT_SHIFT_L_OP] = {
+		.prec = 9, .assoc = L_ASSOC
+	},
+	[BIT_SHIFT_R_OP] = {
+		.prec = 9, .assoc = L_ASSOC
+	},
+	[LOG_AND_OP] = {
+		.prec = 3, .assoc = L_ASSOC
+	},
+	[LOG_OR_OP] = {
+		.prec = 1, .assoc = L_ASSOC
+	},
+	[LOG_XOR_OP] = {
+		.prec = 2, .assoc = L_ASSOC
+	},
+	[ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[ADD_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[SUB_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[MULT_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[DIV_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[MOD_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[BIT_AND_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[BIT_OR_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[BIT_XOR_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[BIT_SHIFT_L_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[BIT_SHIFT_R_ASSIGN_OP] = {
+		.prec = 0, .assoc = NON_ASSOC
+	},
+	[FIELD_OP] = {
+		.prec = 12, .assoc = L_ASSOC
+	}
 };
 
 static int get_bin_op_prec(enum bin_op op)
