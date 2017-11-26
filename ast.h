@@ -136,7 +136,7 @@ struct expr {
 		} string_lit;
 		struct {
 			enum unary_op op;
-			struct expr *subexpr;
+			struct expr *operand;
 		} unary_op;
 		struct {
 			enum bin_op op;

@@ -54,7 +54,7 @@ static bool is_pure_expr(struct expr *expr)
 	case IDENT_EXPR:
 		return true;
 	case UNARY_OP_EXPR:
-		return is_pure_expr(expr->u.unary_op.subexpr);
+		return is_pure_expr(expr->u.unary_op.operand);
 	case BIN_OP_EXPR:
 		return is_pure_expr(expr->u.bin_op.l)
 			&& is_pure_expr(expr->u.bin_op.r);
@@ -215,18 +215,18 @@ static void type_check_int_lit(struct type *type, struct expr *expr)
 static void type_check_string_lit(struct type *type, struct expr *expr)
 {
 	struct type *array_item_type;
-	uint64_t array_len;
+	uint64_t type_len;
 	uint64_t str_len = expr->u.string_lit.len;
 
 	if (type->kind != ARRAY_TYPE) {
 		compat_error(expr);
 	}
 	array_item_type = type->u.array.l;
-	array_len = type->u.array.len; // Zero if unspecified
+	type_len = type->u.array.len; // Zero if unspecified
 	if (array_item_type->kind != CHAR_TYPE) {
 		compat_error(expr);
 	}
-	if (array_len != 0 && array_len != str_len) {
+	if (type_len != 0 && type_len != str_len) {
 		compat_error(expr);
 	}
 	expr->type = ALLOC_ARRAY_TYPE(expr->lineno,
@@ -238,7 +238,7 @@ static void type_check(struct type *, struct expr *);
 static void check_unary_op_expr_with_type(struct type *type, struct expr *expr)
 {
 	enum unary_op op = expr->u.unary_op.op;
-	struct expr *subexpr = expr->u.unary_op.subexpr;
+	struct expr *operand = expr->u.unary_op.operand;
 
 	switch (op) {
 	case INC_OP:
@@ -246,16 +246,16 @@ static void check_unary_op_expr_with_type(struct type *type, struct expr *expr)
 		if (!is_num_type(type)) {
 			compat_error(expr);
 		}
-		if (!is_lvalue(subexpr)) {
+		if (!is_lvalue(operand)) {
 			lvalue_error(expr);
 		}
-		type_check(type, subexpr);
+		type_check(type, operand);
 		return;
 	case DEREF_OP: {
 		struct type *subtype;
 
 		subtype = ALLOC_POINTER_TYPE(type->lineno, type);
-		type_check(subtype, subexpr);
+		type_check(subtype, operand);
 		free(subtype);
 		return;
 	}
@@ -263,22 +263,22 @@ static void check_unary_op_expr_with_type(struct type *type, struct expr *expr)
 		if (type->kind != POINTER_TYPE) {
 			compat_error(expr);
 		}
-		if (!is_lvalue(subexpr)) {
+		if (!is_lvalue(operand)) {
 			lvalue_error(expr);
 		}
-		type_check(type->u.pointer.l, subexpr);
+		type_check(type->u.pointer.l, operand);
 		return;
 	case BIT_NOT_OP:
 		if (!is_unsigned_type(type)) {
 			compat_error(expr);
 		}
-		type_check(type, subexpr);
+		type_check(type, operand);
 		return;
 	case LOG_NOT_OP:
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
-		type_check(type, subexpr);
+		type_check(type, operand);
 		return;
 	}
 }

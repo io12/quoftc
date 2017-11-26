@@ -15,11 +15,11 @@ static NORETURN void eval_error(struct expr *expr)
 static uint64_t eval_unary_op_const_expr(struct expr *expr)
 {
 	enum unary_op op = expr->u.unary_op.op;
-	struct expr *subexpr = expr->u.unary_op.subexpr;
+	struct expr *operand = expr->u.unary_op.operand;
 
 	switch (op) {
 	case BIT_NOT_OP:
-		return ~eval_const_expr(subexpr);
+		return ~eval_const_expr(operand);
 	default:
 		eval_error(expr);
 	}

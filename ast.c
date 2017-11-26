@@ -61,7 +61,7 @@ void free_expr(void *p)
 		free(expr->u.string_lit.val);
 		break;
 	case UNARY_OP_EXPR:
-		free_expr(expr->u.unary_op.subexpr);
+		free_expr(expr->u.unary_op.operand);
 		break;
 	case BIN_OP_EXPR:
 		free_expr(expr->u.bin_op.l);
