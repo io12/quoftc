@@ -79,7 +79,7 @@ static bool is_lvalue_unary_op(struct expr *expr)
 	enum unary_op op = expr->u.unary_op.op;
 
 	switch (op) {
-	case MULT_OP:
+	case DEREF_OP:
 		return true; // TODO: Check for mutability
 	default:
 		return false;
