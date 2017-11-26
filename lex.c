@@ -48,7 +48,7 @@ static void skipspaces(void)
 	}
 }
 
-static enum tok num_lit__(bool (*)(int), int);
+static enum tok num_lit_with_base(int);
 static bool is_hex_digit(int);
 
 static enum tok char_lit(void)
@@ -60,7 +60,9 @@ static enum tok char_lit(void)
 	}
 	if (inp[0] == 'U' && inp[1] == '+') {
 		inp += 2;
-		num_lit__(is_hex_digit, 16);
+		if (num_lit_with_base(16) == FLOAT_LIT) {
+			goto invalid;
+		}
 		c = yylval.int_lit;
 		if (c < 0 || !is_valid_code_point(c)) {
 			goto invalid;
@@ -243,15 +245,35 @@ static bool is_hex_digit(int c)
 	return is_dec_digit(c) || IN_RANGE(c, 'A', 'F');
 }
 
+typedef bool IsValidDigitFunc(int);
+
+static IsValidDigitFunc *get_is_valid_digit_func(int base)
+{
+	switch (base) {
+	case 2:
+		return is_bin_digit;
+	case 8:
+		return is_oct_digit;
+	case 10:
+		return is_dec_digit;
+	case 16:
+		return is_hex_digit;
+	default:
+		internal_error();
+	}
+}
+
 // TODO: Split this into multiple functions
-static enum tok num_lit__(bool (*is_valid_digit)(int c), int base)
+static enum tok num_lit_with_base(int base)
 {
 	char num_text[MAX_NUM_CHARS + 1];
+	IsValidDigitFunc *is_valid_digit;
 	int i;
 	bool found_radix_point;
 	unsigned long long inum;
 	double dnum;
 
+	is_valid_digit = get_is_valid_digit_func(base);
 	i = 0;
 	found_radix_point = false;
 	while (is_valid_digit(*inp) || *inp == '.') {
@@ -313,11 +335,11 @@ static enum tok num_lit(void)
 		inp++;
 		switch (*inp++) {
 		case 'b':
-			return num_lit__(is_bin_digit, 2);
+			return num_lit_with_base(2);
 		case 'o':
-			return num_lit__(is_oct_digit, 8);
+			return num_lit_with_base(8);
 		case 'x':
-			return num_lit__(is_hex_digit, 16);
+			return num_lit_with_base(16);
 		case '.':
 			inp -= 2;
 			goto decimal;
@@ -327,7 +349,7 @@ static enum tok num_lit(void)
 		}
 	}
 decimal:
-	return num_lit__(is_dec_digit, 10);
+	return num_lit_with_base(10);
 }
 
 static bool is_op_char(int c)
