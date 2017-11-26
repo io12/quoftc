@@ -252,11 +252,11 @@ static void type_check_unary_op(struct type *type, struct expr *expr)
 		type_check(type, operand);
 		return;
 	case DEREF_OP: {
-		struct type *subtype;
+		struct type *operand_type;
 
-		subtype = ALLOC_POINTER_TYPE(type->lineno, type);
-		type_check(subtype, operand);
-		free(subtype);
+		operand_type = ALLOC_POINTER_TYPE(type->lineno, type);
+		type_check(operand_type, operand);
+		free(operand_type);
 		return;
 	}
 	case REF_OP:
