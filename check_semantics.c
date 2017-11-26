@@ -250,40 +250,44 @@ static void type_check_unary_op(struct type *type, struct expr *expr)
 			lvalue_error(expr);
 		}
 		type_check(type, operand);
-		return;
+		break;
 	case DEREF_OP: {
 		struct type *operand_type;
 
 		operand_type = ALLOC_POINTER_TYPE(type->lineno, type);
 		type_check(operand_type, operand);
 		free(operand_type);
-		return;
+		break;
 	}
-	case REF_OP:
+	case REF_OP: {
+		struct type *operand_type;
+
 		if (type->kind != POINTER_TYPE) {
 			compat_error(expr);
 		}
+		operand_type = type->u.pointer.l;
 		if (!is_lvalue(operand)) {
 			lvalue_error(expr);
 		}
-		type_check(type->u.pointer.l, operand);
-		return;
+		type_check(operand_type, operand);
+		break;
+	}
 	case BIT_NOT_OP:
 		if (!is_unsigned_type(type)) {
 			compat_error(expr);
 		}
 		type_check(type, operand);
-		return;
+		break;
 	case LOG_NOT_OP:
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
 		type_check(type, operand);
-		return;
+		break;
 	}
+	expr->type = dup_type(type);
 }
 
-#if 0
 static void type_check_bin_op(struct type *type, struct expr *expr)
 {
 	enum bin_op op = expr->u.bin_op.op;
@@ -291,94 +295,101 @@ static void type_check_bin_op(struct type *type, struct expr *expr)
 	            *r = expr->u.bin_op.r;
 
 	switch (op) {
-	case PLUS:
-	case MINUS:
-	case STAR:
-	case SLASH:
-	case PERCENT:
+	case ADD_OP:
+	case SUB_OP:
+	case MULT_OP:
+	case DIV_OP:
+	case MOD_OP:
 		if (!is_num_type(type)) {
 			compat_error(expr);
 		}
 		type_check(type, l);
 		type_check(type, r);
-		return;
-	case LT:
-	case GT:
-	case LT_EQ:
-	case GT_EQ:
+		break;
+	case LT_OP:
+	case GT_OP:
+	case LT_EQ_OP:
+	case GT_EQ_OP:
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
 		// TODO: Num type checking
-		return;
-	case EQ_EQ:
-	case BANG_EQ:
+		break;
+	case LOG_EQ_OP:
+	case NOT_EQ_OP:
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
 		// TODO: Check l and r
-		return;
-	case AMP:
-	case PIPE:
-	case CARET:
-	case LT_LT:
-	case GT_GT:
+		break;
+	case BIT_AND_OP:
+	case BIT_OR_OP:
+	case BIT_XOR_OP:
+	case BIT_SHIFT_L_OP:
+	case BIT_SHIFT_R_OP:
 		if (!is_unsigned_type(type)) {
 			compat_error(expr);
 		}
 		type_check(type, l);
 		type_check(type, r);
-		return;
-	case AMP_AMP:
-	case PIPE_PIPE:
-	case CARET_CARET:
+		break;
+	case LOG_AND_OP:
+	case LOG_OR_OP:
+	case LOG_XOR_OP:
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
 		type_check(type, l);
 		type_check(type, r);
-		return;
-	case EQ:
+		break;
+	case ASSIGN_OP:
+	case ADD_ASSIGN_OP:
+	case SUB_ASSIGN_OP:
+	case MULT_ASSIGN_OP:
+	case DIV_ASSIGN_OP:
+	case MOD_ASSIGN_OP:
+	case BIT_AND_ASSIGN_OP:
+	case BIT_OR_ASSIGN_OP:
+	case BIT_XOR_ASSIGN_OP:
+	case BIT_SHIFT_L_ASSIGN_OP:
+	case BIT_SHIFT_R_ASSIGN_OP:
+		if (type->kind != VOID_TYPE) {
+			compat_error(expr);
+		}
 		if (!is_lvalue(l)) {
 			lvalue_error(expr);
 		}
-		type_check(type, l);
-		type_check(type, r);
-		return;
-	case PLUS_EQ:
-	case MINUS_EQ:
-	case STAR_EQ:
-	case SLASH_EQ:
-	case PERCENT_EQ:
-		if (!is_num_type(type)) {
-			lvalue_error(expr);
-		}
-		type_check(type, l);
-		type_check(type, r);
-		return;
-	case AMP_EQ:
-	case PIPE_EQ:
-	case CARET_EQ:
-	case LT_LT_EQ:
-	case GT_GT_EQ:
-		if (!is_unsigned_type(type)) {
-			lvalue_error(expr);
-		}
-		type_check(type, l);
-		type_check(type, r);
-		return;
-	case DOT:
-		return; // TODO: Dot operator
+		// TODO: Check l and r
+		break;
+	case FIELD_OP:
+		break; // TODO: Dot operator
 	}
+	expr->type = dup_type(type);
 }
-#endif
 
 static void type_check_lambda(struct type *type, struct expr *expr)
 {
+	size_t nparams, i;
+	Vec *param_types;
+	Vec *param_names;
+
 	if (type->kind != FUNC_TYPE) {
 		compat_error(expr);
 	}
-	// TODO: Lambda expr checking
+	param_types = type->u.func.params;
+	param_names = expr->u.lambda.params;
+	if (vec_len(param_types) != vec_len(param_names)) {
+		compat_error(expr);
+	}
+	nparams = vec_len(param_types);
+	enter_new_scope(sym_tbl);
+	for (i = 0; i < nparams; i++) {
+		insert_symbol(sym_tbl, vec_get(param_names, i),
+				vec_get(param_types, i));
+	}
+	// TODO: Finish checking
+	leave_scope(sym_tbl);
+	expr->type = dup_type(type);
 }
 
 static void type_check_array_lit(struct type *type, struct expr *expr)
@@ -400,6 +411,7 @@ static void type_check_array_lit(struct type *type, struct expr *expr)
 	for (i = 0; i < vec_len(items); i++) {
 		type_check(subtype, vec_get(items, i));
 	}
+	// TODO: Finish checking
 }
 
 static void type_check(struct type *type, struct expr *expr)
@@ -409,47 +421,45 @@ static void type_check(struct type *type, struct expr *expr)
 		if (type->kind != BOOL_TYPE) {
 			compat_error(expr);
 		}
-		expr->type = ALLOC_BOOL_TYPE(expr->lineno);
-		return;
+		expr->type = dup_type(type);
+		break;
 	case INT_LIT_EXPR:
 		type_check_int_lit(type, expr);
-		return;
+		break;
 	case FLOAT_LIT_EXPR:
 		// TODO: Fix this
 		if (type->kind != F64_TYPE) {
 			compat_error(expr);
 		}
-		expr->type = ALLOC_F64_TYPE(expr->lineno);
-		return;
+		expr->type = dup_type(type);
+		break;
 	case CHAR_LIT_EXPR:
 		if (type->kind != CHAR_TYPE) {
 			compat_error(expr);
 		}
-		expr->type = ALLOC_CHAR_TYPE(expr->lineno);
-		return;
+		expr->type = dup_type(type);
+		break;
 	case STRING_LIT_EXPR:
 		type_check_string_lit(type, expr);
-		return;
+		break;
 	case UNARY_OP_EXPR:
 		type_check_unary_op(type, expr);
-		return;
+		break;
 	case BIN_OP_EXPR:
-#if 0
 		type_check_bin_op(type, expr);
-#endif
-		return;
+		break;
 	case LAMBDA_EXPR:
 		type_check_lambda(type, expr);
-		return;
+		break;
 	case ARRAY_LIT_EXPR:
 		type_check_array_lit(type, expr);
-		return;
+		break;
 	case IDENT_EXPR:
 	case BLOCK_EXPR:
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
-		break;
+		break; // TODO: Stub
 	}
 }
 
