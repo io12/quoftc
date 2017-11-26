@@ -128,7 +128,6 @@ static struct type *parse_type(void)
 	}
 }
 
-// TODO: Change this
 static enum unary_op tok_to_unary_op(enum tok tok)
 {
 	switch (tok) {
@@ -488,100 +487,99 @@ static enum bin_op tok_to_bin_op(enum tok tok)
 	}
 }
 
-static int get_bin_op_prec(enum tok op)
-{
-	switch (op) {
-	case DOT:
-		return 12;
-	case STAR: case SLASH: case PERCENT:
-		return 11;
-	case PLUS: case MINUS:
-		return 10;
-	case LT_LT: case GT_GT:
-		return 9;
-	case AMP:
-		return 8;
-	case CARET:
-		return 7;
-	case PIPE:
-		return 6;
-	case LT: case GT: case LT_EQ: case GT_EQ:
-		return 5;
-	case EQ_EQ: case BANG_EQ:
-		return 4;
-	case AMP_AMP:
-		return 3;
-	case CARET_CARET:
-		return 2;
-	case PIPE_PIPE:
-		return 1;
-	case EQ:
-	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
-	case PLUS_EQ: case MINUS_EQ:
-	case LT_LT_EQ: case GT_GT_EQ:
-	case AMP_EQ: case CARET_EQ: case PIPE_EQ:
-		return 0;
-	default:
-		internal_error();
-	}
-}
-
 enum assoc {
 	L_ASSOC, R_ASSOC, NON_ASSOC
 };
 
-static enum assoc get_bin_op_assoc(enum tok op)
+static struct {
+	int prec;
+	enum assoc assoc;
+} bin_op_info[] = {
+	[ADD_OP] = { .prec = 10, .assoc = L_ASSOC },
+	[SUB_OP] = { .prec = 10, .assoc = L_ASSOC },
+	[MULT_OP] = { .prec = 11, .assoc = L_ASSOC },
+	[DIV_OP] = { .prec = 11, .assoc = L_ASSOC },
+	[MOD_OP] = { .prec = 11, .assoc = L_ASSOC },
+	[LT_OP] = { .prec = 5, .assoc = NON_ASSOC },
+	[GT_OP] = { .prec = 5, .assoc = NON_ASSOC },
+	[LT_EQ_OP] = { .prec = 5, .assoc = NON_ASSOC },
+	[GT_EQ_OP] = { .prec = 5, .assoc = NON_ASSOC },
+	[LOG_EQ_OP] = { .prec = 4, .assoc = L_ASSOC },
+	[NOT_EQ_OP] = { .prec = 4, .assoc = L_ASSOC },
+	[BIT_AND_OP] = { .prec = 8, .assoc = L_ASSOC },
+	[BIT_OR_OP] = { .prec = 6, .assoc = L_ASSOC },
+	[BIT_XOR_OP] = { .prec = 7, .assoc = L_ASSOC },
+	[BIT_SHIFT_L_OP] = { .prec = 9, .assoc = L_ASSOC },
+	[BIT_SHIFT_R_OP] = { .prec = 9, .assoc = L_ASSOC },
+	[LOG_AND_OP] = { .prec = 3, .assoc = L_ASSOC },
+	[LOG_OR_OP] = { .prec = 1, .assoc = L_ASSOC },
+	[LOG_XOR_OP] = { .prec = 2, .assoc = L_ASSOC },
+	[ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[ADD_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[SUB_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[MULT_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[DIV_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[MOD_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[BIT_AND_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[BIT_OR_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[BIT_XOR_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[BIT_SHIFT_L_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[BIT_SHIFT_R_ASSIGN_OP] = { .prec = 0, .assoc = NON_ASSOC },
+	[FIELD_OP] = { .prec = 12, .assoc = L_ASSOC }
+};
+
+static int get_bin_op_prec(enum bin_op op)
 {
-	switch (op) {
-	case DOT:
-	case STAR: case SLASH: case PERCENT:
-	case PLUS: case MINUS:
-	case LT_LT: case GT_GT:
-	case AMP:
-	case CARET:
-	case PIPE:
-	case EQ_EQ: case BANG_EQ:
-	case AMP_AMP:
-	case CARET_CARET:
-	case PIPE_PIPE:
-		return L_ASSOC;
-	case LT: case GT: case LT_EQ: case GT_EQ:
-		return NON_ASSOC;
-	case EQ:
-	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
-	case PLUS_EQ: case MINUS_EQ:
-	case LT_LT_EQ: case GT_GT_EQ:
-	case AMP_EQ: case CARET_EQ: case PIPE_EQ:
-		return R_ASSOC;
-	default:
+	if (!IN_RANGE(op, 0, ARRAY_LEN(bin_op_info))) {
 		internal_error();
 	}
+	return bin_op_info[op].prec;
+}
+
+static enum assoc get_bin_op_assoc(enum bin_op op)
+{
+	if (!IN_RANGE(op, 0, ARRAY_LEN(bin_op_info))) {
+		internal_error();
+	}
+	return bin_op_info[op].assoc;
 }
 
 // Precedence climbing
-// TODO: Change this to do tok_to_bin_op() earlier
 static struct expr *parse_expr__(struct expr *l, int min_prec)
 {
 	uint16_t lineno;
-	enum tok peek, op;
+	enum tok peek;
+	enum bin_op op, op2;
 	struct expr *r;
 
 	lineno = get_lineno();
 	peek = peek_tok();
-	while (is_bin_op(peek) && get_bin_op_prec(peek) >= min_prec) {
-		op = peek;
+	for (;;) {
+		if (!is_bin_op(peek)) {
+			break;
+		}
+		op = tok_to_bin_op(peek);
+		if (get_bin_op_prec(op) < min_prec) {
+			break;
+		}
 		next_tok();
 		r = parse_primary_expr();
 		peek = peek_tok();
-		while (is_bin_op(peek) &&
-				(get_bin_op_prec(peek) > get_bin_op_prec(op)
-				|| (get_bin_op_assoc(peek) == R_ASSOC
-				&& get_bin_op_prec(peek)
-				== get_bin_op_prec(op)))) {
-			r = parse_expr__(r, get_bin_op_prec(peek));
+		for (;;) {
+			if (!is_bin_op(peek)) {
+				break;
+			}
+			op2 = tok_to_bin_op(peek);
+			if (get_bin_op_prec(op2) <= get_bin_op_prec(op) ||
+					(get_bin_op_assoc(op2) == R_ASSOC &&
+					 get_bin_op_prec(op2) ==
+					 get_bin_op_prec(op))) {
+				break;
+			}
+			r = parse_expr__(r, get_bin_op_prec(op2));
 			peek = peek_tok();
 		}
-		l = ALLOC_BIN_OP_EXPR(lineno, tok_to_bin_op(op), l, r);
+		l = ALLOC_BIN_OP_EXPR(lineno, op, l, r);
 	}
 	return l;
 }
