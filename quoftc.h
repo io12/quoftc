@@ -15,6 +15,7 @@
 #define XSTR(x) STR__(x)
 #define STR__(x) #x
 #define IN_RANGE(x, min, max) ((x) >= min && (x) <= max)
+#define EITHER_EQ(x, y, z) ((x) == (z) || (y) == (z))
 #define NEW(type) ((type *) emalloc(sizeof(type)))
 #define NEWC(type) ((type *) ecalloc(sizeof(type)))
 

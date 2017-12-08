@@ -23,6 +23,7 @@
 struct type {
 	uint16_t lineno;
 	enum {
+		UNSIZED_INT_TYPE, // Unused until semantic analysis
 		U8_TYPE, U16_TYPE, U32_TYPE, U64_TYPE,
 		I8_TYPE, I16_TYPE, I32_TYPE, I64_TYPE,
 		F32_TYPE, F64_TYPE, BOOL_TYPE, VOID_TYPE, CHAR_TYPE,
@@ -54,6 +55,8 @@ struct type {
 	} u;
 };
 
+#define ALLOC_UNSIZED_INT_TYPE(lineno) \
+	ALLOC_UNION_KIND_ONLY(type, UNSIZED_INT_TYPE, lineno)
 #define ALLOC_U8_TYPE(lineno) \
 	ALLOC_UNION_KIND_ONLY(type, U8_TYPE, lineno)
 #define ALLOC_U16_TYPE(lineno) \

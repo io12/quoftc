@@ -11,6 +11,8 @@ void *dup_type(void *p)
 	struct type *src = p;
 
 	switch(src->kind) {
+	case UNSIZED_INT_TYPE:
+		return ALLOC_UNSIZED_INT_TYPE(src->lineno);
 	case U8_TYPE:
 		return ALLOC_U8_TYPE(src->lineno);
 	case U16_TYPE:
@@ -65,6 +67,7 @@ void free_type(void *p)
 	struct type *type = p;
 
 	switch (type->kind) {
+	case UNSIZED_INT_TYPE:
 	case U8_TYPE:
 	case U16_TYPE:
 	case U32_TYPE:
