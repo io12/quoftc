@@ -9,48 +9,6 @@
 
 static LLVMModuleRef module;
 
-static LLVMValueRef emit_expr(struct expr *expr)
-{
-#if 0
-	switch (expr->kind) {
-	case BOOL_LIT_EXPR:
-	case INT_LIT_EXPR:
-	case FLOAT_LIT_EXPR:
-	case CHAR_LIT_EXPR:
-	case STRING_LIT_EXPR:
-	case UNARY_OP_EXPR:
-	case BIN_OP_EXPR: {
-		LLVMValueRef l = emit_expr(expr->u.bin_op.l),
-		             r = emit_expr(expr->u.bin_op.r);
-
-		switch (expr->u.bin_op.op) {
-		case '+':
-			return LLVMBuildAdd(llvm_builder, l, r, "add");
-		case '-':
-			return LLVMBuildSub(llvm_builder, l, r, "sub");
-		case '*':
-			return LLVMBuildMul(llvm_builder, l, r, "mul");
-		case '/':
-			return LLVMBuildDiv(llvm_builder, l, r, "div");
-		case '%':
-			return LLVMBuildMod(llvm_builder, l, r, "mod");
-		case '<':
-			return LLVMBuildMod(llvm_builder, LLVMRealULT, l, r, "mod");
-		}
-	}
-	case LAMBDA_EXPR:
-	case ARRAY_LIT_EXPR:
-	case IDENT_EXPR:
-	case BLOCK_EXPR:
-	case IF_EXPR:
-	case SWITCH_EXPR:
-	case TUPLE_EXPR:
-	}
-#endif
-	(void) expr;
-	return NULL;
-}
-
 static LLVMTypeRef get_llvm_type(struct type *type)
 {
 	switch (type->kind) {
@@ -107,6 +65,48 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 	}
 	}
 	internal_error();
+}
+
+static LLVMValueRef emit_expr(struct expr *expr)
+{
+#if 0
+	switch (expr->kind) {
+	case BOOL_LIT_EXPR:
+	case INT_LIT_EXPR:
+	case FLOAT_LIT_EXPR:
+	case CHAR_LIT_EXPR:
+	case STRING_LIT_EXPR:
+	case UNARY_OP_EXPR:
+	case BIN_OP_EXPR: {
+		LLVMValueRef l = emit_expr(expr->u.bin_op.l),
+		             r = emit_expr(expr->u.bin_op.r);
+
+		switch (expr->u.bin_op.op) {
+		case '+':
+			return LLVMBuildAdd(llvm_builder, l, r, "add");
+		case '-':
+			return LLVMBuildSub(llvm_builder, l, r, "sub");
+		case '*':
+			return LLVMBuildMul(llvm_builder, l, r, "mul");
+		case '/':
+			return LLVMBuildDiv(llvm_builder, l, r, "div");
+		case '%':
+			return LLVMBuildMod(llvm_builder, l, r, "mod");
+		case '<':
+			return LLVMBuildMod(llvm_builder, LLVMRealULT, l, r, "mod");
+		}
+	}
+	case LAMBDA_EXPR:
+	case ARRAY_LIT_EXPR:
+	case IDENT_EXPR:
+	case BLOCK_EXPR:
+	case IF_EXPR:
+	case SWITCH_EXPR:
+	case TUPLE_EXPR:
+	}
+#endif
+	(void) expr;
+	return NULL;
 }
 
 static void emit_global_val(bool is_const, struct type *type, const char *name,
@@ -179,6 +179,17 @@ static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	LLVMPositionBuilderAtEnd(builder, after_do_block);
 }
 
+static void emit_stmt(LLVMBuilderRef, struct stmt *);
+
+static void emit_stmts(LLVMBuilderRef builder, Vec *stmts)
+{
+	size_t i;
+
+	for (i = 0; i < vec_len(stmts); i++) {
+		emit_stmt(builder, vec_get(stmts, i));
+	}
+}
+
 static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
 	switch (stmt->kind) {
@@ -203,15 +214,6 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	}
 }
 
-static void emit_stmts(LLVMBuilderRef builder, Vec *stmts)
-{
-	size_t i;
-
-	for (i = 0; i < vec_len(stmts); i++) {
-		emit_stmt(builder, vec_get(stmts, i));
-	}
-}
-
 static void emit_func(struct type *type, const char *name, struct expr *expr)
 {
 	Vec *param_names = expr->u.lambda.params,
@@ -231,9 +233,7 @@ static void emit_func(struct type *type, const char *name, struct expr *expr)
 	}
 }
 
-enum scope { LOCAL_SCOPE, GLOBAL_SCOPE };
-
-static void emit_decl(enum scope scope, struct decl *decl)
+static void emit_global_decl(struct decl *decl)
 {
 	switch (decl->type->kind) {
 	case UNSIZED_INT_TYPE:
@@ -256,20 +256,10 @@ static void emit_decl(enum scope scope, struct decl *decl)
 	case ARRAY_TYPE:
 	case POINTER_TYPE:
 	case TUPLE_TYPE:
-		switch (scope) {
-		case LOCAL_SCOPE:
-			// TODO: emit_local_val();
-			break;
-		case GLOBAL_SCOPE:
-			emit_global_val(decl->is_const, decl->type, decl->name,
-					decl->init);
-			break;
-		}
+		emit_global_val(decl->is_const, decl->type, decl->name,
+				decl->init);
 		break;
 	case FUNC_TYPE:
-		if (scope == LOCAL_SCOPE) {
-			internal_error();
-		}
 		emit_func(decl->type, decl->name, decl->init);
 		break;
 	}
@@ -282,6 +272,6 @@ void emit(struct ast ast)
 
 	module = LLVMModuleCreateWithName(get_filename());
 	for (i = 0; i < vec_len(decls); i++) {
-		emit_decl(GLOBAL_SCOPE, vec_get(decls, i));
+		emit_global_decl(vec_get(decls, i));
 	}
 }
