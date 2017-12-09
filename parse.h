@@ -1,1 +1,1 @@
-struct ast parse(void);
+struct ast parse_file(const char *);

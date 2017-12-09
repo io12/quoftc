@@ -820,13 +820,25 @@ static struct stmt *parse_stmt(void)
 	}
 }
 
-struct ast parse(void)
+static struct ast parse_file__(void)
 {
 	Vec *decls;
+	struct ast ast;
 
 	decls = alloc_vec(free_decl);
 	do {
 		vec_push(decls, parse_decl());
 	} while (peek_tok() != TEOF);
-	return (struct ast){decls};
+	ast.decls = decls;
+	return ast;
+}
+
+struct ast parse_file(const char *filename)
+{
+	struct ast ast;
+
+	init_lex(filename);
+	ast = parse_file__();
+	cleanup_lex();
+	return ast;
 }

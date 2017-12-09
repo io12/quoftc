@@ -515,7 +515,7 @@ enum tok next_tok(void)
 	if (isdigit(*inp)) {
 		return num_lit();
 	}
-	fatal_error(lineno, "Invalid token");
+	fatal_error(lineno, "Invalid token `%c`", *inp);
 }
 
 enum tok peek_tok(void)

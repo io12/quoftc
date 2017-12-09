@@ -5,7 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ds.h"
+#include "ast.h"
+#include "check_semantics.h"
+#include "emit.h"
 #include "lex.h"
+#include "parse.h"
 #include "quoftc.h"
 
 const char *argv0;
@@ -57,9 +62,10 @@ char *estrdup(const char *s)
 	return strcpy(emalloc(strlen(s) + 1), s);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
 	int i;
+	struct ast ast;
 
 	argv0 = argv[0];
 	if (argc < 2) {
@@ -67,6 +73,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	for (i = 1; i < argc; i++) {
-		// TODO: Compile file
+		ast = parse_file(argv[i]);
+		check_ast(ast);
+		emit(ast);
+		free_ast(ast);
 	}
 }
