@@ -148,6 +148,18 @@ static enum unary_op tok_to_unary_op(enum tok tok)
 	}
 }
 
+static Vec *parse_compound_stmt(void)
+{
+	Vec *stmts;
+
+	expect_tok(OPEN_BRACE);
+	stmts = alloc_vec(free_stmt);
+	while (!accept_tok(CLOSE_BRACE)) {
+		vec_push(stmts, parse_stmt());
+	}
+	return stmts;
+}
+
 static struct expr *parse_lambda_expr(void)
 {
 	uint16_t lineno;
@@ -160,7 +172,7 @@ static struct expr *parse_lambda_expr(void)
 		vec_push(params, estrdup(yytext));
 	}
 	expect_tok(ARROW);
-	return ALLOC_LAMBDA_EXPR(lineno, params, parse_expr());
+	return ALLOC_LAMBDA_EXPR(lineno, params, parse_compound_stmt());
 }
 
 static struct expr *parse_array_lit_expr(void)
@@ -203,15 +215,9 @@ static struct expr *parse_tuple_or_paren_expr(void)
 static struct expr *parse_block_expr(void)
 {
 	uint16_t lineno;
-	Vec *stmts;
 
 	lineno = get_lineno();
-	expect_tok(OPEN_BRACE);
-	stmts = alloc_vec(free_stmt);
-	while (!accept_tok(CLOSE_BRACE)) {
-		vec_push(stmts, parse_stmt());
-	}
-	return ALLOC_BLOCK_EXPR(lineno, stmts);
+	return ALLOC_BLOCK_EXPR(lineno, parse_compound_stmt());
 }
 
 static struct expr *parse_paren_expr(void)
@@ -655,19 +661,19 @@ static struct decl *parse_decl(void)
 {
 	uint16_t lineno;
 	enum tok tok;
-	bool is_mut;
+	bool is_const;
 	struct type *type;
 	char *name;
-	struct expr *val;
+	struct expr *init;
 
 	lineno = get_lineno();
 	tok = next_tok();
 	switch (tok) {
 	case CONST:
-		is_mut = false;
+		is_const = true;
 		break;
 	case VAR:
-		is_mut = true;
+		is_const = false;
 		break;
 	default:
 		fatal_error(lineno, "Expected %s or %s, instead got %s",
@@ -679,12 +685,12 @@ static struct decl *parse_decl(void)
 	expect_tok(IDENT);
 	name = estrdup(yytext);
 	if (accept_tok(SEMICOLON)) {
-		val = NULL;
+		init = NULL;
 	} else {
-		val = parse_expr();
+		init = parse_expr();
 		expect_tok(SEMICOLON);
 	}
-	return ALLOC_DECL(lineno, is_mut, type, name, val);
+	return ALLOC_DECL(lineno, is_const, type, name, init);
 }
 
 static struct stmt *parse_decl_stmt(void)
@@ -693,18 +699,6 @@ static struct stmt *parse_decl_stmt(void)
 
 	lineno = get_lineno();
 	return ALLOC_DECL_STMT(lineno, parse_decl());
-}
-
-static Vec *parse_compound_stmt(void)
-{
-	Vec *stmts;
-
-	expect_tok(OPEN_BRACE);
-	stmts = alloc_vec(free_stmt);
-	while (!accept_tok(CLOSE_BRACE)) {
-		vec_push(stmts, parse_stmt());
-	}
-	return stmts;
 }
 
 static struct stmt *parse_if_stmt(void)

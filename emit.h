@@ -1,0 +1,1 @@
+void emit(struct ast);

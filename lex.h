@@ -51,7 +51,7 @@ union yystype {
 
 const char *get_filename(void);
 uint16_t get_lineno(void);
-char *tok_to_str(enum tok);
+const char *tok_to_str(enum tok);
 enum tok next_tok(void);
 enum tok peek_tok(void);
 bool accept_tok(enum tok);

@@ -148,8 +148,7 @@ struct expr {
 			struct expr *l, *r;
 		} bin_op;
 		struct {
-			Vec *params;
-			struct expr *body;
+			Vec *params, *body_stmts;
 		} lambda;
 		struct {
 			Vec *val;
@@ -246,10 +245,10 @@ void free_switch_case(void *);
 
 struct decl {
 	uint16_t lineno;
-	bool is_mut;
+	bool is_const;
 	struct type *type;
 	char *name;
-	struct expr *val;
+	struct expr *init;
 };
 
 #define ALLOC_DECL(...) \

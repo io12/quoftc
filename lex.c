@@ -381,9 +381,9 @@ static enum tok op(void)
 	return tok;
 }
 
-char *tok_to_str(enum tok tok)
+const char *tok_to_str(enum tok tok)
 {
-	static char *tok_names[] = {
+	static const char *tok_names[] = {
 		[CONST] = "`const`",
 		[VAR] = "`var`",
 		[IMPURE] = "`impure`",

@@ -580,13 +580,13 @@ static void check_decl(struct decl *decl)
 		fatal_error(decl->lineno, "Name `%s` already declared in scope",
 				decl->name);
 	}
-	if (is_global_scope(sym_tbl) && !is_pure_expr(decl->val)) {
+	if (is_global_scope(sym_tbl) && !is_pure_expr(decl->init)) {
 		fatal_error(decl->lineno, "Top level declaration of `%s` is "
 		                          "assigned to an impure expression",
 					  decl->name);
 	}
-	type_check(decl->val);
-	if (!are_types_compat(decl->type, decl->val->type)) {
+	type_check(decl->init);
+	if (!are_types_compat(decl->type, decl->init->type)) {
 		compat_error(decl->lineno);
 	}
 	insert_symbol(sym_tbl, decl->name, decl->type);

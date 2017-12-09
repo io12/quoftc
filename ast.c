@@ -128,7 +128,7 @@ void free_expr(void *p)
 		break;
 	case LAMBDA_EXPR:
 		free_vec(expr->u.lambda.params);
-		free_expr(expr->u.lambda.body);
+		free_vec(expr->u.lambda.body_stmts);
 		break;
 	case ARRAY_LIT_EXPR:
 		free_vec(expr->u.array_lit.val);
@@ -194,7 +194,7 @@ void free_decl(void *p)
 
 	free_type(decl->type);
 	free(decl->name);
-	free_expr(decl->val);
+	free_expr(decl->init);
 	free(decl);
 }
 
