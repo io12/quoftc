@@ -67,7 +67,7 @@ static struct type *parse_type(void)
 	case IDENT:
 	case IMPURE:
 		next_tok();
-		name = estrdup(yytext);
+		name = xstrdup(yytext);
 		if (accept_tok(LT)) {
 			params = alloc_vec(free_type);
 			do {
@@ -169,7 +169,7 @@ static struct expr *parse_lambda_expr(void)
 	expect_tok(BACKSLASH);
 	params = alloc_vec(free);
 	while (accept_tok(IDENT)) {
-		vec_push(params, estrdup(yytext));
+		vec_push(params, xstrdup(yytext));
 	}
 	expect_tok(ARROW);
 	return ALLOC_LAMBDA_EXPR(lineno, params, parse_compound_stmt());
@@ -353,7 +353,7 @@ static struct expr *parse_primary_expr(void)
 	switch (peek) {
 	case IDENT:
 		next_tok();
-		return ALLOC_IDENT_EXPR(lineno, estrdup(yytext));
+		return ALLOC_IDENT_EXPR(lineno, xstrdup(yytext));
 	case TRUE:
 		next_tok();
 		return ALLOC_BOOL_LIT_EXPR(lineno, true);
@@ -374,7 +374,7 @@ static struct expr *parse_primary_expr(void)
 		uint64_t len = yylval.string_lit.len;
 
 		next_tok();
-		return ALLOC_STRING_LIT_EXPR(lineno, estrdup(str), len);
+		return ALLOC_STRING_LIT_EXPR(lineno, xstrdup(str), len);
 	}
 	case PLUS_PLUS:
 	case MINUS_MINUS:
@@ -683,7 +683,7 @@ static struct decl *parse_decl(void)
 	}
 	type = parse_type();
 	expect_tok(IDENT);
-	name = estrdup(yytext);
+	name = xstrdup(yytext);
 	if (accept_tok(SEMICOLON)) {
 		init = NULL;
 	} else {

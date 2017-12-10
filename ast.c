@@ -41,10 +41,10 @@ void *dup_type(void *p)
 		return ALLOC_CHAR_TYPE(src->lineno);
 	case ALIAS_TYPE:
 		return ALLOC_ALIAS_TYPE(src->lineno,
-				estrdup(src->u.alias.name));
+				xstrdup(src->u.alias.name));
 	case PARAM_TYPE:
 		return ALLOC_PARAM_TYPE(src->lineno,
-				estrdup(src->u.param.name),
+				xstrdup(src->u.param.name),
 				dup_vec(src->u.param.params, dup_type));
 	case ARRAY_TYPE:
 		return ALLOC_ARRAY_TYPE(src->lineno, dup_type(src->u.array.l),

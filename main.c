@@ -42,24 +42,24 @@ static void *ptr_sanitize(void *p)
 	return p;
 }
 
-MALLOC void *emalloc(size_t size)
+MALLOC void *xmalloc(size_t size)
 {
 	return ptr_sanitize(malloc(size));
 }
 
-MALLOC void *ecalloc(size_t size)
+MALLOC void *xcalloc(size_t size)
 {
 	return ptr_sanitize(calloc(1, size));
 }
 
-void *erealloc(void *p, size_t size)
+void *xrealloc(void *p, size_t size)
 {
 	return ptr_sanitize(realloc(p, size));
 }
 
-char *estrdup(const char *s)
+char *xstrdup(const char *s)
 {
-	return strcpy(emalloc(strlen(s) + 1), s);
+	return strcpy(xmalloc(strlen(s) + 1), s);
 }
 
 int main(int argc, const char *argv[])

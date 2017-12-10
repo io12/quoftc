@@ -19,7 +19,7 @@ Vec *alloc_vec(void (*free_item)(void *))
 	vec->free_item = free_item;
 	vec->len = 0;
 	vec->nalloc = 8;
-	vec->data = emalloc(VEC_SIZE * sizeof(void *));
+	vec->data = xmalloc(VEC_SIZE * sizeof(void *));
 	return vec;
 }
 
@@ -64,7 +64,7 @@ Vec *vec_push(Vec *vec, void *val)
 	vec->len++;
 	if (vec->len > vec->nalloc) {
 		vec->nalloc *= 2;
-		vec->data = erealloc(vec->data, vec->nalloc * sizeof(void *));
+		vec->data = xrealloc(vec->data, vec->nalloc * sizeof(void *));
 	}
 	vec->data[vec->len - 1] = val;
 	return vec;

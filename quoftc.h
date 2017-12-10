@@ -16,14 +16,14 @@
 #define STR__(x) #x
 #define IN_RANGE(x, min, max) ((x) >= min && (x) <= max)
 #define EITHER_EQ(x, y, z) ((x) == (z) || (y) == (z))
-#define NEW(type) ((type *) emalloc(sizeof(type)))
-#define NEWC(type) ((type *) ecalloc(sizeof(type)))
+#define NEW(type) ((type *) xmalloc(sizeof(type)))
+#define NEWC(type) ((type *) xcalloc(sizeof(type)))
 
 NORETURN PRINTF(2, 3) void fatal_error(uint16_t, const char *, ...);
 NORETURN void internal_error(void);
-MALLOC void *emalloc(size_t);
-MALLOC void *ecalloc(size_t);
-void *erealloc(void *, size_t);
-char *estrdup(const char *);
+MALLOC void *xmalloc(size_t);
+MALLOC void *xcalloc(size_t);
+void *xrealloc(void *, size_t);
+char *xstrdup(const char *);
 
 const char *argv0;

@@ -48,7 +48,7 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 	case TUPLE_TYPE: {
 		Vec *types = type->u.tuple.types;
 		size_t len = vec_len(types), i;
-		LLVMTypeRef *llvm_types = emalloc(sizeof(LLVMTypeRef) * len);
+		LLVMTypeRef *llvm_types = xmalloc(sizeof(LLVMTypeRef) * len);
 
 		for (i = 0; i < len; i++) {
 			llvm_types[i] = get_llvm_type(vec_get(types, i));
@@ -58,7 +58,7 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 	case FUNC_TYPE: {
 		Vec *params = type->u.func.params;
 		size_t len = vec_len(params);
-		LLVMTypeRef *llvm_params = emalloc(sizeof(LLVMTypeRef) * len);
+		LLVMTypeRef *llvm_params = xmalloc(sizeof(LLVMTypeRef) * len);
 
 		return LLVMFunctionType(get_llvm_type(type->u.func.ret),
 				llvm_params, len, false);
