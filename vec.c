@@ -72,10 +72,16 @@ Vec *vec_push(Vec *vec, void *val)
 
 void vec_pop(Vec *vec)
 {
+	if (vec->len == 0) {
+		internal_error();
+	}
 	vec->free_item(vec->data[--vec->len]);
 }
 
 void *vec_top(Vec *vec)
 {
+	if (vec->len == 0) {
+		internal_error();
+	}
 	return vec->data[vec->len - 1];
 }
