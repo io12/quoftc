@@ -72,6 +72,33 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 
 static LLVMValueRef emit_expr(LLVMBuilderRef, struct expr *);
 
+static LLVMValueRef emit_inc_or_dec_expr(LLVMBuilderRef builder,
+		struct expr *expr)
+{
+	enum unary_op op = expr->u.unary_op.op;
+	LLVMValueRef ptr_val = emit_expr(builder, expr->u.unary_op.operand);
+	LLVMTypeRef type = get_llvm_type(expr->type);
+	LLVMValueRef old_val, one_val, new_val;
+	bool is_signed, is_inc, is_prefix;
+
+	is_signed = !is_unsigned_int_type(expr->type);
+	is_inc = (op == PRE_INC_OP || op == POST_INC_OP);
+	is_prefix = (op == PRE_INC_OP || op == PRE_DEC_OP);
+	old_val = LLVMBuildLoad(builder, ptr_val, "inc_or_dec_load");
+	one_val = LLVMConstInt(type, 1, is_signed);
+	if (is_inc) {
+		new_val = LLVMBuildAdd(builder, old_val, one_val, "inc_add");
+	} else {
+		new_val = LLVMBuildSub(builder, old_val, one_val, "dec_add");
+	}
+	LLVMBuildStore(builder, new_val, ptr_val);
+	if (is_prefix) {
+		return new_val;
+	} else {
+		return old_val;
+	}
+}
+
 static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 		struct expr *expr)
 {
@@ -81,28 +108,26 @@ static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 	LLVMTypeRef type = get_llvm_type(expr->type);
 
 	switch (op) {
-	case PRE_INC_OP: {
-		LLVMValueRef var_val, one_val, inc_val;
-		bool is_signed;
-
-		var_val = LLVMBuildLoad(builder, operand, "prefix_inc_load");
-		is_signed = !is_unsigned_int_type(expr->type);
-		one_val = LLVMConstInt(type, 1, is_signed);
-		inc_val = LLVMBuildAdd(builder, var_val, one_val,
-				"prefix_inc_add");
-		LLVMBuildStore(builder, inc_val, operand);
-		return inc_val;
-	}
+	case PRE_INC_OP:
 	case POST_INC_OP:
 	case PRE_DEC_OP:
 	case POST_DEC_OP:
+		return emit_inc_or_dec_expr(builder, expr);
 	case DEREF_OP:
+		return LLVMBuildLoad(builder, operand, "deref_load");
 	case REF_OP:
+		return operand;
 	case BIT_NOT_OP:
-	case LOG_NOT_OP:
-	default:
-		return NULL; // TODO: Stub
+		return LLVMBuildNot(builder, operand, "bitwise_not");
+	case LOG_NOT_OP: {
+		LLVMValueRef zero_val;
+
+		zero_val = LLVMConstInt(type, 0, false);
+		return LLVMBuildICmp(builder, LLVMIntEQ, operand, zero_val,
+				"logical_not");
 	}
+	}
+	internal_error();
 }
 
 static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
