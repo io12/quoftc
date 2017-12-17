@@ -125,7 +125,7 @@ static bool is_lvalue(struct expr *expr)
 	internal_error();
 }
 
-static bool is_unsigned_int_type(struct type *type)
+bool is_unsigned_int_type(struct type *type)
 {
 	switch (type->kind) {
 	case U8_TYPE:
@@ -181,8 +181,10 @@ static void type_check_unary_op(struct expr *expr)
 	struct expr *operand = expr->u.unary_op.operand;
 
 	switch (op) {
-	case INC_OP:
-	case DEC_OP:
+	case PRE_INC_OP:
+	case POST_INC_OP:
+	case PRE_DEC_OP:
+	case POST_DEC_OP:
 		if (!is_lvalue(operand)) {
 			lvalue_error(expr->lineno);
 		}

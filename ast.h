@@ -101,7 +101,8 @@ void *dup_type(void *);
 void free_type(void *);
 
 enum unary_op {
-	INC_OP, DEC_OP, DEREF_OP, REF_OP, BIT_NOT_OP, LOG_NOT_OP
+	PRE_INC_OP, POST_INC_OP, PRE_DEC_OP, POST_DEC_OP, DEREF_OP, REF_OP,
+	BIT_NOT_OP, LOG_NOT_OP
 };
 
 enum bin_op {

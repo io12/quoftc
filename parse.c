@@ -128,26 +128,6 @@ static struct type *parse_type(void)
 	}
 }
 
-static enum unary_op tok_to_unary_op(enum tok tok)
-{
-	switch (tok) {
-	case PLUS_PLUS:
-		return INC_OP;
-	case MINUS_MINUS:
-		return DEC_OP;
-	case STAR:
-		return DEREF_OP;
-	case AMP:
-		return REF_OP;
-	case TILDE:
-		return BIT_NOT_OP;
-	case BANG:
-		return LOG_NOT_OP;
-	default:
-		internal_error();
-	}
-}
-
 static Vec *parse_compound_stmt(void)
 {
 	Vec *stmts;
@@ -376,15 +356,6 @@ static struct expr *parse_primary_expr(void)
 		next_tok();
 		return ALLOC_STRING_LIT_EXPR(lineno, xstrdup(str), len);
 	}
-	case PLUS_PLUS:
-	case MINUS_MINUS:
-	case STAR:
-	case AMP:
-	case TILDE:
-	case BANG:
-		next_tok();
-		return ALLOC_UNARY_OP_EXPR(lineno, tok_to_unary_op(peek),
-				parse_primary_expr());
 	case BACKSLASH:
 		return parse_lambda_expr();
 	case OPEN_BRACKET:
@@ -402,6 +373,59 @@ static struct expr *parse_primary_expr(void)
 	}
 	fatal_error(lineno, "Expected a primary expression, instead got %s",
 			tok_to_str(peek));
+}
+
+static struct expr *parse_postfix_unary_expr(void)
+{
+	uint16_t lineno;
+	struct expr *operand;
+	enum unary_op op;
+
+	lineno = get_lineno();
+	operand = parse_primary_expr();
+	switch (peek_tok()) {
+	case PLUS_PLUS:
+		op = POST_INC_OP;
+		break;
+	case MINUS_MINUS:
+		op = POST_DEC_OP;
+		break;
+	default:
+		return operand;
+	}
+	return ALLOC_UNARY_OP_EXPR(lineno, op, operand);
+}
+
+static struct expr *parse_unary_expr(void)
+{
+	uint16_t lineno;
+	enum unary_op op;
+
+	lineno = get_lineno();
+	switch (peek_tok()) {
+	case PLUS_PLUS:
+		op = PRE_INC_OP;
+		break;
+	case MINUS_MINUS:
+		op = PRE_DEC_OP;
+		break;
+	case STAR:
+		op = DEREF_OP;
+		break;
+	case AMP:
+		op = REF_OP;
+		break;
+	case TILDE:
+		op = BIT_NOT_OP;
+		break;
+	case BANG:
+		op = LOG_NOT_OP;
+		break;
+	default:
+		return parse_postfix_unary_expr();
+	}
+	next_tok();
+	return ALLOC_UNARY_OP_EXPR(lineno, op, parse_unary_expr());
 }
 
 static bool is_bin_op(enum tok tok)
@@ -654,7 +678,7 @@ static struct expr *parse_expr__(struct expr *l, int min_prec)
 
 static struct expr *parse_expr(void)
 {
-	return parse_expr__(parse_primary_expr(), 0);
+	return parse_expr__(parse_unary_expr(), 0);
 }
 
 static struct decl *parse_decl(void)

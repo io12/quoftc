@@ -3,11 +3,14 @@
 #include <llvm-c/Core.h>
 #include "ds.h"
 #include "ast.h"
+#include "check_semantics.h"
 #include "lex.h"
 #include "quoftc.h"
+#include "symbol_table.h"
 #include "emit.h"
 
 static LLVMModuleRef module;
+static struct symbol_table sym_tbl;
 
 static LLVMTypeRef get_llvm_type(struct type *type)
 {
@@ -67,35 +70,107 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 	internal_error();
 }
 
-static LLVMValueRef emit_expr(struct expr *expr)
-{
-#if 0
-	switch (expr->kind) {
-	case BOOL_LIT_EXPR:
-	case INT_LIT_EXPR:
-	case FLOAT_LIT_EXPR:
-	case CHAR_LIT_EXPR:
-	case STRING_LIT_EXPR:
-	case UNARY_OP_EXPR:
-	case BIN_OP_EXPR: {
-		LLVMValueRef l = emit_expr(expr->u.bin_op.l),
-		             r = emit_expr(expr->u.bin_op.r);
+static LLVMValueRef emit_expr(LLVMBuilderRef, struct expr *);
 
-		switch (expr->u.bin_op.op) {
-		case '+':
-			return LLVMBuildAdd(llvm_builder, l, r, "add");
-		case '-':
-			return LLVMBuildSub(llvm_builder, l, r, "sub");
-		case '*':
-			return LLVMBuildMul(llvm_builder, l, r, "mul");
-		case '/':
-			return LLVMBuildDiv(llvm_builder, l, r, "div");
-		case '%':
-			return LLVMBuildMod(llvm_builder, l, r, "mod");
-		case '<':
-			return LLVMBuildMod(llvm_builder, LLVMRealULT, l, r, "mod");
-		}
+static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
+		struct expr *expr)
+{
+	enum unary_op op = expr->u.unary_op.op;
+	LLVMValueRef operand =
+		emit_expr(builder, expr->u.unary_op.operand);
+	LLVMTypeRef type = get_llvm_type(expr->type);
+
+	switch (op) {
+	case PRE_INC_OP: {
+		LLVMValueRef var_val, one_val, inc_val;
+		bool is_signed;
+
+		var_val = LLVMBuildLoad(builder, operand, "prefix_inc_load");
+		is_signed = !is_unsigned_int_type(expr->type);
+		one_val = LLVMConstInt(type, 1, is_signed);
+		inc_val = LLVMBuildAdd(builder, var_val, one_val,
+				"prefix_inc_add");
+		LLVMBuildStore(builder, inc_val, operand);
+		return inc_val;
 	}
+	case POST_INC_OP:
+	case PRE_DEC_OP:
+	case POST_DEC_OP:
+	case DEREF_OP:
+	case REF_OP:
+	case BIT_NOT_OP:
+	case LOG_NOT_OP:
+	default:
+		return NULL; // TODO: Stub
+	}
+}
+
+static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
+{
+	enum bin_op op = expr->u.bin_op.op;
+	LLVMValueRef l = emit_expr(builder, expr->u.bin_op.l),
+	             r = emit_expr(builder, expr->u.bin_op.r);
+
+	switch (op) {
+	case ADD_OP:
+		return LLVMBuildAdd(builder, l, r, "add");
+	case SUB_OP:
+		return LLVMBuildSub(builder, l, r, "sub");
+	case MULT_OP:
+		return LLVMBuildMul(builder, l, r, "mul");
+	case DIV_OP:
+		if (is_unsigned_int_type(expr->type)) {
+			return LLVMBuildUDiv(builder, l, r, "div");
+		} else {
+			return LLVMBuildSDiv(builder, l, r, "div");
+		}
+	case MOD_OP:
+		if (is_unsigned_int_type(expr->type)) {
+			return LLVMBuildURem(builder, l, r, "mod");
+		} else {
+			return LLVMBuildSRem(builder, l, r, "mod");
+		}
+	default:
+		return NULL; // TODO: More ops
+	}
+}
+
+static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
+{
+	LLVMTypeRef llvm_type = get_llvm_type(expr->type);
+
+	switch (expr->kind) {
+	case BOOL_LIT_EXPR: {
+		bool val = expr->u.bool_lit.val;
+
+		return LLVMConstInt(llvm_type, val, false);
+	}
+	case INT_LIT_EXPR: {
+		uint64_t val = expr->u.int_lit.val;
+
+		return LLVMConstInt(llvm_type, val, false);
+	}
+	case FLOAT_LIT_EXPR: {
+		double val = expr->u.float_lit.val;
+
+		return LLVMConstReal(llvm_type, val);
+	}
+	case CHAR_LIT_EXPR: {
+		uint32_t val = expr->u.char_lit.val;
+
+		return LLVMConstInt(llvm_type, val, false);
+	}
+	case STRING_LIT_EXPR: {
+		char *val = expr->u.string_lit.val;
+		uint64_t len = expr->u.string_lit.len;
+
+		// TODO: This function accepts `unsigned`
+		return LLVMConstString(val, len, true);
+	}
+	case UNARY_OP_EXPR:
+		return emit_unary_op_expr(builder, expr);
+	case BIN_OP_EXPR:
+		return emit_bin_op_expr(builder, expr);
 	case LAMBDA_EXPR:
 	case ARRAY_LIT_EXPR:
 	case IDENT_EXPR:
@@ -103,34 +178,34 @@ static LLVMValueRef emit_expr(struct expr *expr)
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
+	default:
+		return NULL; // TODO: Stub
 	}
-#endif
-	(void) expr;
-	return NULL;
 }
 
 static void emit_global_val(bool is_const, struct type *type, const char *name,
 		struct expr *init)
 {
 	LLVMValueRef global;
+	LLVMBuilderRef builder;
 	
 	global = LLVMAddGlobal(module, get_llvm_type(type), name);
-	LLVMSetInitializer(global, emit_expr(init));
+	builder = LLVMCreateBuilder();
+	LLVMSetInitializer(global, emit_expr(builder, init));
 	LLVMSetGlobalConstant(global, is_const);
 }
 
-#if 0
 static void emit_local_val(LLVMBuilderRef builder, struct type *type,
-		const char *name, struct expr *init)
+		char *name, struct expr *init)
 {
 	LLVMValueRef local_ptr;
 
 	local_ptr = LLVMBuildAlloca(builder, get_llvm_type(type), name);
 	if (init != NULL) {
-		LLVMBuildStore(builder, emit_expr(init), local_ptr);
+		LLVMBuildStore(builder, emit_expr(builder, init), local_ptr);
 	}
+	insert_symbol(sym_tbl, name, local_ptr);
 }
-#endif
 
 static LLVMValueRef get_current_func(LLVMBuilderRef builder)
 {
@@ -148,7 +223,7 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	LLVMBasicBlockRef then_block, else_block, merge_block;
 
 	func_val = get_current_func(builder);
-	cond_val = emit_expr(cond);
+	cond_val = emit_expr(builder, cond);
 	then_block = LLVMAppendBasicBlock(func_val, "then");
 	else_block = LLVMAppendBasicBlock(func_val, "else");
 	merge_block = LLVMAppendBasicBlock(func_val, "merge");
@@ -170,7 +245,7 @@ static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	LLVMBasicBlockRef do_block, after_do_block;
 
 	func_val = get_current_func(builder);
-	cond_val = emit_expr(cond);
+	cond_val = emit_expr(builder, cond);
 	do_block = LLVMAppendBasicBlock(func_val, "do");
 	after_do_block = LLVMAppendBasicBlock(func_val, "after_do");
 	LLVMPositionBuilderAtEnd(builder, do_block);
@@ -193,11 +268,14 @@ static void emit_stmts(LLVMBuilderRef builder, Vec *stmts)
 static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
 	switch (stmt->kind) {
-	case DECL_STMT:
-		// TODO: emit_decl(LOCAL_SCOPE, stmt->u.decl.decl);
+	case DECL_STMT: {
+		struct decl *decl = stmt->u.decl.decl;
+
+		emit_local_val(builder, decl->type, decl->name, decl->init);
 		break;
+	}
 	case EXPR_STMT:
-		emit_expr(stmt->u.expr.expr);
+		emit_expr(builder, stmt->u.expr.expr);
 		break;
 	case IF_STMT:
 		emit_if_stmt(builder, stmt);
@@ -222,15 +300,23 @@ static void emit_func(struct type *type, const char *name, struct expr *expr)
 	LLVMBasicBlockRef block;
 	LLVMBuilderRef builder;
 	size_t i;
+	char *param_name;
+	LLVMValueRef param_val;
 
-	(void) param_names; // TODO: Use this
 	func_val = LLVMAddFunction(module, name, get_llvm_type(type));
 	block = LLVMAppendBasicBlock(func_val, name);
 	builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, block);
+	enter_new_scope(sym_tbl);
+	for (i = 0; i < vec_len(param_names); i++) {
+		param_name = vec_get(param_names, i);
+		param_val = LLVMGetParam(func_val, i);
+		insert_symbol(sym_tbl, param_name, param_val);
+	}
 	for (i = 0; i < vec_len(body_stmts); i++) {
 		emit_stmt(builder, vec_get(body_stmts, i));
 	}
+	leave_scope(sym_tbl);
 }
 
 static void emit_global_decl(struct decl *decl)
@@ -270,8 +356,11 @@ void emit(struct ast ast)
 	Vec *decls = ast.decls;
 	size_t i;
 
+	sym_tbl = alloc_symbol_table();
+	enter_new_scope(sym_tbl); // Global scope
 	module = LLVMModuleCreateWithName(get_filename());
 	for (i = 0; i < vec_len(decls); i++) {
 		emit_global_decl(vec_get(decls, i));
 	}
+	free_symbol_table(sym_tbl);
 }
