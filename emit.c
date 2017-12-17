@@ -55,7 +55,7 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 		// TODO: Resolve type
 	case ARRAY_TYPE: {
 		LLVMTypeRef item_type = get_llvm_type(type->u.array.l);
-		uint64_t len; // TODO: Too large
+		uint64_t len = type->u.array.len; // TODO: Too large
 
 		if (len == 0) {
 			return get_fat_ptr_type(item_type);
@@ -155,19 +155,35 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 
 	switch (op) {
 	case ADD_OP:
-		return LLVMBuildAdd(builder, l, r, "add");
+		if (is_float_type(expr->type)) {
+			return LLVMBuildFAdd(builder, l, r, "add");
+		} else {
+			return LLVMBuildAdd(builder, l, r, "add");
+		}
 	case SUB_OP:
-		return LLVMBuildSub(builder, l, r, "sub");
+		if (is_float_type(expr->type)) {
+			return LLVMBuildFSub(builder, l, r, "sub");
+		} else {
+			return LLVMBuildSub(builder, l, r, "sub");
+		}
 	case MUL_OP:
-		return LLVMBuildMul(builder, l, r, "mul");
+		if (is_float_type(expr->type)) {
+			return LLVMBuildFMul(builder, l, r, "mul");
+		} else {
+			return LLVMBuildMul(builder, l, r, "mul");
+		}
 	case DIV_OP:
-		if (is_unsigned_int_type(expr->type)) {
+		if (is_float_type(expr->type)) {
+			return LLVMBuildFDiv(builder, l, r, "div");
+		} else if (is_unsigned_int_type(expr->type)) {
 			return LLVMBuildUDiv(builder, l, r, "div");
 		} else {
 			return LLVMBuildSDiv(builder, l, r, "div");
 		}
 	case MOD_OP:
-		if (is_unsigned_int_type(expr->type)) {
+		if (is_float_type(expr->type)) {
+			return LLVMBuildFRem(builder, l, r, "mod");
+		} else if (is_unsigned_int_type(expr->type)) {
 			return LLVMBuildURem(builder, l, r, "mod");
 		} else {
 			return LLVMBuildSRem(builder, l, r, "mod");
