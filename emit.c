@@ -12,6 +12,16 @@
 static LLVMModuleRef module;
 static struct symbol_table sym_tbl;
 
+static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
+{
+	LLVMTypeRef *struct_item_types;
+
+	struct_item_types = xmalloc(sizeof(LLVMTypeRef) * 2);
+	struct_item_types[0] = LLVMInt64Type(); // TODO: Change max array size
+	struct_item_types[1] = LLVMPointerType(item_type, 0);
+	return LLVMStructType(struct_item_types, 2, false);
+}
+
 static LLVMTypeRef get_llvm_type(struct type *type)
 {
 	switch (type->kind) {
@@ -43,9 +53,16 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 		// TODO: Resolve type
 	case PARAM_TYPE:
 		// TODO: Resolve type
-	case ARRAY_TYPE:
-		//return LLVMArrayType(get_llvm_type(type->u.array.l),
-		///* TODO: eval len */);
+	case ARRAY_TYPE: {
+		LLVMTypeRef item_type = get_llvm_type(type->u.array.l);
+		uint64_t len; // TODO: Too large
+
+		if (len == 0) {
+			return get_fat_ptr_type(item_type);
+		} else {
+			return LLVMArrayType(item_type, len);
+		}
+	}
 	case POINTER_TYPE:
 		return LLVMPointerType(get_llvm_type(type->u.pointer.l), 0);
 	case TUPLE_TYPE: {
