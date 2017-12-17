@@ -403,7 +403,7 @@ static void type_check_bin_op(struct expr *expr)
 	switch (op) {
 	case ADD_OP:
 	case SUB_OP:
-	case MULT_OP:
+	case MUL_OP:
 	case DIV_OP:
 	case MOD_OP:
 		if (!is_num_type(l->type)) {

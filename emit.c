@@ -116,7 +116,7 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 		return LLVMBuildAdd(builder, l, r, "add");
 	case SUB_OP:
 		return LLVMBuildSub(builder, l, r, "sub");
-	case MULT_OP:
+	case MUL_OP:
 		return LLVMBuildMul(builder, l, r, "mul");
 	case DIV_OP:
 		if (is_unsigned_int_type(expr->type)) {

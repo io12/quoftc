@@ -38,7 +38,7 @@ static uint64_t eval_bin_op_const_expr(struct expr *expr)
 		return l_val + r_val;
 	case SUB_OP:
 		return l_val - r_val;
-	case MULT_OP:
+	case MUL_OP:
 		return l_val * r_val;
 	case DIV_OP:
 		return l_val / r_val;
