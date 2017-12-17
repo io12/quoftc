@@ -319,7 +319,7 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 		return emit_le(builder, l, r, type);
 	case GT_EQ_OP:
 		return emit_ge(builder, l, r, type);
-	case LOG_EQ_OP:
+	case EQ_OP:
 		return emit_eq(builder, l, r, type);
 	case NOT_EQ_OP:
 		return emit_ne(builder, l, r, type);

@@ -469,7 +469,7 @@ static enum bin_op tok_to_bin_op(enum tok tok)
 	case GT_EQ:
 		return GT_EQ_OP;
 	case EQ_EQ:
-		return LOG_EQ_OP;
+		return EQ_OP;
 	case BANG_EQ:
 		return NOT_EQ_OP;
 	case AMP:
@@ -552,7 +552,7 @@ static struct {
 	[GT_EQ_OP] = {
 		.prec = 5, .assoc = NON_ASSOC
 	},
-	[LOG_EQ_OP] = {
+	[EQ_OP] = {
 		.prec = 4, .assoc = L_ASSOC
 	},
 	[NOT_EQ_OP] = {

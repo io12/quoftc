@@ -426,7 +426,7 @@ static void type_check_bin_op(struct expr *expr)
 		}
 		expr->type = ALLOC_BOOL_TYPE(expr->lineno);
 		break;
-	case LOG_EQ_OP:
+	case EQ_OP:
 	case NOT_EQ_OP:
 		if (!are_types_compat(l->type, r->type)) {
 			compat_error(expr->lineno);
