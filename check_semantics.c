@@ -456,7 +456,7 @@ static void type_check_bin_op(struct expr *expr)
 		break;
 	case ADD_ASSIGN_OP:
 	case SUB_ASSIGN_OP:
-	case MULT_ASSIGN_OP:
+	case MUL_ASSIGN_OP:
 	case DIV_ASSIGN_OP:
 	case MOD_ASSIGN_OP:
 		if (!is_num_type(l->type)) {

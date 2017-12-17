@@ -275,7 +275,7 @@ static bool is_assignment(enum bin_op op)
 	case ASSIGN_OP:
 	case ADD_ASSIGN_OP:
 	case SUB_ASSIGN_OP:
-	case MULT_ASSIGN_OP:
+	case MUL_ASSIGN_OP:
 	case DIV_ASSIGN_OP:
 	case MOD_ASSIGN_OP:
 	case BIT_AND_ASSIGN_OP:
@@ -344,7 +344,7 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 	case SUB_ASSIGN_OP:
 		new_val = emit_sub(builder, old_val, r, type);
 		goto assign_store;
-	case MULT_ASSIGN_OP:
+	case MUL_ASSIGN_OP:
 		new_val = emit_mul(builder, old_val, r, type);
 		goto assign_store;
 	case DIV_ASSIGN_OP:

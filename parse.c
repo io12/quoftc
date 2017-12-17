@@ -495,7 +495,7 @@ static enum bin_op tok_to_bin_op(enum tok tok)
 	case MINUS_EQ:
 		return SUB_ASSIGN_OP;
 	case STAR_EQ:
-		return MULT_ASSIGN_OP;
+		return MUL_ASSIGN_OP;
 	case SLASH_EQ:
 		return DIV_ASSIGN_OP;
 	case PERCENT_EQ:
@@ -591,7 +591,7 @@ static struct {
 	[SUB_ASSIGN_OP] = {
 		.prec = 0, .assoc = NON_ASSOC
 	},
-	[MULT_ASSIGN_OP] = {
+	[MUL_ASSIGN_OP] = {
 		.prec = 0, .assoc = NON_ASSOC
 	},
 	[DIV_ASSIGN_OP] = {
