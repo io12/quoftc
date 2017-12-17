@@ -157,7 +157,7 @@ static bool is_int_type(struct type *type)
 		is_signed_int_type(type);
 }
 
-static bool is_float_type(struct type *type)
+bool is_float_type(struct type *type)
 {
 	switch (type->kind) {
 	case F32_TYPE:
