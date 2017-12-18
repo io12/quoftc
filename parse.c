@@ -80,30 +80,43 @@ static struct type *parse_type(void)
 		}
 		break;
 	case U8:
+		next_tok();
 		return ALLOC_U8_TYPE(lineno);
 	case U16:
+		next_tok();
 		return ALLOC_U16_TYPE(lineno);
 	case U32:
+		next_tok();
 		return ALLOC_U32_TYPE(lineno);
 	case U64:
+		next_tok();
 		return ALLOC_U64_TYPE(lineno);
 	case I8:
+		next_tok();
 		return ALLOC_I8_TYPE(lineno);
 	case I16:
+		next_tok();
 		return ALLOC_I16_TYPE(lineno);
 	case I32:
+		next_tok();
 		return ALLOC_I32_TYPE(lineno);
 	case I64:
+		next_tok();
 		return ALLOC_I64_TYPE(lineno);
 	case F32:
+		next_tok();
 		return ALLOC_F32_TYPE(lineno);
 	case F64:
+		next_tok();
 		return ALLOC_F64_TYPE(lineno);
 	case BOOL:
+		next_tok();
 		return ALLOC_BOOL_TYPE(lineno);
 	case VOID:
+		next_tok();
 		return ALLOC_VOID_TYPE(lineno);
 	case CHAR:
+		next_tok();
 		return ALLOC_CHAR_TYPE(lineno);
 	default:
 		fatal_error(lineno, "Expected a primary type, instead got %s",
@@ -711,6 +724,7 @@ static struct decl *parse_decl(void)
 	if (accept_tok(SEMICOLON)) {
 		init = NULL;
 	} else {
+		expect_tok(EQ);
 		init = parse_expr();
 		expect_tok(SEMICOLON);
 	}

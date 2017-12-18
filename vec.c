@@ -39,6 +39,9 @@ void free_vec(Vec *vec)
 {
 	size_t i;
 
+	if (vec == NULL) {
+		return;
+	}
 	for (i = 0; i < vec->len; i++) {
 		vec->free_item(vec_get(vec, i));
 	}

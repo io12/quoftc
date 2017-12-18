@@ -69,6 +69,9 @@ void *hash_table_get(HashTable *ht, const char *key)
 	KeyValPair *pair;
 
 	pairs = ht->data[hash(key)];
+	if (pairs == NULL) {
+		return NULL;
+	}
 	for (i = 0; i < vec_len(pairs); i++) {
 		pair = vec_get(pairs, i);
 		if (strcmp(key, pair->key) == 0) {

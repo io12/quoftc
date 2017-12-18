@@ -19,7 +19,7 @@ char yytext[MAX_IDENT_SIZE + 1];
 union yystype yylval;
 static const char *filename;
 static uint16_t lineno;
-static char *inp;
+static char *inp_origin, *inp;
 
 const char *get_filename(void)
 {
@@ -212,7 +212,7 @@ static enum tok ident(void)
 	if (!is_ident_head(*inp)) {
 		internal_error();
 	}
-	for (i = 0; is_ident_tail(inp[i]); i++) {
+	for (i = 0; is_ident_tail(*inp); i++) {
 		if (i == MAX_IDENT_SIZE) {
 			fatal_error(lineno, "Identifier longer than the "
 			                    "maximum allowed size "
@@ -578,12 +578,13 @@ void init_lex(const char *filename_)
 		file_error();
 	}
 	inp[file_len] = '\0';
+	inp_origin = inp;
 	lineno = 1;
 }
 
 void cleanup_lex(void)
 {
-	if (munmap(inp, file_len + 1) == -1) {
+	if (munmap(inp_origin, file_len + 1) == -1) {
 		file_error();
 	}
 }
