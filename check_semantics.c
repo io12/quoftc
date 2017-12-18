@@ -578,20 +578,38 @@ static void type_check(struct expr *expr)
 static void check_decl(struct decl *decl)
 // TODO: Add a maximum nest level
 {
-	if (lookup_symbol(sym_tbl, decl->name) != NULL) {
-		fatal_error(decl->lineno, "Name `%s` already declared in scope",
-				decl->name);
+	uint16_t lineno = decl->lineno;
+	bool is_const = decl->is_const;
+	struct type *type = decl->type;
+	char *name = decl->name;
+	struct expr *init = decl->init;
+
+	if (lookup_symbol(sym_tbl, name) != NULL) {
+		fatal_error(lineno, "Name `%s` already declared in scope",
+				name);
 	}
-	if (is_global_scope(sym_tbl) && !is_pure_expr(decl->init)) {
-		fatal_error(decl->lineno, "Top level declaration of `%s` is "
-		                          "assigned to an impure expression",
-					  decl->name);
+	if (is_global_scope(sym_tbl)) {
+		if (init == NULL) {
+			fatal_error(lineno, "Top level declaration of `%s` "
+			                    "lacks an initializer", name);
+		}
+		if (!is_pure_expr(init)) {
+			fatal_error(lineno, "Top level declaration of "
+			                    "`%s` is assigned to an impure "
+			                    "expression", name);
+		}
 	}
-	type_check(decl->init);
-	if (!are_types_compat(decl->type, decl->init->type)) {
-		compat_error(decl->lineno);
+	if (is_const && init == NULL) {
+		fatal_error(lineno, "Constant declaration of `%s` lacks an "
+		                    "initializer", name);
 	}
-	insert_symbol(sym_tbl, decl->name, decl->type);
+	if (init != NULL) {
+		type_check(init);
+		if (!are_types_compat(type, init->type)) {
+			compat_error(lineno);
+		}
+	}
+	insert_symbol(sym_tbl, name, type);
 }
 
 void check_ast(struct ast ast)
