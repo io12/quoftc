@@ -39,11 +39,57 @@ static void inc_lineno(void)
 	}
 }
 
-static void skipspaces(void)
+static void skip_line_comment(void)
 {
-	while (isspace(*inp)) {
-		if (*inp++ == '\n') {
+	if (!(inp[0] == '/' && inp[1] == '/')) {
+		internal_error();
+	}
+	inp += 2;
+	for (;;) {
+		if (*inp == '\n') {
+			inp++;
 			inc_lineno();
+			return;
+		}
+		if (*inp == '\0') {
+			fatal_error(lineno, "End of file in line comment");
+		}
+		inp++;
+	}
+}
+
+static void skip_block_comment(void)
+{
+	if (!(inp[0] == '/' && inp[1] == '*')) {
+		internal_error();
+	}
+	inp += 2;
+	for (;;) {
+		if (inp[0] == '*' && inp[1] == '/') {
+			inp += 2;
+			return;
+		}
+		if (*inp == '\0') {
+			fatal_error(lineno, "End of file in block comment");
+		}
+		inp++;
+	}
+}
+
+static void skip_spaces(void)
+{
+	for (;;) {
+		if (isspace(*inp)) {
+			if (*inp == '\n') {
+				inc_lineno();
+			}
+			inp++;
+		} else if (inp[0] == '/' && inp[1] == '/') {
+			skip_line_comment();
+		} else if (inp[0] == '/' && inp[1] == '*') {
+			skip_block_comment();
+		} else {
+			return;
 		}
 	}
 }
@@ -479,7 +525,7 @@ const char *tok_to_str(enum tok tok)
 
 enum tok next_tok(void)
 {
-	skipspaces();
+	skip_spaces();
 	switch (*inp) {
 	case '\'':
 		return char_lit();
