@@ -69,6 +69,9 @@ static void skip_block_comment(void)
 			inp += 2;
 			return;
 		}
+		if (*inp == '\n') {
+			inc_lineno();
+		}
 		if (*inp == '\0') {
 			fatal_error(lineno, "End of file in block comment");
 		}
@@ -566,11 +569,20 @@ enum tok next_tok(void)
 
 enum tok peek_tok(void)
 {
+	char yytext_save[MAX_IDENT_SIZE + 1];
+	union yystype yylval_save;
+	uint16_t lineno_save;
 	char *inp_save;
 	enum tok tok;
 
+	strncpy(yytext_save, yytext, sizeof(yytext));
+	yylval_save = yylval;
+	lineno_save = lineno;
 	inp_save = inp;
 	tok = next_tok();
+	strncpy(yytext, yytext_save, sizeof(yytext));
+	yylval = yylval_save;
+	lineno = lineno_save;
 	inp = inp_save;
 	return tok;
 }
