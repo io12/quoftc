@@ -17,7 +17,7 @@ static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 	LLVMTypeRef *struct_item_types;
 
 	struct_item_types = xmalloc(sizeof(LLVMTypeRef) * 2);
-	struct_item_types[0] = LLVMInt64Type(); // TODO: Change max array size
+	struct_item_types[0] = LLVMInt16Type();
 	struct_item_types[1] = LLVMPointerType(item_type, 0);
 	return LLVMStructType(struct_item_types, 2, false);
 }
