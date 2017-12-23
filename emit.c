@@ -430,8 +430,10 @@ static void emit_global_val(bool is_const, struct type *type, const char *name,
 	
 	global = LLVMAddGlobal(module, get_llvm_type(type), name);
 	builder = LLVMCreateBuilder();
+	// Constexpr?
 	LLVMSetInitializer(global, emit_expr(builder, init));
 	LLVMSetGlobalConstant(global, is_const);
+	LLVMDisposeBuilder(builder);
 }
 
 static void emit_local_val(LLVMBuilderRef builder, struct type *type,
@@ -555,6 +557,7 @@ static void emit_func(struct type *type, const char *name, struct expr *expr)
 	// TODO: Return the result
 	emit_expr(builder, body);
 	leave_scope(sym_tbl);
+	LLVMDisposeBuilder(builder);
 }
 
 static void emit_global_decl(struct decl *decl)
