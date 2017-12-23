@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "ds.h"
-#include "ast.h"
 #include "symbol_table.h"
 
 static void free_scope(void *scope)
