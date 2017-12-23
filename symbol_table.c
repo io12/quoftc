@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include "ds.h"
 #include "symbol_table.h"
