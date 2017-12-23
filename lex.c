@@ -579,37 +579,37 @@ void lex(struct tok *tok)
 	switch (*inp) {
 	case '\'':
 		char_lit(tok);
-		break;
+		return;
 	case '"':
 		string_lit(tok);
-		break;
+		return;
 	case '[':
 		inp++;
 		init_basic_tok(tok, OPEN_BRACKET);
-		break;
+		return;
 	case ']':
 		inp++;
 		init_basic_tok(tok, CLOSE_BRACKET);
-		break;
+		return;
 	case '(':
 		inp++;
 		init_basic_tok(tok, OPEN_PAREN);
-		break;
+		return;
 	case ')':
 		inp++;
 		init_basic_tok(tok, CLOSE_PAREN);
-		break;
+		return;
 	case '{':
 		inp++;
 		init_basic_tok(tok, OPEN_BRACE);
-		break;
+		return;
 	case '}':
 		inp++;
 		init_basic_tok(tok, CLOSE_BRACE);
-		break;
+		return;
 	case '\0':
 		init_basic_tok(tok, TEOF);
-		break;
+		return;
 	}
 	if (is_op_char(*inp)) {
 		op(tok);
@@ -617,8 +617,9 @@ void lex(struct tok *tok)
 		ident(tok);
 	} else if (isdigit(*inp)) {
 		num_lit(tok);
+	} else {
+		fatal_error(lineno, "Invalid token `%c`", *inp);
 	}
-	fatal_error(lineno, "Invalid token `%c`", *inp);
 }
 
 static NORETURN void file_error(void)
