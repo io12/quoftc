@@ -547,7 +547,7 @@ static void type_check(struct expr *expr)
 		expr->type = ALLOC_CHAR_TYPE(expr->lineno);
 		break;
 	case STRING_LIT_EXPR: {
-		uint64_t len = expr->u.string_lit.len;
+		uint16_t len = expr->u.string_lit.len;
 
 		expr->type = ALLOC_ARRAY_TYPE(expr->lineno,
 				ALLOC_CHAR_TYPE(expr->lineno), len);

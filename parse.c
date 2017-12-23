@@ -450,7 +450,7 @@ static struct expr *parse_primary_expr(void)
 	}
 	case STRING_LIT: {
 		char *str = xstrdup(cur_tok.u.string_lit.val);
-		uint64_t len = cur_tok.u.string_lit.len;
+		uint16_t len = cur_tok.u.string_lit.len;
 
 		consume_tok();
 		return ALLOC_STRING_LIT_EXPR(lineno, str, len);

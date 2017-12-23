@@ -138,7 +138,7 @@ struct expr {
 		} char_lit;
 		struct {
 			char *val;
-			uint64_t len;
+			uint16_t len;
 		} string_lit;
 		struct {
 			enum unary_op op;

@@ -47,7 +47,7 @@ struct tok {
 		uint32_t char_lit;
 		struct {
 			char val[MAX_STRING_SIZE + 1];
-			uint64_t len;
+			uint16_t len;
 		} string_lit;
 		uint64_t int_lit;
 		double float_lit;

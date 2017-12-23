@@ -128,7 +128,7 @@ invalid:
 }
 
 static void init_string_lit_tok(struct tok *tok, char val[MAX_STRING_SIZE + 1],
-		uint64_t len)
+		uint16_t len)
 {
 	tok->kind = STRING_LIT;
 	tok->lineno = lineno;
@@ -139,7 +139,7 @@ static void init_string_lit_tok(struct tok *tok, char val[MAX_STRING_SIZE + 1],
 static void string_lit(struct tok *tok)
 {
 	char text[MAX_STRING_SIZE + 1], *p;
-	uint64_t len;
+	uint16_t len;
 
 	assert(*inp == '"');
 	inp++;

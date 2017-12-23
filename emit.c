@@ -401,7 +401,7 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	}
 	case STRING_LIT_EXPR: {
 		char *val = expr->u.string_lit.val;
-		uint64_t len = expr->u.string_lit.len;
+		uint16_t len = expr->u.string_lit.len;
 
 		// TODO: This function accepts `unsigned`
 		return LLVMConstString(val, len, true);
