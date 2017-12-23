@@ -40,7 +40,7 @@ struct type {
 		} param;
 		struct {
 			struct type *l;
-			uint64_t len; // Zero if unspecified
+			uint16_t len; // Zero if unspecified
 		} array;
 		struct {
 			struct type *l;

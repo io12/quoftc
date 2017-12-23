@@ -55,7 +55,7 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 		// TODO: Resolve type
 	case ARRAY_TYPE: {
 		LLVMTypeRef item_type = get_llvm_type(type->u.array.l);
-		uint64_t len = type->u.array.len; // TODO: Too large
+		uint16_t len = type->u.array.len;
 
 		if (len == 0) {
 			return get_fat_ptr_type(item_type);

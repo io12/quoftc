@@ -10,6 +10,7 @@
 #include "parse.h"
 
 #define MAX_FUNC_ARGS 127
+#define MAX_ARRAY_LEN UINT16_MAX
 
 static struct tok cur_tok, lookahead_tok;
 
@@ -82,24 +83,38 @@ static struct type *parse_tuple_or_func_type(void)
 	}
 }
 
-static struct type *parse_type_tail(struct type *type)
+static struct type *parse_array_type_suffix(struct type *type)
 {
 	uint16_t lineno;
 	uint64_t array_len;
 	struct expr *array_len_expr;
 
+	lineno = cur_tok.lineno;
+	expect_tok(OPEN_BRACKET);
+	if (accept_tok(CLOSE_BRACKET)) {
+		array_len = 0;
+	} else {
+		array_len_expr = parse_expr();
+		array_len = eval_const_expr(array_len_expr);
+		if (array_len > MAX_ARRAY_LEN) {
+			fatal_error(array_len_expr->lineno,
+					"Specified array length is greater "
+					"than "XSTR(MAX_ARRAY_LEN));
+		}
+		free(array_len_expr);
+		expect_tok(CLOSE_BRACKET);
+	}
+	return ALLOC_ARRAY_TYPE(lineno, type, array_len);
+}
+
+static struct type *parse_type_suffix(struct type *type)
+{
+	uint16_t lineno;
+
 	for (;;) {
 		lineno = cur_tok.lineno;
-		if (accept_tok(OPEN_BRACKET)) {
-			if (accept_tok(CLOSE_BRACKET)) {
-				array_len = 0;
-			} else {
-				array_len_expr = parse_expr();
-				array_len = eval_const_expr(array_len_expr);
-				free(array_len_expr);
-				expect_tok(CLOSE_BRACKET);
-			}
-			type = ALLOC_ARRAY_TYPE(lineno, type, array_len);
+		if (cur_tok.kind == OPEN_BRACKET) {
+			type = parse_array_type_suffix(type);
 		} else if (accept_tok(STAR)) {
 			type = ALLOC_POINTER_TYPE(lineno, type);
 		} else {
@@ -191,7 +206,7 @@ static struct type *parse_type(void)
 		fatal_error(lineno, "Expected a primary type, instead got %s",
 				tok_to_str(cur_tok.kind));
 	}
-	return parse_type_tail(type);
+	return parse_type_suffix(type);
 }
 
 static Vec *parse_compound_stmt(void)
@@ -235,6 +250,10 @@ static struct expr *parse_array_lit_expr(void)
 	items = alloc_vec(free_expr);
 	do {
 		vec_push(items, parse_expr());
+		if (vec_len(items) > MAX_ARRAY_LEN) {
+			fatal_error(lineno, "Array literal has more than "
+			                     XSTR(MAX_ARRAY_LEN)" items");
+		}
 	} while (accept_tok(COMMA));
 	expect_tok(CLOSE_BRACKET);
 	return ALLOC_ARRAY_LIT_EXPR(lineno, items);

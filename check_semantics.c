@@ -272,7 +272,7 @@ static bool are_types_compat(struct type *type1, struct type *type2)
 		// TODO: Stub
 	case ARRAY_TYPE: {
 		struct type *subtype1, *subtype2;
-		uint64_t len1, len2;
+		uint16_t len1, len2;
 
 		if (type2->kind != ARRAY_TYPE) {
 			return false;
@@ -350,7 +350,7 @@ static struct type *dup_stricter_type(struct type *type1, struct type *type2)
 		// TODO: Stub
 	case ARRAY_TYPE: {
 		struct type *subtype1, *subtype2, *stricter_subtype;
-		uint64_t len;
+		uint16_t len;
 
 		subtype1 = type1->u.array.l;
 		subtype2 = type2->u.array.l;
