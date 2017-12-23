@@ -447,7 +447,7 @@ static void emit_local_val(LLVMBuilderRef builder, struct type *type,
 	insert_symbol(sym_tbl, name, local_ptr);
 }
 
-static LLVMValueRef get_current_func(LLVMBuilderRef builder)
+static LLVMValueRef get_cur_func(LLVMBuilderRef builder)
 {
 	return LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 }
@@ -462,7 +462,7 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	LLVMValueRef func_val, cond_val;
 	LLVMBasicBlockRef then_block, else_block, merge_block;
 
-	func_val = get_current_func(builder);
+	func_val = get_cur_func(builder);
 	cond_val = emit_expr(builder, cond);
 	then_block = LLVMAppendBasicBlock(func_val, "then");
 	else_block = LLVMAppendBasicBlock(func_val, "else");
@@ -484,7 +484,7 @@ static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	LLVMValueRef func_val, cond_val;
 	LLVMBasicBlockRef do_block, after_do_block;
 
-	func_val = get_current_func(builder);
+	func_val = get_cur_func(builder);
 	cond_val = emit_expr(builder, cond);
 	do_block = LLVMAppendBasicBlock(func_val, "do");
 	after_do_block = LLVMAppendBasicBlock(func_val, "after_do");
@@ -534,8 +534,8 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 
 static void emit_func(struct type *type, const char *name, struct expr *expr)
 {
-	Vec *param_names = expr->u.lambda.params,
-	    *body_stmts = expr->u.lambda.body_stmts;
+	Vec *param_names = expr->u.lambda.params;
+	struct expr *body = expr->u.lambda.body;
 	LLVMValueRef func_val;
 	LLVMBasicBlockRef block;
 	LLVMBuilderRef builder;
@@ -553,9 +553,8 @@ static void emit_func(struct type *type, const char *name, struct expr *expr)
 		param_val = LLVMGetParam(func_val, i);
 		insert_symbol(sym_tbl, param_name, param_val);
 	}
-	for (i = 0; i < vec_len(body_stmts); i++) {
-		emit_stmt(builder, vec_get(body_stmts, i));
-	}
+	// TODO: Return the result
+	emit_expr(builder, body);
 	leave_scope(sym_tbl);
 }
 

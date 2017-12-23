@@ -149,7 +149,8 @@ struct expr {
 			struct expr *l, *r;
 		} bin_op;
 		struct {
-			Vec *params, *body_stmts;
+			Vec *params;
+			struct expr *body;
 		} lambda;
 		struct {
 			Vec *val;

@@ -1,8 +1,9 @@
 #define MAX_IDENT_SIZE 512
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
 #define MAX_NUM_CHARS 128 // TODO: Maybe change this?
+#define MAX_OP_SIZE 3
 
-enum tok {
+enum tok_kind {
 	INVALID_TOK,
 
 	CONST, VAR,
@@ -39,25 +40,23 @@ enum tok {
 
 	TEOF
 };
-union yystype {
-	uint32_t char_lit;
-	struct {
-		char val[MAX_STRING_SIZE + 1];
-		uint64_t len;
-	} string_lit;
-	uint64_t int_lit;
-	double float_lit;
+struct tok {
+	enum tok_kind kind;
+	uint16_t lineno;
+	union {
+		uint32_t char_lit;
+		struct {
+			char val[MAX_STRING_SIZE + 1];
+			uint64_t len;
+		} string_lit;
+		uint64_t int_lit;
+		double float_lit;
+		char ident[MAX_IDENT_SIZE + 1];
+	} u;
 };
 
 const char *get_filename(void);
-uint16_t get_lineno(void);
-const char *tok_to_str(enum tok);
-enum tok next_tok(void);
-enum tok peek_tok(void);
-bool accept_tok(enum tok);
-void expect_tok(enum tok);
+const char *tok_to_str(enum tok_kind);
+void lex(struct tok *);
 void init_lex(const char *);
 void cleanup_lex(void);
-
-extern char yytext[MAX_IDENT_SIZE + 1];
-extern union yystype yylval;

@@ -15,20 +15,13 @@
 #include "utf8.h"
 #include "lex.h"
 
-char yytext[MAX_IDENT_SIZE + 1];
-union yystype yylval;
 static const char *filename;
-static uint16_t lineno;
 static char *inp_origin, *inp;
+static uint16_t lineno;
 
 const char *get_filename(void)
 {
 	return filename;
-}
-
-uint16_t get_lineno(void)
-{
-	return lineno;
 }
 
 static void inc_lineno(void)
@@ -97,46 +90,65 @@ static void skip_spaces(void)
 	}
 }
 
-static enum tok num_lit_with_base(int);
-static bool is_hex_digit(int);
-
-static enum tok char_lit(void)
+static void init_char_lit_tok(struct tok *tok, uint32_t c)
 {
-	long c;
+	tok->kind = CHAR_LIT;
+	tok->lineno = lineno;
+	tok->u.char_lit = c;
+}
+
+static void num_lit_with_base(struct tok *, int);
+
+static void char_lit(struct tok *tok)
+{
+	struct tok num_tok;
+	uint64_t num;
+	uint32_t c;
 
 	if (*inp++ != '\'') {
 		internal_error();
 	}
 	if (inp[0] == 'U' && inp[1] == '+') {
 		inp += 2;
-		if (num_lit_with_base(16) == FLOAT_LIT) {
+		num_lit_with_base(&num_tok, 16);
+		if (num_tok.kind == FLOAT_LIT) {
 			goto invalid;
 		}
-		c = yylval.int_lit;
-		if (c < 0 || !is_valid_code_point(c)) {
+		num = num_tok.u.int_lit;
+		if (num > UINT32_MAX || !is_valid_code_point(num)) {
 			goto invalid;
 		}
-		yylval.char_lit = c;
-		return CHAR_LIT;
+		c = num;
+	} else {
+		inp += str_to_code_point(&c, inp);
 	}
-	inp += str_to_code_point(&yylval.char_lit, inp);
 	if (*inp++ != '\'') {
 		goto invalid;
 	}
-	return CHAR_LIT;
+	init_char_lit_tok(tok, c);
+	return;
 invalid:
 	fatal_error(lineno, "Invalid char literal");
 }
 
-static enum tok string_lit(void)
+static void init_string_lit_tok(struct tok *tok, char val[MAX_STRING_SIZE + 1],
+		uint64_t len)
 {
-	char *p;
+	tok->kind = STRING_LIT;
+	tok->lineno = lineno;
+	strcpy(tok->u.string_lit.val, val);
+	tok->u.string_lit.len = len;
+}
+
+static void string_lit(struct tok *tok)
+{
+	char text[MAX_STRING_SIZE + 1], *p;
 	uint64_t len;
 
 	if (*inp++ != '"') {
 		internal_error();
 	}
-	p = yylval.string_lit.val;
+	p = text;
 	len = 0;
 	do {
 		// TODO: Fix this
@@ -150,14 +162,14 @@ static enum tok string_lit(void)
 	} while (*inp != '"');
 	inp++;
 	*p = '\0';
-	yylval.string_lit.len = len;
-	if (!is_valid_utf8(yylval.string_lit.val)) {
+	if (!is_valid_utf8(text)) {
 		fatal_error(lineno, "Invalid string literal");
 	}
-	return STRING_LIT;
+	init_string_lit_tok(tok, text, len);
 }
 
-static enum tok lookup_keyword(const char *keyword)
+// Split into two functions
+static enum tok_kind lookup_keyword(const char *keyword)
 {
 	static HashTable *keywords = NULL;
 
@@ -240,7 +252,7 @@ static enum tok lookup_keyword(const char *keyword)
 #undef K
 	}
 	// Returns INVALID_TOK if not found
-	return (enum tok) hash_table_get(keywords, keyword);
+	return (enum tok_kind) hash_table_get(keywords, keyword);
 }
 
 static bool is_ident_head(int c)
@@ -253,10 +265,24 @@ static bool is_ident_tail(int c)
 	return c == '_' || isalnum(c);
 }
 
-static enum tok ident(void)
+static void init_ident_tok(struct tok *tok, char ident[MAX_IDENT_SIZE + 1])
+{
+	tok->kind = IDENT;
+	tok->lineno = lineno;
+	strcpy(tok->u.ident, ident);
+}
+
+static void init_basic_tok(struct tok *tok, enum tok_kind kind)
+{
+	tok->kind = kind;
+	tok->lineno = lineno;
+}
+
+static void ident(struct tok *tok)
 {
 	int i;
-	enum tok tok;
+	char ident[MAX_IDENT_SIZE + 1];
+	enum tok_kind tok_kind;
 
 	if (!is_ident_head(*inp)) {
 		internal_error();
@@ -267,11 +293,15 @@ static enum tok ident(void)
 			                    "maximum allowed size "
 			                    "("XSTR(MAX_IDENT_SIZE)")");
 		}
-		yytext[i] = *inp++;
+		ident[i] = *inp++;
 	}
-	yytext[i] = '\0';
-	tok = lookup_keyword(yytext);
-	return tok == INVALID_TOK ? IDENT : tok;
+	ident[i] = '\0';
+	tok_kind = lookup_keyword(ident);
+	if (tok_kind == INVALID_TOK) {
+		init_ident_tok(tok, ident);
+	} else {
+		init_basic_tok(tok, tok_kind);
+	}
 }
 
 static bool is_bin_digit(int c)
@@ -312,8 +342,22 @@ static IsValidDigitFunc *get_is_valid_digit_func(int base)
 	}
 }
 
+static void init_float_lit_tok(struct tok *tok, double val)
+{
+	tok->kind = FLOAT_LIT;
+	tok->lineno = lineno;
+	tok->u.float_lit = val;
+}
+
+static void init_int_lit_tok(struct tok *tok, uint64_t val)
+{
+	tok->kind = INT_LIT;
+	tok->lineno = lineno;
+	tok->u.int_lit = val;
+}
+
 // TODO: Split this into multiple functions
-static enum tok num_lit_with_base(int base)
+static void num_lit_with_base(struct tok *tok, int base)
 {
 	char num_text[MAX_NUM_CHARS + 1];
 	IsValidDigitFunc *is_valid_digit;
@@ -361,8 +405,7 @@ static enum tok num_lit_with_base(int base)
 		if (errno == ERANGE) {
 			fatal_error(lineno, "Floating point literal too large");
 		}
-		yylval.float_lit = dnum;
-		return FLOAT_LIT;
+		init_float_lit_tok(tok, dnum);
 	} else {
 		inum = strtoull(num_text, NULL, base);
 		/*
@@ -373,32 +416,35 @@ static enum tok num_lit_with_base(int base)
 			fatal_error(lineno, "Integer literal greater than "
 					XSTR(UINT64_MAX));
 		}
-		yylval.int_lit = inum;
-		return INT_LIT;
+		init_int_lit_tok(tok, inum);
 	}
 }
 
-static enum tok num_lit(void)
+static void num_lit(struct tok *tok)
 {
 	if (*inp == '0') {
 		inp++;
 		switch (*inp++) {
 		case 'b':
-			return num_lit_with_base(2);
+			num_lit_with_base(tok, 2);
+			break;
 		case 'o':
-			return num_lit_with_base(8);
+			num_lit_with_base(tok, 8);
+			break;
 		case 'x':
-			return num_lit_with_base(16);
+			num_lit_with_base(tok, 16);
+			break;
 		case '.':
 			inp -= 2;
-			goto decimal;
+			num_lit_with_base(tok, 10);
+			break;
 		default:
-			fatal_error(lineno,
-					"Numerical literal has a leading zero");
+			fatal_error(lineno, "Numerical literal has a leading "
+			                    "zero");
 		}
+	} else {
+		num_lit_with_base(tok, 10);
 	}
-decimal:
-	return num_lit_with_base(10);
 }
 
 static bool is_op_char(int c)
@@ -406,10 +452,11 @@ static bool is_op_char(int c)
 	return strchr("+-*/%<>=!&|^~.:;,", c) != NULL;
 }
 
-static enum tok op(void)
+static void op(struct tok *tok)
 {
 	int i = 0;
-	enum tok tok;
+	char op_text[MAX_OP_SIZE + 1];
+	enum tok_kind tok_kind;
 
 	if (!is_op_char(*inp)) {
 		internal_error();
@@ -420,17 +467,17 @@ static enum tok op(void)
 			                    "maximum allowed size "
 			                    "("XSTR(MAX_IDENT_SIZE)")");
 		}
-		yytext[i++] = *inp++;
+		op_text[i++] = *inp++;
 	} while (is_op_char(*inp));
-	yytext[i] = '\0';
-	tok = lookup_keyword(yytext);
-	if (tok == INVALID_TOK) {
-		fatal_error(lineno, "`%s` is not a valid operator", yytext);
+	op_text[i] = '\0';
+	tok_kind = lookup_keyword(op_text);
+	if (tok_kind == INVALID_TOK) {
+		fatal_error(lineno, "`%s` is not a valid operator", op_text);
 	}
-	return tok;
+	init_basic_tok(tok, tok_kind);
 }
 
-const char *tok_to_str(enum tok tok)
+const char *tok_to_str(enum tok_kind kind)
 {
 	static const char *tok_names[] = {
 		[CONST] = "`const`",
@@ -520,94 +567,58 @@ const char *tok_to_str(enum tok tok)
 		[TEOF] = "end of file"
 	};
 
-	if (tok_names[tok] == NULL) {
+	if (tok_names[kind] == NULL) {
 		internal_error();
 	}
-	return tok_names[tok];
+	return tok_names[kind];
 }
 
-enum tok next_tok(void)
+void lex(struct tok *tok)
 {
 	skip_spaces();
 	switch (*inp) {
 	case '\'':
-		return char_lit();
+		char_lit(tok);
+		break;
 	case '"':
-		return string_lit();
+		string_lit(tok);
+		break;
 	case '[':
 		inp++;
-		return OPEN_BRACKET;
+		init_basic_tok(tok, OPEN_BRACKET);
+		break;
 	case ']':
 		inp++;
-		return CLOSE_BRACKET;
+		init_basic_tok(tok, CLOSE_BRACKET);
+		break;
 	case '(':
 		inp++;
-		return OPEN_PAREN;
+		init_basic_tok(tok, OPEN_PAREN);
+		break;
 	case ')':
 		inp++;
-		return CLOSE_PAREN;
+		init_basic_tok(tok, CLOSE_PAREN);
+		break;
 	case '{':
 		inp++;
-		return OPEN_BRACE;
+		init_basic_tok(tok, OPEN_BRACE);
+		break;
 	case '}':
 		inp++;
-		return CLOSE_BRACE;
+		init_basic_tok(tok, CLOSE_BRACE);
+		break;
 	case '\0':
-		return TEOF;
+		init_basic_tok(tok, TEOF);
+		break;
 	}
 	if (is_op_char(*inp)) {
-		return op();
-	}
-	if (is_ident_head(*inp)) {
-		return ident();
-	}
-	if (isdigit(*inp)) {
-		return num_lit();
+		op(tok);
+	} else if (is_ident_head(*inp)) {
+		ident(tok);
+	} else if (isdigit(*inp)) {
+		num_lit(tok);
 	}
 	fatal_error(lineno, "Invalid token `%c`", *inp);
-}
-
-enum tok peek_tok(void)
-{
-	char yytext_save[MAX_IDENT_SIZE + 1];
-	union yystype yylval_save;
-	uint16_t lineno_save;
-	char *inp_save;
-	enum tok tok;
-
-	strncpy(yytext_save, yytext, sizeof(yytext));
-	yylval_save = yylval;
-	lineno_save = lineno;
-	inp_save = inp;
-	tok = next_tok();
-	strncpy(yytext, yytext_save, sizeof(yytext));
-	yylval = yylval_save;
-	lineno = lineno_save;
-	inp = inp_save;
-	return tok;
-}
-
-bool accept_tok(enum tok tok)
-{
-	char *inp_save;
-
-	inp_save = inp;
-	if (next_tok() == tok) {
-		return true;
-	}
-	inp = inp_save;
-	return false;
-}
-
-void expect_tok(enum tok expected_tok)
-{
-	enum tok tok;
-
-	tok = next_tok();
-	if (tok != expected_tok) {
-		fatal_error(lineno, "Expected %s, instead got %s",
-				tok_to_str(expected_tok), tok_to_str(tok));
-	}
 }
 
 static NORETURN void file_error(void)

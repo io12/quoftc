@@ -9,6 +9,32 @@
 #include "eval.h"
 #include "parse.h"
 
+static struct tok cur_tok, lookahead_tok;
+
+static void consume_tok(void)
+{
+	cur_tok = lookahead_tok;
+	lex(&lookahead_tok);
+}
+
+static bool accept_tok(enum tok_kind kind)
+{
+	if (cur_tok.kind == kind) {
+		consume_tok();
+		return true;
+	}
+	return false;
+}
+
+static void expect_tok(enum tok_kind expected)
+{
+	if (cur_tok.kind != expected) {
+		fatal_error(cur_tok.lineno, "Expected %s, instead got %s",
+				tok_to_str(expected), tok_to_str(cur_tok.kind));
+	}
+	consume_tok();
+}
+
 static struct type *parse_type(void);
 static struct switch_pattern *parse_switch_pattern(void);
 static struct expr *parse_expr(void);
@@ -19,15 +45,14 @@ static struct type *parse_tuple_or_func_type(void)
 	uint16_t lineno;
 	struct type *first_type;
 	Vec *types;
-	enum tok tok;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(OPEN_PAREN);
 	first_type = parse_type();
 	types = alloc_vec(free_type);
-	tok = next_tok();
-	switch (tok) {
+	switch (cur_tok.kind) {
 	case COMMA:
+		consume_tok();
 		vec_push(types, first_type);
 		do {
 			vec_push(types, parse_type());
@@ -35,6 +60,7 @@ static struct type *parse_tuple_or_func_type(void)
 		expect_tok(CLOSE_PAREN);
 		return ALLOC_TUPLE_TYPE(lineno, types);
 	case BACK_ARROW:
+		consume_tok();
 		do {
 			vec_push(types, parse_type());
 		} while (accept_tok(COMMA));
@@ -44,85 +70,18 @@ static struct type *parse_tuple_or_func_type(void)
 		fatal_error(lineno, "Expected %s or %s, instead got %s",
 				tok_to_str(COMMA),
 				tok_to_str(BACK_ARROW),
-				tok_to_str(tok));
+				tok_to_str(cur_tok.kind));
 	}
 }
 
-static struct type *parse_type(void)
+static struct type *parse_type_tail(struct type *type)
 {
 	uint16_t lineno;
-	enum tok peek;
-	struct type *type;
-	char *name;
-	Vec *params;
-	struct expr *array_len_expr;
 	uint64_t array_len;
+	struct expr *array_len_expr;
 
-	lineno = get_lineno();
-	peek = peek_tok();
-	switch (peek) {
-	case OPEN_PAREN:
-		type = parse_tuple_or_func_type();
-		break;
-	case IDENT:
-	case IMPURE:
-		next_tok();
-		name = xstrdup(yytext);
-		if (accept_tok(LT)) {
-			params = alloc_vec(free_type);
-			do {
-				vec_push(params, parse_type());
-			} while (accept_tok(COMMA));
-			expect_tok(GT);
-			type = ALLOC_PARAM_TYPE(lineno, name, params);
-		} else {
-			type = ALLOC_ALIAS_TYPE(lineno, name);
-		}
-		break;
-	case U8:
-		next_tok();
-		return ALLOC_U8_TYPE(lineno);
-	case U16:
-		next_tok();
-		return ALLOC_U16_TYPE(lineno);
-	case U32:
-		next_tok();
-		return ALLOC_U32_TYPE(lineno);
-	case U64:
-		next_tok();
-		return ALLOC_U64_TYPE(lineno);
-	case I8:
-		next_tok();
-		return ALLOC_I8_TYPE(lineno);
-	case I16:
-		next_tok();
-		return ALLOC_I16_TYPE(lineno);
-	case I32:
-		next_tok();
-		return ALLOC_I32_TYPE(lineno);
-	case I64:
-		next_tok();
-		return ALLOC_I64_TYPE(lineno);
-	case F32:
-		next_tok();
-		return ALLOC_F32_TYPE(lineno);
-	case F64:
-		next_tok();
-		return ALLOC_F64_TYPE(lineno);
-	case BOOL:
-		next_tok();
-		return ALLOC_BOOL_TYPE(lineno);
-	case VOID:
-		next_tok();
-		return ALLOC_VOID_TYPE(lineno);
-	case CHAR:
-		next_tok();
-		return ALLOC_CHAR_TYPE(lineno);
-	default:
-		fatal_error(lineno, "Expected a primary type, instead got %s",
-				tok_to_str(peek));
-	}
 	for (;;) {
+		lineno = cur_tok.lineno;
 		if (accept_tok(OPEN_BRACKET)) {
 			if (accept_tok(CLOSE_BRACKET)) {
 				array_len = 0;
@@ -139,6 +98,92 @@ static struct type *parse_type(void)
 			return type;
 		}
 	}
+}
+
+static struct type *parse_type(void)
+{
+	uint16_t lineno;
+	struct type *type;
+	char *name;
+	Vec *params;
+
+	lineno = cur_tok.lineno;
+	switch (cur_tok.kind) {
+	case OPEN_PAREN:
+		type = parse_tuple_or_func_type();
+		break;
+	case IDENT:
+	case IMPURE:
+		name = xstrdup(cur_tok.u.ident);
+		consume_tok();
+		if (accept_tok(LT)) {
+			params = alloc_vec(free_type);
+			do {
+				vec_push(params, parse_type());
+			} while (accept_tok(COMMA));
+			expect_tok(GT);
+			type = ALLOC_PARAM_TYPE(lineno, name, params);
+		} else {
+			type = ALLOC_ALIAS_TYPE(lineno, name);
+		}
+		break;
+	case U8:
+		consume_tok();
+		type = ALLOC_U8_TYPE(lineno);
+		break;
+	case U16:
+		consume_tok();
+		type = ALLOC_U16_TYPE(lineno);
+		break;
+	case U32:
+		consume_tok();
+		type = ALLOC_U32_TYPE(lineno);
+		break;
+	case U64:
+		consume_tok();
+		type = ALLOC_U64_TYPE(lineno);
+		break;
+	case I8:
+		consume_tok();
+		type = ALLOC_I8_TYPE(lineno);
+		break;
+	case I16:
+		consume_tok();
+		type = ALLOC_I16_TYPE(lineno);
+		break;
+	case I32:
+		consume_tok();
+		type = ALLOC_I32_TYPE(lineno);
+		break;
+	case I64:
+		consume_tok();
+		type = ALLOC_I64_TYPE(lineno);
+		break;
+	case F32:
+		consume_tok();
+		type = ALLOC_F32_TYPE(lineno);
+		break;
+	case F64:
+		consume_tok();
+		type = ALLOC_F64_TYPE(lineno);
+		break;
+	case BOOL:
+		consume_tok();
+		type = ALLOC_BOOL_TYPE(lineno);
+		break;
+	case VOID:
+		consume_tok();
+		type = ALLOC_VOID_TYPE(lineno);
+		break;
+	case CHAR:
+		consume_tok();
+		type = ALLOC_CHAR_TYPE(lineno);
+		break;
+	default:
+		fatal_error(lineno, "Expected a primary type, instead got %s",
+				tok_to_str(cur_tok.kind));
+	}
+	return parse_type_tail(type);
 }
 
 static Vec *parse_compound_stmt(void)
@@ -158,14 +203,14 @@ static struct expr *parse_lambda_expr(void)
 	uint16_t lineno;
 	Vec *params;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(BACKSLASH);
 	params = alloc_vec(free);
 	while (accept_tok(IDENT)) {
-		vec_push(params, xstrdup(yytext));
+		vec_push(params, xstrdup(cur_tok.u.ident));
 	}
 	expect_tok(ARROW);
-	return ALLOC_LAMBDA_EXPR(lineno, params, parse_compound_stmt());
+	return ALLOC_LAMBDA_EXPR(lineno, params, parse_expr());
 }
 
 static struct expr *parse_array_lit_expr(void)
@@ -173,7 +218,7 @@ static struct expr *parse_array_lit_expr(void)
 	uint16_t lineno;
 	Vec *items;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(OPEN_BRACKET);
 	items = alloc_vec(free_expr);
 	do {
@@ -189,7 +234,7 @@ static struct expr *parse_tuple_or_paren_expr(void)
 	struct expr *expr;
 	Vec *items;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(OPEN_PAREN);
 	expr = parse_expr();
 	if (accept_tok(COMMA)) {
@@ -209,7 +254,7 @@ static struct expr *parse_block_expr(void)
 {
 	uint16_t lineno;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	return ALLOC_BLOCK_EXPR(lineno, parse_compound_stmt());
 }
 
@@ -228,7 +273,7 @@ static struct expr *parse_if_expr(void)
 	uint16_t lineno;
 	struct expr *cond, *then, *else_;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(IF);
 	cond = parse_paren_expr();
 	expect_tok(THEN);
@@ -243,7 +288,7 @@ static struct switch_pattern *parse_array_switch_pattern(void)
 	uint16_t lineno;
 	Vec *patterns;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(OPEN_BRACKET);
 	patterns = alloc_vec(free_switch_pattern);
 	do {
@@ -258,7 +303,7 @@ static struct switch_pattern *parse_tuple_switch_pattern(void)
 	uint16_t lineno;
 	Vec *patterns;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(OPEN_PAREN);
 	patterns = alloc_vec(free_switch_pattern);
 	do {
@@ -272,10 +317,10 @@ static struct switch_pattern *parse_primary_switch_pattern(void)
 {
 	uint16_t lineno;
 
-	lineno = get_lineno();
-	switch(peek_tok()) {
+	lineno = cur_tok.lineno;
+	switch(cur_tok.kind) {
 	case UNDERSCORE:
-		next_tok();
+		consume_tok();
 		return ALLOC_UNDERSCORE_SWITCH_PATTERN(lineno);
 	case OPEN_BRACKET:
 		return parse_array_switch_pattern();
@@ -289,16 +334,16 @@ static struct switch_pattern *parse_primary_switch_pattern(void)
 static struct switch_pattern *parse_switch_pattern(void)
 {
 	uint16_t lineno;
-	struct switch_pattern *l;
+	struct switch_pattern *first_pattern;
 	Vec *patterns;
 
-	lineno = get_lineno();
-	l = parse_primary_switch_pattern();
-	if (peek_tok() != PIPE) {
-		return l;
+	lineno = cur_tok.lineno;
+	first_pattern = parse_primary_switch_pattern();
+	if (cur_tok.kind != PIPE) {
+		return first_pattern;
 	}
 	patterns = alloc_vec(free_switch_pattern);
-	vec_push(patterns, l);
+	vec_push(patterns, first_pattern);
 	while (accept_tok(PIPE)) {
 		vec_push(patterns, parse_primary_switch_pattern());
 	}
@@ -311,9 +356,9 @@ static struct switch_case *parse_switch_case(void)
 	struct switch_pattern *l;
 	struct expr *r;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	l = parse_switch_pattern();
-	expect_tok(BIG_ARROW); // TODO: What if the programmer overloads this?
+	expect_tok(BIG_ARROW);
 	r = parse_expr();
 	return ALLOC_SWITCH_CASE(lineno, l, r);
 }
@@ -324,9 +369,9 @@ static struct expr *parse_switch_expr(void)
 	struct expr *ctrl;
 	Vec *cases;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(SWITCH);
-	ctrl = peek_tok() == OPEN_PAREN ? parse_paren_expr() : NULL;
+	ctrl = cur_tok.kind == OPEN_PAREN ? parse_paren_expr() : NULL;
 	expect_tok(OPEN_BRACE);
 	cases = alloc_vec(free_switch_case);
 	while (!accept_tok(CLOSE_BRACE)) {
@@ -339,35 +384,45 @@ static struct expr *parse_switch_expr(void)
 static struct expr *parse_primary_expr(void)
 {
 	uint16_t lineno;
-	enum tok peek;
 
-	lineno = get_lineno();
-	peek = peek_tok();
-	switch (peek) {
-	case IDENT:
-		next_tok();
-		return ALLOC_IDENT_EXPR(lineno, xstrdup(yytext));
+	lineno = cur_tok.lineno;
+	switch (cur_tok.kind) {
+	case IDENT: {
+		char *ident = xstrdup(cur_tok.u.ident);
+
+		consume_tok();
+		return ALLOC_IDENT_EXPR(lineno, ident);
+	}
 	case TRUE:
-		next_tok();
+		consume_tok();
 		return ALLOC_BOOL_LIT_EXPR(lineno, true);
 	case FALSE:
-		next_tok();
+		consume_tok();
 		return ALLOC_BOOL_LIT_EXPR(lineno, false);
-	case INT_LIT:
-		next_tok();
-		return ALLOC_INT_LIT_EXPR(lineno, yylval.int_lit);
-	case FLOAT_LIT:
-		next_tok();
-		return ALLOC_FLOAT_LIT_EXPR(lineno, yylval.float_lit);
-	case CHAR_LIT:
-		next_tok();
-		return ALLOC_CHAR_LIT_EXPR(lineno, yylval.char_lit);
-	case STRING_LIT: {
-		char *str = yylval.string_lit.val;
-		uint64_t len = yylval.string_lit.len;
+	case INT_LIT: {
+		uint64_t val = cur_tok.u.int_lit;
 
-		next_tok();
-		return ALLOC_STRING_LIT_EXPR(lineno, xstrdup(str), len);
+		consume_tok();
+		return ALLOC_INT_LIT_EXPR(lineno, val);
+	}
+	case FLOAT_LIT: {
+		double val = cur_tok.u.float_lit;
+
+		consume_tok();
+		return ALLOC_FLOAT_LIT_EXPR(lineno, val);
+	}
+	case CHAR_LIT: {
+		uint32_t val = cur_tok.u.char_lit;
+
+		consume_tok();
+		return ALLOC_CHAR_LIT_EXPR(lineno, val);
+	}
+	case STRING_LIT: {
+		char *str = xstrdup(cur_tok.u.string_lit.val);
+		uint64_t len = cur_tok.u.string_lit.len;
+
+		consume_tok();
+		return ALLOC_STRING_LIT_EXPR(lineno, str, len);
 	}
 	case BACKSLASH:
 		return parse_lambda_expr();
@@ -384,8 +439,8 @@ static struct expr *parse_primary_expr(void)
 	default:
 		break;
 	}
-	fatal_error(lineno, "Expected a primary expression, instead got %s",
-			tok_to_str(peek));
+	fatal_error(cur_tok.lineno, "Expected a primary expression, instead "
+	                            "got %s", tok_to_str(cur_tok.kind));
 }
 
 static struct expr *parse_postfix_unary_expr(void)
@@ -394,9 +449,9 @@ static struct expr *parse_postfix_unary_expr(void)
 	struct expr *operand;
 	enum unary_op op;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	operand = parse_primary_expr();
-	switch (peek_tok()) {
+	switch (cur_tok.kind) {
 	case PLUS_PLUS:
 		op = POST_INC_OP;
 		break;
@@ -414,8 +469,8 @@ static struct expr *parse_unary_expr(void)
 	uint16_t lineno;
 	enum unary_op op;
 
-	lineno = get_lineno();
-	switch (peek_tok()) {
+	lineno = cur_tok.lineno;
+	switch (cur_tok.kind) {
 	case PLUS_PLUS:
 		op = PRE_INC_OP;
 		break;
@@ -437,13 +492,13 @@ static struct expr *parse_unary_expr(void)
 	default:
 		return parse_postfix_unary_expr();
 	}
-	next_tok();
+	consume_tok();
 	return ALLOC_UNARY_OP_EXPR(lineno, op, parse_unary_expr());
 }
 
-static bool is_bin_op(enum tok tok)
+static bool is_bin_op(enum tok_kind tok_kind)
 {
-	switch (tok) {
+	switch (tok_kind) {
 	case PLUS: case MINUS:
 	case STAR: case SLASH: case PERCENT:
 	case LT: case GT: case LT_EQ: case GT_EQ: case EQ_EQ: case BANG_EQ:
@@ -460,9 +515,9 @@ static bool is_bin_op(enum tok tok)
 	}
 }
 
-static enum bin_op tok_to_bin_op(enum tok tok)
+static enum bin_op tok_to_bin_op(enum tok_kind tok_kind)
 {
-	switch (tok) {
+	switch (tok_kind) {
 	case PLUS:
 		return ADD_OP;
 	case MINUS:
@@ -635,17 +690,11 @@ static struct {
 
 static int get_bin_op_prec(enum bin_op op)
 {
-	if (!IN_RANGE(op, 0, ARRAY_LEN(bin_op_info))) {
-		internal_error();
-	}
 	return bin_op_info[op].prec;
 }
 
 static enum assoc get_bin_op_assoc(enum bin_op op)
 {
-	if (!IN_RANGE(op, 0, ARRAY_LEN(bin_op_info))) {
-		internal_error();
-	}
 	return bin_op_info[op].assoc;
 }
 
@@ -653,28 +702,26 @@ static enum assoc get_bin_op_assoc(enum bin_op op)
 static struct expr *parse_expr__(struct expr *l, int min_prec)
 {
 	uint16_t lineno;
-	enum tok peek;
 	enum bin_op op, op2;
 	struct expr *r;
 
-	lineno = get_lineno();
-	peek = peek_tok();
 	for (;;) {
-		if (!is_bin_op(peek)) {
+		if (!is_bin_op(cur_tok.kind)) {
 			break;
 		}
-		op = tok_to_bin_op(peek);
+		lineno = cur_tok.lineno;
+		op = tok_to_bin_op(cur_tok.kind);
 		if (get_bin_op_prec(op) < min_prec) {
 			break;
 		}
-		next_tok();
-		r = parse_primary_expr();
-		peek = peek_tok();
+		consume_tok();
+		r = parse_unary_expr();
 		for (;;) {
-			if (!is_bin_op(peek)) {
+			if (!is_bin_op(cur_tok.kind)) {
 				break;
 			}
-			op2 = tok_to_bin_op(peek);
+			lineno = cur_tok.lineno;
+			op2 = tok_to_bin_op(cur_tok.kind);
 			if (get_bin_op_prec(op2) <= get_bin_op_prec(op) ||
 					(get_bin_op_assoc(op2) == R_ASSOC &&
 					 get_bin_op_prec(op2) ==
@@ -682,7 +729,6 @@ static struct expr *parse_expr__(struct expr *l, int min_prec)
 				break;
 			}
 			r = parse_expr__(r, get_bin_op_prec(op2));
-			peek = peek_tok();
 		}
 		l = ALLOC_BIN_OP_EXPR(lineno, op, l, r);
 	}
@@ -694,48 +740,13 @@ static struct expr *parse_expr(void)
 	return parse_expr__(parse_unary_expr(), 0);
 }
 
-static struct decl *parse_decl(void)
-{
-	uint16_t lineno;
-	enum tok tok;
-	bool is_const;
-	struct type *type;
-	char *name;
-	struct expr *init;
-
-	lineno = get_lineno();
-	tok = next_tok();
-	switch (tok) {
-	case CONST:
-		is_const = true;
-		break;
-	case VAR:
-		is_const = false;
-		break;
-	default:
-		fatal_error(lineno, "Expected %s or %s, instead got %s",
-				tok_to_str(CONST),
-				tok_to_str(VAR),
-				tok_to_str(tok));
-	}
-	type = parse_type();
-	expect_tok(IDENT);
-	name = xstrdup(yytext);
-	if (accept_tok(SEMICOLON)) {
-		init = NULL;
-	} else {
-		expect_tok(EQ);
-		init = parse_expr();
-		expect_tok(SEMICOLON);
-	}
-	return ALLOC_DECL(lineno, is_const, type, name, init);
-}
+static struct decl *parse_decl(void);
 
 static struct stmt *parse_decl_stmt(void)
 {
 	uint16_t lineno;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	return ALLOC_DECL_STMT(lineno, parse_decl());
 }
 
@@ -744,15 +755,13 @@ static struct stmt *parse_if_stmt(void)
 	uint16_t lineno;
 	struct expr *cond;
 	Vec *then_stmts, *else_stmts;
-	enum tok peek;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(IF);
 	cond = parse_paren_expr();
 	then_stmts = parse_compound_stmt();
 	if (accept_tok(ELSE)) {
-		peek = peek_tok();
-		switch (peek) {
+		switch (cur_tok.kind) {
 		case IF:
 			else_stmts = alloc_vec(free_stmt);
 			vec_push(else_stmts, parse_if_stmt());
@@ -761,10 +770,10 @@ static struct stmt *parse_if_stmt(void)
 			else_stmts = parse_compound_stmt();
 			break;
 		default:
-			fatal_error(lineno, "Expected %s or %s, instead got %s",
+			fatal_error(cur_tok.lineno, "Expected %s or %s, instead got %s",
 					tok_to_str(IF),
 					tok_to_str(OPEN_BRACE),
-					tok_to_str(peek));
+					tok_to_str(cur_tok.kind));
 		}
 	} else {
 		else_stmts = NULL;
@@ -778,7 +787,7 @@ static struct stmt *parse_do_stmt(void)
 	Vec *stmts;
 	struct expr *cond;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(DO);
 	stmts = parse_compound_stmt();
 	expect_tok(WHILE);
@@ -793,7 +802,7 @@ static struct stmt *parse_while_stmt(void)
 	Vec *stmts;
 	struct expr *cond;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(WHILE);
 	cond = parse_paren_expr();
 	stmts = parse_compound_stmt();
@@ -806,7 +815,7 @@ static struct stmt *parse_for_stmt(void)
 	struct expr *init, *cond, *post;
 	Vec *stmts;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	expect_tok(FOR);
 	expect_tok(OPEN_PAREN);
 	if (accept_tok(SEMICOLON)) {
@@ -835,13 +844,13 @@ static struct stmt *parse_expr_stmt(void)
 {
 	uint16_t lineno;
 
-	lineno = get_lineno();
+	lineno = cur_tok.lineno;
 	return ALLOC_EXPR_STMT(lineno, parse_expr());
 }
 
 static struct stmt *parse_stmt(void)
 {
-	switch (peek_tok()) {
+	switch (cur_tok.kind) {
 	case CONST:
 	case VAR:
 		return parse_decl_stmt();
@@ -858,6 +867,46 @@ static struct stmt *parse_stmt(void)
 	}
 }
 
+static struct decl *parse_decl(void)
+{
+	uint16_t lineno;
+	bool is_const;
+	struct type *type;
+	char *name;
+	struct expr *init;
+
+	lineno = cur_tok.lineno;
+	switch (cur_tok.kind) {
+	case CONST:
+		is_const = true;
+		break;
+	case VAR:
+		is_const = false;
+		break;
+	default:
+		fatal_error(cur_tok.lineno, "Expected %s or %s, instead got %s",
+				tok_to_str(CONST), tok_to_str(VAR),
+				tok_to_str(cur_tok.kind));
+	}
+	consume_tok();
+	type = parse_type();
+	if (cur_tok.kind != IDENT) {
+		fatal_error(cur_tok.lineno, "Expected %s, instead got %s",
+				tok_to_str(IDENT),
+				tok_to_str(cur_tok.kind));
+	}
+	name = xstrdup(cur_tok.u.ident);
+	consume_tok();
+	if (accept_tok(SEMICOLON)) {
+		init = NULL;
+	} else {
+		expect_tok(EQ);
+		init = parse_expr();
+		expect_tok(SEMICOLON);
+	}
+	return ALLOC_DECL(lineno, is_const, type, name, init);
+}
+
 static struct ast parse_file__(void)
 {
 	Vec *decls;
@@ -866,7 +915,7 @@ static struct ast parse_file__(void)
 	decls = alloc_vec(free_decl);
 	do {
 		vec_push(decls, parse_decl());
-	} while (peek_tok() != TEOF);
+	} while (cur_tok.kind != TEOF);
 	ast.decls = decls;
 	return ast;
 }
@@ -876,6 +925,8 @@ struct ast parse_file(const char *filename)
 	struct ast ast;
 
 	init_lex(filename);
+	lex(&cur_tok);
+	lex(&lookahead_tok);
 	ast = parse_file__();
 	cleanup_lex();
 	return ast;
