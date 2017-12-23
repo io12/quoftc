@@ -1,6 +1,8 @@
 #include <stdbool.h>
-#include <stddef.h>
+#include <stdio.h>
+#include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/TargetMachine.h>
 #include "ds.h"
 #include "ast.h"
 #include "check_semantics.h"
@@ -592,7 +594,7 @@ static void emit_global_decl(struct decl *decl)
 	}
 }
 
-void emit(struct ast ast)
+static void make_module(struct ast ast)
 {
 	Vec *decls = ast.decls;
 	size_t i;
@@ -604,4 +606,48 @@ void emit(struct ast ast)
 		emit_global_decl(vec_get(decls, i));
 	}
 	free_symbol_table(sym_tbl);
+}
+
+static void compile_module(LLVMModuleRef module)
+{
+	const char *target_triplet, *cpu, *features;
+	LLVMTargetRef target;
+	char *errmsg;
+	LLVMTargetMachineRef target_machine;
+#if 0
+	LLVMTargetDataRef data_layout;
+#endif
+
+	LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
+	LLVMInitializeAllTargetInfos();
+	LLVMInitializeAllTargets();
+	LLVMInitializeAllTargetMCs();
+	LLVMInitializeAllAsmParsers();
+	LLVMInitializeAllAsmPrinters();
+	target_triplet = LLVMGetDefaultTargetTriple();
+	LLVMGetTargetFromTriple(target_triplet, &target, &errmsg);
+	fprintf(stderr, "%s\n", errmsg);
+	cpu = "generic";
+	features = "";
+	target_machine = LLVMCreateTargetMachine(target, target_triplet, cpu,
+			features, LLVMCodeGenLevelDefault, LLVMRelocDefault,
+			LLVMCodeModelDefault);
+#if 0
+TODO: Add data layout to module
+	data_layout = LLVMCreateDataLayout(target_machine);
+	LLVMSetDataLayout(module, data_layout);
+#endif
+	LLVMSetTarget(module, target_triplet);
+	// TODO: Free duplicated string
+	LLVMTargetMachineEmitToFile(target_machine, module, xstrdup("a.out"),
+			LLVMObjectFile, &errmsg);
+	fprintf(stderr, "%s\n", errmsg);
+	LLVMDisposeMessage(errmsg);
+	LLVMDisposeTargetMachine(target_machine);
+}
+
+void emit(struct ast ast)
+{
+	make_module(ast);
+	compile_module(module);
 }
