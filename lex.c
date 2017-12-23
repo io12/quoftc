@@ -16,9 +16,11 @@
 #include "utf8.h"
 #include "lex.h"
 
+#define MAX_LINENO UINT16_MAX
+
 static const char *filename;
 static char *inp_origin, *inp;
-static uint16_t lineno;
+static unsigned lineno;
 
 const char *get_filename(void)
 {
@@ -27,10 +29,11 @@ const char *get_filename(void)
 
 static void inc_lineno(void)
 {
-	if (++lineno == 0) {
-		fatal_error(lineno - 1, "Source file longer than "
-				XSTR(UINT16_MAX)" lines");
+	if (lineno == MAX_LINENO) {
+		fatal_error(lineno, "Source file longer than "XSTR(MAX_LINENO)
+		                    " lines");
 	}
+	lineno++;
 }
 
 static void skip_line_comment(void)
@@ -128,7 +131,7 @@ invalid:
 }
 
 static void init_string_lit_tok(struct tok *tok, char val[MAX_STRING_SIZE + 1],
-		uint16_t len)
+		unsigned len)
 {
 	tok->kind = STRING_LIT;
 	tok->lineno = lineno;
@@ -139,7 +142,7 @@ static void init_string_lit_tok(struct tok *tok, char val[MAX_STRING_SIZE + 1],
 static void string_lit(struct tok *tok)
 {
 	char text[MAX_STRING_SIZE + 1], *p;
-	uint16_t len;
+	unsigned len;
 
 	assert(*inp == '"');
 	inp++;

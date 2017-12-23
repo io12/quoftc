@@ -45,7 +45,7 @@ static struct stmt *parse_stmt(void);
 
 static struct type *parse_tuple_or_func_type(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct type *first_type;
 	Vec *types;
 
@@ -85,7 +85,7 @@ static struct type *parse_tuple_or_func_type(void)
 
 static struct type *parse_array_type_suffix(struct type *type)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	uint64_t array_len;
 	struct expr *array_len_expr;
 
@@ -109,7 +109,7 @@ static struct type *parse_array_type_suffix(struct type *type)
 
 static struct type *parse_type_suffix(struct type *type)
 {
-	uint16_t lineno;
+	unsigned lineno;
 
 	for (;;) {
 		lineno = cur_tok.lineno;
@@ -125,7 +125,7 @@ static struct type *parse_type_suffix(struct type *type)
 
 static struct type *parse_type(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct type *type;
 	char *name;
 	Vec *params;
@@ -223,7 +223,7 @@ static Vec *parse_compound_stmt(void)
 
 static struct expr *parse_lambda_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	Vec *params;
 
 	lineno = cur_tok.lineno;
@@ -242,7 +242,7 @@ static struct expr *parse_lambda_expr(void)
 
 static struct expr *parse_array_lit_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	Vec *items;
 
 	lineno = cur_tok.lineno;
@@ -261,7 +261,7 @@ static struct expr *parse_array_lit_expr(void)
 
 static struct expr *parse_tuple_or_paren_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct expr *expr;
 	Vec *items;
 
@@ -283,7 +283,7 @@ static struct expr *parse_tuple_or_paren_expr(void)
 
 static struct expr *parse_block_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 
 	lineno = cur_tok.lineno;
 	return ALLOC_BLOCK_EXPR(lineno, parse_compound_stmt());
@@ -301,7 +301,7 @@ static struct expr *parse_paren_expr(void)
 
 static struct expr *parse_if_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct expr *cond, *then, *else_;
 
 	lineno = cur_tok.lineno;
@@ -316,7 +316,7 @@ static struct expr *parse_if_expr(void)
 
 static struct switch_pattern *parse_array_switch_pattern(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	Vec *patterns;
 
 	lineno = cur_tok.lineno;
@@ -331,7 +331,7 @@ static struct switch_pattern *parse_array_switch_pattern(void)
 
 static struct switch_pattern *parse_tuple_switch_pattern(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	Vec *patterns;
 
 	lineno = cur_tok.lineno;
@@ -346,7 +346,7 @@ static struct switch_pattern *parse_tuple_switch_pattern(void)
 
 static struct switch_pattern *parse_primary_switch_pattern(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 
 	lineno = cur_tok.lineno;
 	switch(cur_tok.kind) {
@@ -364,7 +364,7 @@ static struct switch_pattern *parse_primary_switch_pattern(void)
 
 static struct switch_pattern *parse_switch_pattern(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct switch_pattern *first_pattern;
 	Vec *patterns;
 
@@ -383,7 +383,7 @@ static struct switch_pattern *parse_switch_pattern(void)
 
 static struct switch_case *parse_switch_case(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct switch_pattern *l;
 	struct expr *r;
 
@@ -396,7 +396,7 @@ static struct switch_case *parse_switch_case(void)
 
 static struct expr *parse_switch_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct expr *ctrl;
 	Vec *cases;
 
@@ -414,7 +414,7 @@ static struct expr *parse_switch_expr(void)
 
 static struct expr *parse_primary_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 
 	lineno = cur_tok.lineno;
 	switch (cur_tok.kind) {
@@ -450,7 +450,7 @@ static struct expr *parse_primary_expr(void)
 	}
 	case STRING_LIT: {
 		char *str = xstrdup(cur_tok.u.string_lit.val);
-		uint16_t len = cur_tok.u.string_lit.len;
+		unsigned len = cur_tok.u.string_lit.len;
 
 		consume_tok();
 		return ALLOC_STRING_LIT_EXPR(lineno, str, len);
@@ -476,7 +476,7 @@ static struct expr *parse_primary_expr(void)
 
 static struct expr *parse_postfix_unary_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct expr *operand;
 	enum unary_op op;
 
@@ -497,7 +497,7 @@ static struct expr *parse_postfix_unary_expr(void)
 
 static struct expr *parse_unary_expr(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	enum unary_op op;
 
 	lineno = cur_tok.lineno;
@@ -727,7 +727,7 @@ static enum assoc get_bin_op_assoc(enum bin_op op)
 // Precedence climbing
 static struct expr *parse_expr__(struct expr *l, int min_prec)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	enum bin_op op, op2;
 	struct expr *r;
 
@@ -770,7 +770,7 @@ static struct decl *parse_decl(void);
 
 static struct stmt *parse_decl_stmt(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 
 	lineno = cur_tok.lineno;
 	return ALLOC_DECL_STMT(lineno, parse_decl());
@@ -778,7 +778,7 @@ static struct stmt *parse_decl_stmt(void)
 
 static struct stmt *parse_if_stmt(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct expr *cond;
 	Vec *then_stmts, *else_stmts;
 
@@ -809,7 +809,7 @@ static struct stmt *parse_if_stmt(void)
 
 static struct stmt *parse_do_stmt(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	Vec *stmts;
 	struct expr *cond;
 
@@ -824,7 +824,7 @@ static struct stmt *parse_do_stmt(void)
 
 static struct stmt *parse_while_stmt(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	Vec *stmts;
 	struct expr *cond;
 
@@ -837,7 +837,7 @@ static struct stmt *parse_while_stmt(void)
 
 static struct stmt *parse_for_stmt(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	struct expr *init, *cond, *post;
 	Vec *stmts;
 
@@ -868,7 +868,7 @@ static struct stmt *parse_for_stmt(void)
 
 static struct stmt *parse_expr_stmt(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 
 	lineno = cur_tok.lineno;
 	return ALLOC_EXPR_STMT(lineno, parse_expr());
@@ -895,7 +895,7 @@ static struct stmt *parse_stmt(void)
 
 static struct decl *parse_decl(void)
 {
-	uint16_t lineno;
+	unsigned lineno;
 	bool is_const;
 	struct type *type;
 	char *name;

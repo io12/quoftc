@@ -15,11 +15,11 @@
 
 const char *argv0;
 
-NORETURN PRINTF(2, 3) void fatal_error(uint16_t lineno, const char *fmt, ...)
+NORETURN PRINTF(2, 3) void fatal_error(unsigned lineno, const char *fmt, ...)
 {
 	va_list ap;
 
-	fprintf(stderr, "%s:%"PRIu16": error: ", get_filename(), lineno);
+	fprintf(stderr, "%s:%u: error: ", get_filename(), lineno);
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);

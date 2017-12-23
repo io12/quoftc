@@ -55,7 +55,7 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 		// TODO: Resolve type
 	case ARRAY_TYPE: {
 		LLVMTypeRef item_type = get_llvm_type(type->u.array.l);
-		uint16_t len = type->u.array.len;
+		unsigned len = type->u.array.len;
 
 		if (len == 0) {
 			return get_fat_ptr_type(item_type);
@@ -401,7 +401,7 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	}
 	case STRING_LIT_EXPR: {
 		char *val = expr->u.string_lit.val;
-		uint16_t len = expr->u.string_lit.len;
+		unsigned len = expr->u.string_lit.len;
 
 		return LLVMConstString(val, len, true);
 	}

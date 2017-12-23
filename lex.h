@@ -42,12 +42,12 @@ enum tok_kind {
 };
 struct tok {
 	enum tok_kind kind;
-	uint16_t lineno;
+	unsigned lineno;
 	union {
 		uint32_t char_lit;
 		struct {
 			char val[MAX_STRING_SIZE + 1];
-			uint16_t len;
+			unsigned len;
 		} string_lit;
 		uint64_t int_lit;
 		double float_lit;

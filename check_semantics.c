@@ -10,12 +10,12 @@
 
 static struct symbol_table sym_tbl;
 
-static NORETURN void compat_error(uint16_t lineno)
+static NORETURN void compat_error(unsigned lineno)
 {
 	fatal_error(lineno, "Expression not compatible with type");
 }
 
-static NORETURN void lvalue_error(uint16_t lineno)
+static NORETURN void lvalue_error(unsigned lineno)
 {
 	fatal_error(lineno, "Value mutated that is not an lvalue");
 }
@@ -272,7 +272,7 @@ static bool are_types_compat(struct type *type1, struct type *type2)
 		// TODO: Stub
 	case ARRAY_TYPE: {
 		struct type *subtype1, *subtype2;
-		uint16_t len1, len2;
+		unsigned len1, len2;
 
 		if (type2->kind != ARRAY_TYPE) {
 			return false;
@@ -350,7 +350,7 @@ static struct type *dup_stricter_type(struct type *type1, struct type *type2)
 		// TODO: Stub
 	case ARRAY_TYPE: {
 		struct type *subtype1, *subtype2, *stricter_subtype;
-		uint16_t len;
+		unsigned len;
 
 		subtype1 = type1->u.array.l;
 		subtype2 = type2->u.array.l;
@@ -547,7 +547,7 @@ static void type_check(struct expr *expr)
 		expr->type = ALLOC_CHAR_TYPE(expr->lineno);
 		break;
 	case STRING_LIT_EXPR: {
-		uint16_t len = expr->u.string_lit.len;
+		unsigned len = expr->u.string_lit.len;
 
 		expr->type = ALLOC_ARRAY_TYPE(expr->lineno,
 				ALLOC_CHAR_TYPE(expr->lineno), len);
@@ -577,7 +577,7 @@ static void type_check(struct expr *expr)
 static void check_decl(struct decl *decl)
 // TODO: Add a maximum nest level
 {
-	uint16_t lineno = decl->lineno;
+	unsigned lineno = decl->lineno;
 	bool is_const = decl->is_const;
 	struct type *type = decl->type;
 	char *name = decl->name;

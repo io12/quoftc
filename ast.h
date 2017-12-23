@@ -21,7 +21,7 @@
 		}, sizeof(struct struct_tag)))
 
 struct type {
-	uint16_t lineno;
+	unsigned lineno;
 	enum {
 		UNSIZED_INT_TYPE, // Unused until semantic analysis
 		U8_TYPE, U16_TYPE, U32_TYPE, U64_TYPE,
@@ -40,7 +40,7 @@ struct type {
 		} param;
 		struct {
 			struct type *l;
-			uint16_t len; // Zero if unspecified
+			unsigned len; // Zero if unspecified
 		} array;
 		struct {
 			struct type *l;
@@ -116,7 +116,7 @@ enum bin_op {
 
 struct expr {
 	struct type *type; // Uninitialized until semantic analysis
-	uint16_t lineno;
+	unsigned lineno;
 	enum {
 		BOOL_LIT_EXPR, INT_LIT_EXPR, FLOAT_LIT_EXPR, CHAR_LIT_EXPR,
 		STRING_LIT_EXPR, UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR,
@@ -138,7 +138,7 @@ struct expr {
 		} char_lit;
 		struct {
 			char *val;
-			uint16_t len;
+			unsigned len;
 		} string_lit;
 		struct {
 			enum unary_op op;
@@ -206,7 +206,7 @@ struct expr {
 void free_expr(void *);
 
 struct switch_pattern {
-	uint16_t lineno;
+	unsigned lineno;
 	enum {
 		UNDERSCORE_SWITCH_PATTERN, OR_SWITCH_PATTERN,
 		ARRAY_SWITCH_PATTERN, TUPLE_SWITCH_PATTERN, EXPR_SWITCH_PATTERN
@@ -235,7 +235,7 @@ struct switch_pattern {
 void free_switch_pattern(void *);
 
 struct switch_case {
-	uint16_t lineno;
+	unsigned lineno;
 	struct switch_pattern *l;
 	struct expr *r;
 };
@@ -246,7 +246,7 @@ struct switch_case {
 void free_switch_case(void *);
 
 struct decl {
-	uint16_t lineno;
+	unsigned lineno;
 	bool is_const;
 	struct type *type;
 	char *name;
@@ -259,7 +259,7 @@ struct decl {
 void free_decl(void *);
 
 struct stmt {
-	uint16_t lineno;
+	unsigned lineno;
 	enum {
 		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
 		WHILE_STMT, FOR_STMT
