@@ -330,7 +330,6 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 	case LOG_OR_OP:
 		return LLVMBuildOr(builder, l, r, "or");
 	case BIT_XOR_OP:
-	case LOG_XOR_OP: // TODO: Remove this
 		return LLVMBuildXor(builder, l, r, "xor");
 	case BIT_SHIFT_L_OP:
 		return LLVMBuildShl(builder, l, r, "shl");

@@ -175,8 +175,8 @@ static enum tok_kind lookup_keyword(const char *keyword)
 		K("var", VAR);
 		K("impure", IMPURE);
 		K("typedef", TYPEDEF);
-		K("True", TRUE);
-		K("False", FALSE);
+		K("true", TRUE);
+		K("false", FALSE);
 		K("++", PLUS_PLUS);
 		K("--", MINUS_MINUS);
 		K("+", PLUS);
@@ -198,7 +198,6 @@ static enum tok_kind lookup_keyword(const char *keyword)
 		K(">>", GT_GT);
 		K("&&", AMP_AMP);
 		K("||", PIPE_PIPE);
-		K("^^", CARET_CARET);
 		K("!", BANG);
 		K("=", EQ);
 		K("+=", PLUS_EQ);
@@ -476,8 +475,8 @@ const char *tok_to_str(enum tok_kind kind)
 		[IMPURE] = "`impure`",
 		[IDENT] = "an identifier",
 		[TYPEDEF] = "`typedef`",
-		[TRUE] = "`True`",
-		[FALSE] = "`False`",
+		[TRUE] = "`true`",
+		[FALSE] = "`false`",
 		[INT_LIT] = "an integer literal",
 		[FLOAT_LIT] = "a float literal",
 		[CHAR_LIT] = "a character literal",
@@ -503,7 +502,6 @@ const char *tok_to_str(enum tok_kind kind)
 		[GT_GT] = "`>>`",
 		[AMP_AMP] = "`&&`",
 		[PIPE_PIPE] = "`||`",
-		[CARET_CARET] = "`^^`",
 		[BANG] = "`!`",
 		[EQ] = "`=`",
 		[PLUS_EQ] = "`+=`",

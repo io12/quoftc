@@ -445,7 +445,6 @@ static void type_check_bin_op(struct expr *expr)
 		break;
 	case LOG_AND_OP:
 	case LOG_OR_OP:
-	case LOG_XOR_OP:
 		if (l->type->kind != BOOL_TYPE) {
 			compat_error(expr->lineno);
 		}

@@ -534,7 +534,7 @@ static bool is_bin_op(enum tok_kind tok_kind)
 	case STAR: case SLASH: case PERCENT:
 	case LT: case GT: case LT_EQ: case GT_EQ: case EQ_EQ: case BANG_EQ:
 	case AMP: case PIPE: case CARET: case LT_LT: case GT_GT:
-	case AMP_AMP: case PIPE_PIPE: case CARET_CARET:
+	case AMP_AMP: case PIPE_PIPE:
 	case EQ:
 	case PLUS_EQ: case MINUS_EQ:
 	case STAR_EQ: case SLASH_EQ: case PERCENT_EQ:
@@ -585,8 +585,6 @@ static enum bin_op tok_to_bin_op(enum tok_kind tok_kind)
 		return LOG_AND_OP;
 	case PIPE_PIPE:
 		return LOG_OR_OP;
-	case CARET_CARET:
-		return LOG_XOR_OP;
 	case EQ:
 		return ASSIGN_OP;
 	case PLUS_EQ:
@@ -677,9 +675,6 @@ static struct {
 	},
 	[LOG_OR_OP] = {
 		.prec = 1, .assoc = L_ASSOC
-	},
-	[LOG_XOR_OP] = {
-		.prec = 2, .assoc = L_ASSOC
 	},
 	[ASSIGN_OP] = {
 		.prec = 0, .assoc = NON_ASSOC
