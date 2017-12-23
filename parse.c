@@ -9,6 +9,8 @@
 #include "eval.h"
 #include "parse.h"
 
+#define MAX_FUNC_ARGS 127
+
 static struct tok cur_tok, lookahead_tok;
 
 static void consume_tok(void)
@@ -46,12 +48,12 @@ static struct type *parse_tuple_or_func_type(void)
 	struct type *first_type;
 	Vec *types;
 
-	lineno = cur_tok.lineno;
 	expect_tok(OPEN_PAREN);
 	first_type = parse_type();
 	types = alloc_vec(free_type);
 	switch (cur_tok.kind) {
 	case COMMA:
+		lineno = cur_tok.lineno;
 		consume_tok();
 		vec_push(types, first_type);
 		do {
@@ -60,14 +62,20 @@ static struct type *parse_tuple_or_func_type(void)
 		expect_tok(CLOSE_PAREN);
 		return ALLOC_TUPLE_TYPE(lineno, types);
 	case BACK_ARROW:
+		lineno = cur_tok.lineno;
 		consume_tok();
 		do {
 			vec_push(types, parse_type());
+			if (vec_len(types) > MAX_FUNC_ARGS) {
+				fatal_error(lineno, "Function type has more "
+				                    "than "XSTR(MAX_FUNC_ARGS)
+				                    " parameters");
+			}
 		} while (accept_tok(COMMA));
 		expect_tok(CLOSE_PAREN);
 		return ALLOC_FUNC_TYPE(lineno, first_type, types);
 	default:
-		fatal_error(lineno, "Expected %s or %s, instead got %s",
+		fatal_error(cur_tok.lineno, "Expected %s or %s, instead got %s",
 				tok_to_str(COMMA),
 				tok_to_str(BACK_ARROW),
 				tok_to_str(cur_tok.kind));
@@ -208,6 +216,10 @@ static struct expr *parse_lambda_expr(void)
 	params = alloc_vec(free);
 	while (accept_tok(IDENT)) {
 		vec_push(params, xstrdup(cur_tok.u.ident));
+		if (vec_len(params) > MAX_FUNC_ARGS) {
+			fatal_error(lineno, "Lambda expression has more than "
+			                     XSTR(MAX_FUNC_ARGS)" parameters");
+		}
 	}
 	expect_tok(ARROW);
 	return ALLOC_LAMBDA_EXPR(lineno, params, parse_expr());
