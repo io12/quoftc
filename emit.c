@@ -120,18 +120,19 @@ static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 		struct expr *expr)
 {
 	enum unary_op op = expr->u.unary_op.op;
-	LLVMValueRef operand =
-		emit_expr(builder, expr->u.unary_op.operand);
+	LLVMValueRef operand = emit_expr(builder, expr->u.unary_op.operand);
 	LLVMTypeRef type = get_llvm_type(expr->type);
 
 	switch (op) {
+	case NEG_OP:
+		return LLVMBuildNeg(builder, operand, "neg");
 	case PRE_INC_OP:
 	case POST_INC_OP:
 	case PRE_DEC_OP:
 	case POST_DEC_OP:
 		return emit_inc_or_dec_expr(builder, expr);
 	case DEREF_OP:
-		return LLVMBuildLoad(builder, operand, "deref_load");
+		return LLVMBuildLoad(builder, operand, "deref");
 	case REF_OP:
 		return operand;
 	case BIT_NOT_OP:

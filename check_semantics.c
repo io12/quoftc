@@ -180,7 +180,17 @@ static void type_check_unary_op(struct expr *expr)
 	enum unary_op op = expr->u.unary_op.op;
 	struct expr *operand = expr->u.unary_op.operand;
 
+	type_check(operand);
 	switch (op) {
+	case NEG_OP:
+		if (!is_num_type(operand->type)) {
+			compat_error(expr->lineno);
+		}
+		if (is_unsigned_int_type(operand->type)) {
+			compat_error(expr->lineno);
+		}
+		expr->type = dup_type(operand->type);
+		break;
 	case PRE_INC_OP:
 	case POST_INC_OP:
 	case PRE_DEC_OP:
@@ -188,7 +198,6 @@ static void type_check_unary_op(struct expr *expr)
 		if (!is_lvalue(operand)) {
 			lvalue_error(expr->lineno);
 		}
-		type_check(operand);
 		if (!is_num_type(operand->type)) {
 			compat_error(expr->lineno);
 		}
@@ -206,19 +215,16 @@ static void type_check_unary_op(struct expr *expr)
 		if (!is_lvalue(operand)) {
 			lvalue_error(expr->lineno);
 		}
-		type_check(operand);
 		expr->type = ALLOC_POINTER_TYPE(expr->lineno, operand->type);
 		break;
 	}
 	case BIT_NOT_OP:
-		type_check(operand);
 		if (!is_unsigned_int_type(operand->type)) {
 			compat_error(expr->lineno);
 		}
 		expr->type = dup_type(operand->type);
 		break;
 	case LOG_NOT_OP:
-		type_check(operand);
 		if (operand->type->kind != BOOL_TYPE) {
 			compat_error(expr->lineno);
 		}

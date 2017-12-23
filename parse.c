@@ -502,6 +502,9 @@ static struct expr *parse_unary_expr(void)
 
 	lineno = cur_tok.lineno;
 	switch (cur_tok.kind) {
+	case MINUS:
+		op = NEG_OP;
+		break;
 	case PLUS_PLUS:
 		op = PRE_INC_OP;
 		break;
