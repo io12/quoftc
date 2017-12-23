@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include "ds.h"
@@ -56,9 +57,7 @@ size_t vec_len(Vec *vec)
 
 void *vec_get(Vec *vec, size_t n)
 {
-	if (n >= vec->len) {
-		internal_error();
-	}
+	assert(n < vec->len);
 	return vec->data[n];
 }
 
@@ -75,16 +74,12 @@ Vec *vec_push(Vec *vec, void *val)
 
 void vec_pop(Vec *vec)
 {
-	if (vec->len == 0) {
-		internal_error();
-	}
+	assert(vec->len != 0);
 	vec->free_item(vec->data[--vec->len]);
 }
 
 void *vec_top(Vec *vec)
 {
-	if (vec->len == 0) {
-		internal_error();
-	}
+	assert(vec->len != 0);
 	return vec->data[vec->len - 1];
 }

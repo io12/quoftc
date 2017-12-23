@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -34,9 +35,7 @@ static void inc_lineno(void)
 
 static void skip_line_comment(void)
 {
-	if (!(inp[0] == '/' && inp[1] == '/')) {
-		internal_error();
-	}
+	assert(inp[0] == '/' && inp[1] == '/');
 	inp += 2;
 	for (;;) {
 		if (*inp == '\n') {
@@ -53,9 +52,7 @@ static void skip_line_comment(void)
 
 static void skip_block_comment(void)
 {
-	if (!(inp[0] == '/' && inp[1] == '*')) {
-		internal_error();
-	}
+	assert(inp[0] == '/' && inp[1] == '*');
 	inp += 2;
 	for (;;) {
 		if (inp[0] == '*' && inp[1] == '/') {
@@ -105,9 +102,8 @@ static void char_lit(struct tok *tok)
 	uint64_t num;
 	uint32_t c;
 
-	if (*inp++ != '\'') {
-		internal_error();
-	}
+	assert(*inp == '\'');
+	inp++;
 	if (inp[0] == 'U' && inp[1] == '+') {
 		inp += 2;
 		num_lit_with_base(&num_tok, 16);
@@ -145,9 +141,8 @@ static void string_lit(struct tok *tok)
 	char text[MAX_STRING_SIZE + 1], *p;
 	uint64_t len;
 
-	if (*inp++ != '"') {
-		internal_error();
-	}
+	assert(*inp == '"');
+	inp++;
 	p = text;
 	len = 0;
 	do {
@@ -284,9 +279,7 @@ static void ident(struct tok *tok)
 	char ident[MAX_IDENT_SIZE + 1];
 	enum tok_kind tok_kind;
 
-	if (!is_ident_head(*inp)) {
-		internal_error();
-	}
+	assert(is_ident_head(*inp));
 	for (i = 0; is_ident_tail(*inp); i++) {
 		if (i == MAX_IDENT_SIZE) {
 			fatal_error(lineno, "Identifier longer than the "
@@ -458,9 +451,7 @@ static void op(struct tok *tok)
 	char op_text[MAX_OP_SIZE + 1];
 	enum tok_kind tok_kind;
 
-	if (!is_op_char(*inp)) {
-		internal_error();
-	}
+	assert(is_op_char(*inp));
 	do {
 		if (i == MAX_IDENT_SIZE) {
 			fatal_error(lineno, "Operator longer than the "
@@ -567,9 +558,6 @@ const char *tok_to_str(enum tok_kind kind)
 		[TEOF] = "end of file"
 	};
 
-	if (tok_names[kind] == NULL) {
-		internal_error();
-	}
 	return tok_names[kind];
 }
 
