@@ -792,6 +792,7 @@ static void compile_module(LLVMModuleRef module)
 #if 0
 	LLVMTargetDataRef data_layout;
 #endif
+	char filename[] = "a.out";
 
 	LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
 	LLVMInitializeAllTargetInfos();
@@ -815,9 +816,8 @@ TODO: Add data layout to module
 	LLVMSetDataLayout(module, data_layout);
 #endif
 	LLVMSetTarget(module, target_triplet);
-	// TODO: Free duplicated string
-	failed = LLVMTargetMachineEmitToFile(target_machine, module,
-			xstrdup("a.out"), LLVMObjectFile, &errmsg);
+	failed = LLVMTargetMachineEmitToFile(target_machine, module, filename,
+			LLVMObjectFile, &errmsg);
 	if (failed) {
 		llvm_error(errmsg);
 	}
