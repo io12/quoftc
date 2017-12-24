@@ -1,1 +1,1 @@
-void emit(struct ast);
+void compile_ast(struct ast);

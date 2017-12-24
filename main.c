@@ -75,7 +75,7 @@ int main(int argc, const char *argv[])
 	for (i = 1; i < argc; i++) {
 		ast = parse_file(argv[i]);
 		check_ast(ast);
-		emit(ast);
+		compile_ast(ast);
 		free_ast(ast);
 	}
 }

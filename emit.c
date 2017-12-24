@@ -594,7 +594,7 @@ static void emit_global_decl(LLVMModuleRef module, struct decl *decl)
 	}
 }
 
-static LLVMModuleRef make_module(struct ast ast)
+static LLVMModuleRef emit_ast(struct ast ast)
 {
 	LLVMModuleRef module;
 	Vec *decls = ast.decls;
@@ -648,11 +648,11 @@ TODO: Add data layout to module
 	LLVMDisposeTargetMachine(target_machine);
 }
 
-void emit(struct ast ast)
+void compile_ast(struct ast ast)
 {
 	LLVMModuleRef module;
 
-	module = make_module(ast);
+	module = emit_ast(ast);
 	compile_module(module);
 	LLVMDisposeModule(module);
 }
