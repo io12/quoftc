@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/TargetMachine.h>
@@ -775,10 +776,17 @@ static LLVMModuleRef emit_ast(struct ast ast)
 	return module;
 }
 
+static NORETURN void llvm_error(const char *errmsg)
+{
+	fprintf(stderr, "%s: LLVM error:\n%s\n", argv0, errmsg);
+	exit(EXIT_FAILURE);
+}
+
 static void compile_module(LLVMModuleRef module)
 {
 	const char *target_triplet, *cpu, *features;
 	LLVMTargetRef target;
+	bool failed;
 	char *errmsg;
 	LLVMTargetMachineRef target_machine;
 #if 0
@@ -792,8 +800,10 @@ static void compile_module(LLVMModuleRef module)
 	LLVMInitializeAllAsmParsers();
 	LLVMInitializeAllAsmPrinters();
 	target_triplet = LLVMGetDefaultTargetTriple();
-	LLVMGetTargetFromTriple(target_triplet, &target, &errmsg);
-	fprintf(stderr, "%s\n", errmsg);
+	failed = LLVMGetTargetFromTriple(target_triplet, &target, &errmsg);
+	if (failed) {
+		llvm_error(errmsg);
+	}
 	cpu = "generic";
 	features = "";
 	target_machine = LLVMCreateTargetMachine(target, target_triplet, cpu,
@@ -806,10 +816,11 @@ TODO: Add data layout to module
 #endif
 	LLVMSetTarget(module, target_triplet);
 	// TODO: Free duplicated string
-	LLVMTargetMachineEmitToFile(target_machine, module, xstrdup("a.out"),
-			LLVMObjectFile, &errmsg);
-	fprintf(stderr, "%s\n", errmsg);
-	LLVMDisposeMessage(errmsg);
+	failed = LLVMTargetMachineEmitToFile(target_machine, module,
+			xstrdup("a.out"), LLVMObjectFile, &errmsg);
+	if (failed) {
+		llvm_error(errmsg);
+	}
 	LLVMDisposeTargetMachine(target_machine);
 }
 
