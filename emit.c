@@ -11,7 +11,6 @@
 #include "symbol_table.h"
 #include "emit.h"
 
-static LLVMModuleRef module;
 static struct symbol_table sym_tbl;
 
 static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
@@ -424,8 +423,8 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	}
 }
 
-static void emit_global_val(bool is_const, struct type *type, const char *name,
-		struct expr *init)
+static void emit_global_val(LLVMModuleRef module, bool is_const,
+		struct type *type, const char *name, struct expr *init)
 {
 	LLVMValueRef global;
 	LLVMBuilderRef builder;
@@ -535,7 +534,8 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	}
 }
 
-static void emit_func(struct type *type, const char *name, struct expr *expr)
+static void emit_func(LLVMModuleRef module, struct type *type,
+		const char *name, struct expr *expr)
 {
 	Vec *param_names = expr->u.lambda.params;
 	struct expr *body = expr->u.lambda.body;
@@ -562,7 +562,7 @@ static void emit_func(struct type *type, const char *name, struct expr *expr)
 	LLVMDisposeBuilder(builder);
 }
 
-static void emit_global_decl(struct decl *decl)
+static void emit_global_decl(LLVMModuleRef module, struct decl *decl)
 {
 	switch (decl->type->kind) {
 	case UNSIZED_INT_TYPE:
@@ -585,17 +585,18 @@ static void emit_global_decl(struct decl *decl)
 	case ARRAY_TYPE:
 	case POINTER_TYPE:
 	case TUPLE_TYPE:
-		emit_global_val(decl->is_const, decl->type, decl->name,
+		emit_global_val(module, decl->is_const, decl->type, decl->name,
 				decl->init);
 		break;
 	case FUNC_TYPE:
-		emit_func(decl->type, decl->name, decl->init);
+		emit_func(module, decl->type, decl->name, decl->init);
 		break;
 	}
 }
 
-static void make_module(struct ast ast)
+static LLVMModuleRef make_module(struct ast ast)
 {
+	LLVMModuleRef module;
 	Vec *decls = ast.decls;
 	size_t i;
 
@@ -603,9 +604,10 @@ static void make_module(struct ast ast)
 	enter_new_scope(sym_tbl); // Global scope
 	module = LLVMModuleCreateWithName(get_filename());
 	for (i = 0; i < vec_len(decls); i++) {
-		emit_global_decl(vec_get(decls, i));
+		emit_global_decl(module, vec_get(decls, i));
 	}
 	free_symbol_table(sym_tbl);
+	return module;
 }
 
 static void compile_module(LLVMModuleRef module)
@@ -648,6 +650,5 @@ TODO: Add data layout to module
 
 void emit(struct ast ast)
 {
-	make_module(ast);
-	compile_module(module);
+	compile_module(make_module(ast));
 }
