@@ -138,7 +138,7 @@ bool is_unsigned_int_type(struct type *type)
 	}
 }
 
-static bool is_signed_int_type(struct type *type)
+bool is_signed_int_type(struct type *type)
 {
 	switch (type->kind) {
 	case I8_TYPE:

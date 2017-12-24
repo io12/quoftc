@@ -584,13 +584,21 @@ static LLVMValueRef emit_const_expr(struct expr *expr)
 	return emit_expr(NULL, expr);
 }
 
-static void emit_global_val(LLVMModuleRef module, bool is_const,
-		struct type *type, const char *name, struct expr *init)
+static void emit_global_val(LLVMModuleRef module, struct decl *decl)
 {
-	LLVMValueRef global;
+	bool is_const = decl->is_const;
+	LLVMTypeRef type = get_llvm_type(decl->type);
+	const char *name = decl->name;
+	struct expr *init_expr = decl->init;
+	LLVMValueRef global, init;
+	bool is_signed_int = is_signed_int_type(decl->type);
 
-	global = LLVMAddGlobal(module, get_llvm_type(type), name);
-	LLVMSetInitializer(global, emit_const_expr(init));
+	global = LLVMAddGlobal(module, type, name);
+	init = emit_const_expr(init_expr);
+	if (init_expr->type->kind == UNSIZED_INT_TYPE) {
+		init = LLVMConstIntCast(init, type, is_signed_int);
+	}
+	LLVMSetInitializer(global, init);
 	LLVMSetGlobalConstant(global, is_const);
 }
 
@@ -691,11 +699,12 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	}
 }
 
-static void emit_func(LLVMModuleRef module, struct type *type,
-		const char *name, struct expr *expr)
+static void emit_func(LLVMModuleRef module, struct decl *decl)
 {
-	Vec *param_names = expr->u.lambda.params;
-	struct expr *body = expr->u.lambda.body;
+	struct type *type = decl->type;
+	const char *name = decl->name;
+	Vec *param_names = decl->init->u.lambda.params;
+	struct expr *body = decl->init->u.lambda.body;
 	LLVMValueRef func_val;
 	LLVMBasicBlockRef block;
 	LLVMBuilderRef builder;
@@ -742,11 +751,10 @@ static void emit_global_decl(LLVMModuleRef module, struct decl *decl)
 	case ARRAY_TYPE:
 	case POINTER_TYPE:
 	case TUPLE_TYPE:
-		emit_global_val(module, decl->is_const, decl->type, decl->name,
-				decl->init);
+		emit_global_val(module, decl);
 		break;
 	case FUNC_TYPE:
-		emit_func(module, decl->type, decl->name, decl->init);
+		emit_func(module, decl);
 		break;
 	}
 }
