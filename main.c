@@ -8,7 +8,7 @@
 #include "ds.h"
 #include "ast.h"
 #include "check_semantics.h"
-#include "emit.h"
+#include "code_gen.h"
 #include "lex.h"
 #include "parse.h"
 #include "quoftc.h"

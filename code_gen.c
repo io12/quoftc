@@ -9,7 +9,7 @@
 #include "lex.h"
 #include "quoftc.h"
 #include "symbol_table.h"
-#include "emit.h"
+#include "code_gen.h"
 
 static struct symbol_table sym_tbl;
 
