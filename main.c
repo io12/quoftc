@@ -62,20 +62,22 @@ char *xstrdup(const char *s)
 	return strcpy(xmalloc(strlen(s) + 1), s);
 }
 
-int main(int argc, const char *argv[])
+static void compile_file(const char *filename)
 {
-	int i;
 	struct ast ast;
 
+	ast = parse_file(filename);
+	check_ast(ast);
+	compile_ast(ast);
+	free_ast(ast);
+}
+
+int main(int argc, const char *argv[])
+{
 	argv0 = argv[0];
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s file...\n", argv0);
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s filename\n", argv0);
 		exit(EXIT_FAILURE);
 	}
-	for (i = 1; i < argc; i++) {
-		ast = parse_file(argv[i]);
-		check_ast(ast);
-		compile_ast(ast);
-		free_ast(ast);
-	}
+	compile_file(argv[1]);
 }
