@@ -97,9 +97,9 @@ static void init_char_lit_tok(struct tok *tok, uint32_t c)
 	tok->u.char_lit = c;
 }
 
-static void num_lit_with_base(struct tok *, int);
+static void lex_num_lit_with_base(struct tok *, int);
 
-static void char_lit(struct tok *tok)
+static void lex_char_lit(struct tok *tok)
 {
 	struct tok num_tok;
 	uint64_t num;
@@ -109,7 +109,7 @@ static void char_lit(struct tok *tok)
 	inp++;
 	if (inp[0] == 'U' && inp[1] == '+') {
 		inp += 2;
-		num_lit_with_base(&num_tok, 16);
+		lex_num_lit_with_base(&num_tok, 16);
 		if (num_tok.kind == FLOAT_LIT) {
 			goto invalid;
 		}
@@ -139,7 +139,7 @@ static void init_string_lit_tok(struct tok *tok, char val[MAX_STRING_SIZE + 1],
 	tok->u.string_lit.len = len;
 }
 
-static void string_lit(struct tok *tok)
+static void lex_string_lit(struct tok *tok)
 {
 	char text[MAX_STRING_SIZE + 1], *p;
 	unsigned len;
@@ -275,7 +275,7 @@ static void init_basic_tok(struct tok *tok, enum tok_kind kind)
 	tok->lineno = lineno;
 }
 
-static void ident(struct tok *tok)
+static void lex_ident(struct tok *tok)
 {
 	int i;
 	char ident[MAX_IDENT_SIZE + 1];
@@ -352,7 +352,7 @@ static void init_int_lit_tok(struct tok *tok, uint64_t val)
 }
 
 // TODO: Split this into multiple functions
-static void num_lit_with_base(struct tok *tok, int base)
+static void lex_num_lit_with_base(struct tok *tok, int base)
 {
 	char num_text[MAX_NUM_CHARS + 1];
 	IsValidDigitFunc *is_valid_digit;
@@ -415,30 +415,30 @@ static void num_lit_with_base(struct tok *tok, int base)
 	}
 }
 
-static void num_lit(struct tok *tok)
+static void lex_num_lit(struct tok *tok)
 {
 	if (*inp == '0') {
 		inp++;
 		switch (*inp++) {
 		case 'b':
-			num_lit_with_base(tok, 2);
+			lex_num_lit_with_base(tok, 2);
 			break;
 		case 'o':
-			num_lit_with_base(tok, 8);
+			lex_num_lit_with_base(tok, 8);
 			break;
 		case 'x':
-			num_lit_with_base(tok, 16);
+			lex_num_lit_with_base(tok, 16);
 			break;
 		case '.':
 			inp -= 2;
-			num_lit_with_base(tok, 10);
+			lex_num_lit_with_base(tok, 10);
 			break;
 		default:
 			fatal_error(lineno, "Numerical literal has a leading "
 			                    "zero");
 		}
 	} else {
-		num_lit_with_base(tok, 10);
+		lex_num_lit_with_base(tok, 10);
 	}
 }
 
@@ -447,7 +447,7 @@ static bool is_op_char(int c)
 	return strchr("+-*/%<>=!&|^~.:;,", c) != NULL;
 }
 
-static void op(struct tok *tok)
+static void lex_op(struct tok *tok)
 {
 	int i = 0;
 	char op_text[MAX_OP_SIZE + 1];
@@ -567,10 +567,10 @@ void lex(struct tok *tok)
 	skip_spaces();
 	switch (*inp) {
 	case '\'':
-		char_lit(tok);
+		lex_char_lit(tok);
 		return;
 	case '"':
-		string_lit(tok);
+		lex_string_lit(tok);
 		return;
 	case '[':
 		inp++;
@@ -601,11 +601,11 @@ void lex(struct tok *tok)
 		return;
 	}
 	if (is_op_char(*inp)) {
-		op(tok);
+		lex_op(tok);
 	} else if (is_ident_head(*inp)) {
-		ident(tok);
+		lex_ident(tok);
 	} else if (isdigit(*inp)) {
-		num_lit(tok);
+		lex_num_lit(tok);
 	} else {
 		fatal_error(lineno, "Invalid token `%c`", *inp);
 	}
