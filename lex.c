@@ -166,7 +166,6 @@ static void lex_string_lit(struct tok *tok)
 	init_string_lit_tok(tok, text, len);
 }
 
-// Split into two functions
 static enum tok_kind lookup_keyword(const char *keyword)
 {
 	static HashTable *keywords = NULL;
@@ -180,6 +179,44 @@ static enum tok_kind lookup_keyword(const char *keyword)
 		K("typedef", TYPEDEF);
 		K("true", TRUE);
 		K("false", FALSE);
+		K("if", IF);
+		K("then", THEN);
+		K("else", ELSE);
+		K("do", DO);
+		K("while", WHILE);
+		K("for", FOR);
+		K("switch", SWITCH);
+		K("break", BREAK);
+		K("continue", CONTINUE);
+		K("defer", DEFER);
+		K("return", RETURN);
+		K("U8", U8);
+		K("U16", U16);
+		K("U32", U32);
+		K("U64", U64);
+		K("I8", I8);
+		K("I16", I16);
+		K("I32", I32);
+		K("I64", I64);
+		K("F32", F32);
+		K("F64", F64);
+		K("bool", BOOL);
+		K("void", VOID);
+		K("char", CHAR);
+		K("_", UNDERSCORE);
+#undef K
+	}
+	// Returns INVALID_TOK if not found
+	return (enum tok_kind) hash_table_get(keywords, keyword);
+}
+
+static enum tok_kind lookup_op(const char *op)
+{
+	static HashTable *ops = NULL;
+
+	if (UNLIKELY(ops == NULL)) {
+		ops = alloc_hash_table();
+#define K(keyword, tok) hash_table_set(keywords, keyword, (void *) tok)
 		K("++", PLUS_PLUS);
 		K("--", MINUS_MINUS);
 		K("+", PLUS);
@@ -213,30 +250,6 @@ static enum tok_kind lookup_keyword(const char *keyword)
 		K("^=", CARET_EQ);
 		K("<<=", LT_LT_EQ);
 		K(">>=", GT_GT_EQ);
-		K("if", IF);
-		K("then", THEN);
-		K("else", ELSE);
-		K("do", DO);
-		K("while", WHILE);
-		K("for", FOR);
-		K("switch", SWITCH);
-		K("break", BREAK);
-		K("continue", CONTINUE);
-		K("defer", DEFER);
-		K("return", RETURN);
-		K("U8", U8);
-		K("U16", U16);
-		K("U32", U32);
-		K("U64", U64);
-		K("I8", I8);
-		K("I16", I16);
-		K("I32", I32);
-		K("I64", I64);
-		K("F32", F32);
-		K("F64", F64);
-		K("bool", BOOL);
-		K("void", VOID);
-		K("char", CHAR);
 		K(".", DOT);
 		K(":", COLON);
 		K(";", SEMICOLON);
@@ -245,11 +258,16 @@ static enum tok_kind lookup_keyword(const char *keyword)
 		K("<-", BACK_ARROW);
 		K("=>", BIG_ARROW);
 		K("\\", BACKSLASH);
-		K("_", UNDERSCORE);
+		K("[", OPEN_BRACKET);
+		K("]", CLOSE_BRACKET);
+		K("(", OPEN_PAREN);
+		K(")", CLOSE_PAREN);
+		K("{", OPEN_BRACE);
+		K("}", CLOSE_BRACE);
 #undef K
 	}
 	// Returns INVALID_TOK if not found
-	return (enum tok_kind) hash_table_get(keywords, keyword);
+	return (enum tok_kind) hash_table_get(ops, op);
 }
 
 static bool is_ident_head(int c)
@@ -444,7 +462,7 @@ static void lex_num_lit(struct tok *tok)
 
 static bool is_op_char(int c)
 {
-	return strchr("+-*/%<>=!&|^~.:;,", c) != NULL;
+	return strchr("+-*/%<>=!&|^~.:;,[](){}", c) != NULL;
 }
 
 static void lex_op(struct tok *tok)
@@ -463,7 +481,7 @@ static void lex_op(struct tok *tok)
 		op_text[i++] = *inp++;
 	} while (is_op_char(*inp));
 	op_text[i] = '\0';
-	tok_kind = lookup_keyword(op_text);
+	tok_kind = lookup_op(op_text);
 	if (tok_kind == INVALID_TOK) {
 		fatal_error(lineno, "`%s` is not a valid operator", op_text);
 	}
@@ -571,30 +589,6 @@ void lex(struct tok *tok)
 		return;
 	case '"':
 		lex_string_lit(tok);
-		return;
-	case '[':
-		inp++;
-		init_basic_tok(tok, OPEN_BRACKET);
-		return;
-	case ']':
-		inp++;
-		init_basic_tok(tok, CLOSE_BRACKET);
-		return;
-	case '(':
-		inp++;
-		init_basic_tok(tok, OPEN_PAREN);
-		return;
-	case ')':
-		inp++;
-		init_basic_tok(tok, CLOSE_PAREN);
-		return;
-	case '{':
-		inp++;
-		init_basic_tok(tok, OPEN_BRACE);
-		return;
-	case '}':
-		inp++;
-		init_basic_tok(tok, CLOSE_BRACE);
 		return;
 	case '\0':
 		init_basic_tok(tok, TEOF);
