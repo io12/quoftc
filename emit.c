@@ -650,5 +650,9 @@ TODO: Add data layout to module
 
 void emit(struct ast ast)
 {
-	compile_module(make_module(ast));
+	LLVMModuleRef module;
+
+	module = make_module(ast);
+	compile_module(module);
+	LLVMDisposeModule(module);
 }
