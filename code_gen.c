@@ -123,10 +123,15 @@ static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 	enum unary_op op = expr->u.unary_op.op;
 	LLVMValueRef operand = emit_expr(builder, expr->u.unary_op.operand);
 	LLVMTypeRef type = get_llvm_type(expr->type);
+	bool is_const_expr = (builder == NULL);
 
 	switch (op) {
 	case NEG_OP:
-		return LLVMBuildNeg(builder, operand, "neg");
+		if (is_const_expr) {
+			return LLVMConstNeg(operand);
+		} else {
+			return LLVMBuildNeg(builder, operand, "neg");
+		}
 	case PRE_INC_OP:
 	case POST_INC_OP:
 	case PRE_DEC_OP:
@@ -137,13 +142,21 @@ static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 	case REF_OP:
 		return operand;
 	case BIT_NOT_OP:
-		return LLVMBuildNot(builder, operand, "bitwise_not");
+		if (is_const_expr) {
+			return LLVMConstNot(operand);
+		} else {
+			return LLVMBuildNot(builder, operand, "bitwise_not");
+		}
 	case LOG_NOT_OP: {
 		LLVMValueRef zero_val;
 
 		zero_val = LLVMConstInt(type, 0, false);
-		return LLVMBuildICmp(builder, LLVMIntEQ, operand, zero_val,
-				"logical_not");
+		if (is_const_expr) {
+			return LLVMConstICmp(LLVMIntEQ, operand, zero_val);
+		} else {
+			return LLVMBuildICmp(builder, LLVMIntEQ, operand,
+					zero_val, "logical_not");
+		}
 	}
 	}
 	internal_error();
@@ -152,122 +165,244 @@ static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 static LLVMValueRef emit_add(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFAdd(builder, l, r, "add");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFAdd(l, r);
+		} else {
+			return LLVMConstAdd(l, r);
+		}
 	} else {
-		return LLVMBuildAdd(builder, l, r, "add");
+		if (is_float_type(type)) {
+			return LLVMBuildFAdd(builder, l, r, "add");
+		} else {
+			return LLVMBuildAdd(builder, l, r, "add");
+		}
 	}
 }
 
 static LLVMValueRef emit_sub(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFSub(builder, l, r, "sub");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFSub(l, r);
+		} else {
+			return LLVMConstSub(l, r);
+		}
 	} else {
-		return LLVMBuildSub(builder, l, r, "sub");
+		if (is_float_type(type)) {
+			return LLVMBuildFSub(builder, l, r, "sub");
+		} else {
+			return LLVMBuildSub(builder, l, r, "sub");
+		}
 	}
 }
 
 static LLVMValueRef emit_mul(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFMul(builder, l, r, "mul");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFMul(l, r);
+		} else {
+			return LLVMConstMul(l, r);
+		}
 	} else {
-		return LLVMBuildMul(builder, l, r, "mul");
+		if (is_float_type(type)) {
+			return LLVMBuildFMul(builder, l, r, "mul");
+		} else {
+			return LLVMBuildMul(builder, l, r, "mul");
+		}
 	}
 }
 
 static LLVMValueRef emit_div(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFDiv(builder, l, r, "div");
-	} else if (is_unsigned_int_type(type)) {
-		return LLVMBuildUDiv(builder, l, r, "div");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFDiv(l, r);
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMConstUDiv(l, r);
+		} else {
+			return LLVMConstSDiv(l, r);
+		}
 	} else {
-		return LLVMBuildSDiv(builder, l, r, "div");
+		if (is_float_type(type)) {
+			return LLVMBuildFDiv(builder, l, r, "div");
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMBuildUDiv(builder, l, r, "div");
+		} else {
+			return LLVMBuildSDiv(builder, l, r, "div");
+		}
 	}
 }
 
 static LLVMValueRef emit_mod(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFRem(builder, l, r, "mod");
-	} else if (is_unsigned_int_type(type)) {
-		return LLVMBuildURem(builder, l, r, "mod");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFRem(l, r);
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMConstURem(l, r);
+		} else {
+			return LLVMConstSRem(l, r);
+		}
 	} else {
-		return LLVMBuildSRem(builder, l, r, "mod");
+		if (is_float_type(type)) {
+			return LLVMBuildFRem(builder, l, r, "mod");
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMBuildURem(builder, l, r, "mod");
+		} else {
+			return LLVMBuildSRem(builder, l, r, "mod");
+		}
 	}
 }
 
 static LLVMValueRef emit_lt(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFCmp(builder, LLVMRealOLT, l, r, "lt");
-	} else if (is_unsigned_int_type(type)) {
-		return LLVMBuildICmp(builder, LLVMIntULT, l, r, "lt");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFCmp(LLVMRealOLT, l, r);
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMConstICmp(LLVMIntULT, l, r);
+		} else {
+			return LLVMConstICmp(LLVMIntSLT, l, r);
+		}
 	} else {
-		return LLVMBuildICmp(builder, LLVMIntSLT, l, r, "lt");
+		if (is_float_type(type)) {
+			return LLVMBuildFCmp(builder, LLVMRealOLT, l, r, "lt");
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMBuildICmp(builder, LLVMIntULT, l, r, "lt");
+		} else {
+			return LLVMBuildICmp(builder, LLVMIntSLT, l, r, "lt");
+		}
 	}
 }
 
 static LLVMValueRef emit_gt(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFCmp(builder, LLVMRealOGT, l, r, "gt");
-	} else if (is_unsigned_int_type(type)) {
-		return LLVMBuildICmp(builder, LLVMIntUGT, l, r, "gt");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFCmp(LLVMRealOGT, l, r);
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMConstICmp(LLVMIntUGT, l, r);
+		} else {
+			return LLVMConstICmp(LLVMIntSGT, l, r);
+		}
 	} else {
-		return LLVMBuildICmp(builder, LLVMIntSGT, l, r, "gt");
+		if (is_float_type(type)) {
+			return LLVMBuildFCmp(builder, LLVMRealOGT, l, r, "gt");
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMBuildICmp(builder, LLVMIntUGT, l, r, "gt");
+		} else {
+			return LLVMBuildICmp(builder, LLVMIntSGT, l, r, "gt");
+		}
 	}
 }
 
 static LLVMValueRef emit_le(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFCmp(builder, LLVMRealOLE, l, r, "le");
-	} else if (is_unsigned_int_type(type)) {
-		return LLVMBuildICmp(builder, LLVMIntULE, l, r, "le");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFCmp(LLVMRealOLE, l, r);
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMConstICmp(LLVMIntULE, l, r);
+		} else {
+			return LLVMConstICmp(LLVMIntSLE, l, r);
+		}
 	} else {
-		return LLVMBuildICmp(builder, LLVMIntSLE, l, r, "le");
+		if (is_float_type(type)) {
+			return LLVMBuildFCmp(builder, LLVMRealOLE, l, r, "le");
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMBuildICmp(builder, LLVMIntULE, l, r, "le");
+		} else {
+			return LLVMBuildICmp(builder, LLVMIntSLE, l, r, "le");
+		}
 	}
 }
 
 static LLVMValueRef emit_ge(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFCmp(builder, LLVMRealOGE, l, r, "ge");
-	} else if (is_unsigned_int_type(type)) {
-		return LLVMBuildICmp(builder, LLVMIntUGE, l, r, "ge");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFCmp(LLVMRealOGE, l, r);
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMConstICmp(LLVMIntUGE, l, r);
+		} else {
+			return LLVMConstICmp(LLVMIntSGE, l, r);
+		}
 	} else {
-		return LLVMBuildICmp(builder, LLVMIntSGE, l, r, "ge");
+		if (is_float_type(type)) {
+			return LLVMBuildFCmp(builder, LLVMRealOGE, l, r, "ge");
+		} else if (is_unsigned_int_type(type)) {
+			return LLVMBuildICmp(builder, LLVMIntUGE, l, r, "ge");
+		} else {
+			return LLVMBuildICmp(builder, LLVMIntSGE, l, r, "ge");
+		}
 	}
 }
 
 static LLVMValueRef emit_eq(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFCmp(builder, LLVMRealOEQ, l, r, "eq");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFCmp(LLVMRealOEQ, l, r);
+		} else {
+			return LLVMConstICmp(LLVMIntEQ, l, r);
+		}
 	} else {
-		return LLVMBuildICmp(builder, LLVMIntEQ, l, r, "eq");
+		if (is_float_type(type)) {
+			return LLVMBuildFCmp(builder, LLVMRealOEQ, l, r, "eq");
+		} else {
+			return LLVMBuildICmp(builder, LLVMIntEQ, l, r, "eq");
+		}
 	}
 }
 
 static LLVMValueRef emit_ne(LLVMBuilderRef builder, LLVMValueRef l,
 		LLVMValueRef r, struct type *type)
 {
-	if (is_float_type(type)) {
-		return LLVMBuildFCmp(builder, LLVMRealONE, l, r, "ne");
+	bool is_const_expr = (builder == NULL);
+
+	if (is_const_expr) {
+		if (is_float_type(type)) {
+			return LLVMConstFCmp(LLVMRealONE, l, r);
+		} else {
+			return LLVMConstICmp(LLVMIntNE, l, r);
+		}
 	} else {
-		return LLVMBuildICmp(builder, LLVMIntNE, l, r, "ne");
+		if (is_float_type(type)) {
+			return LLVMBuildFCmp(builder, LLVMRealONE, l, r, "ne");
+		} else {
+			return LLVMBuildICmp(builder, LLVMIntNE, l, r, "ne");
+		}
 	}
 }
 
@@ -298,6 +433,7 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 	             r = emit_expr(builder, expr->u.bin_op.r);
 	struct type *type = expr->type;
 	LLVMValueRef old_val = NULL, new_val = NULL;
+	bool is_const_expr = (builder == NULL);
 
 	if (is_assignment(op)) {
 		old_val = LLVMBuildLoad(builder, l, "assign_load");
@@ -327,16 +463,36 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 		return emit_ne(builder, l, r, type);
 	case BIT_AND_OP:
 	case LOG_AND_OP:
-		return LLVMBuildAnd(builder, l, r, "and");
+		if (is_const_expr) {
+			return LLVMConstAnd(l, r);
+		} else {
+			return LLVMBuildAnd(builder, l, r, "and");
+		}
 	case BIT_OR_OP:
 	case LOG_OR_OP:
-		return LLVMBuildOr(builder, l, r, "or");
+		if (is_const_expr) {
+			return LLVMConstOr(l, r);
+		} else {
+			return LLVMBuildOr(builder, l, r, "or");
+		}
 	case BIT_XOR_OP:
-		return LLVMBuildXor(builder, l, r, "xor");
+		if (is_const_expr) {
+			return LLVMConstXor(l, r);
+		} else {
+			return LLVMBuildXor(builder, l, r, "xor");
+		}
 	case BIT_SHIFT_L_OP:
-		return LLVMBuildShl(builder, l, r, "shl");
+		if (is_const_expr) {
+			return LLVMConstShl(l, r);
+		} else {
+			return LLVMBuildShl(builder, l, r, "shl");
+		}
 	case BIT_SHIFT_R_OP:
-		return LLVMBuildLShr(builder, l, r, "lshr");
+		if (is_const_expr) {
+			return LLVMConstLShr(l, r);
+		} else {
+			return LLVMBuildLShr(builder, l, r, "lshr");
+		}
 	case ASSIGN_OP:
 		return LLVMBuildStore(builder, r, l);
 	case ADD_ASSIGN_OP:
@@ -423,18 +579,19 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	}
 }
 
+static LLVMValueRef emit_const_expr(struct expr *expr)
+{
+	return emit_expr(NULL, expr);
+}
+
 static void emit_global_val(LLVMModuleRef module, bool is_const,
 		struct type *type, const char *name, struct expr *init)
 {
 	LLVMValueRef global;
-	LLVMBuilderRef builder;
-	
+
 	global = LLVMAddGlobal(module, get_llvm_type(type), name);
-	builder = LLVMCreateBuilder();
-	// Constexpr?
-	LLVMSetInitializer(global, emit_expr(builder, init));
+	LLVMSetInitializer(global, emit_const_expr(init));
 	LLVMSetGlobalConstant(global, is_const);
-	LLVMDisposeBuilder(builder);
 }
 
 static void emit_local_val(LLVMBuilderRef builder, struct type *type,
