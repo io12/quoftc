@@ -33,7 +33,8 @@ static void expect_tok_no_consume(enum tok_kind expected)
 {
 	if (cur_tok.kind != expected) {
 		fatal_error(cur_tok.lineno, "Expected %s, instead got %s",
-				tok_to_str(expected), tok_to_str(cur_tok.kind));
+				tok_to_str(expected),
+				tok_to_str(cur_tok.kind));
 	}
 }
 
@@ -41,6 +42,15 @@ static void expect_tok(enum tok_kind expected)
 {
 	expect_tok_no_consume(expected);
 	consume_tok();
+}
+
+static NORETURN void expected_either_error(enum tok_kind expected1,
+		enum tok_kind expected2)
+{
+	fatal_error(cur_tok.lineno, "Expected %s or %s, instead got %s",
+			tok_to_str(expected1),
+			tok_to_str(expected2),
+			tok_to_str(cur_tok.kind));
 }
 
 static struct type *parse_type(void);
@@ -81,10 +91,7 @@ static struct type *parse_tuple_or_func_type(void)
 		expect_tok(CLOSE_PAREN);
 		return ALLOC_FUNC_TYPE(lineno, first_type, types);
 	default:
-		fatal_error(cur_tok.lineno, "Expected %s or %s, instead got %s",
-				tok_to_str(COMMA),
-				tok_to_str(BACK_ARROW),
-				tok_to_str(cur_tok.kind));
+		expected_either_error(COMMA, BACK_ARROW);
 	}
 }
 
@@ -804,11 +811,7 @@ static struct stmt *parse_if_stmt(void)
 			else_stmts = parse_compound_stmt();
 			break;
 		default:
-			fatal_error(cur_tok.lineno,
-					"Expected %s or %s, instead got %s",
-					tok_to_str(IF),
-					tok_to_str(OPEN_BRACE),
-					tok_to_str(cur_tok.kind));
+			expected_either_error(IF, OPEN_BRACE);
 		}
 	} else {
 		else_stmts = NULL;
@@ -919,10 +922,7 @@ static struct decl *parse_data_decl(void)
 		is_const = false;
 		break;
 	default:
-		fatal_error(cur_tok.lineno, "Expected %s or %s, instead got %s",
-				tok_to_str(CONST),
-				tok_to_str(VAR),
-				tok_to_str(cur_tok.kind));
+		expected_either_error(CONST, VAR);
 	}
 	consume_tok();
 	type = parse_type();
