@@ -25,6 +25,7 @@ static bool is_pure_expr(struct expr *);
 static bool vec_has_pure_items(Vec *vec)
 {
 	size_t i;
+
 	for (i = 0; i < vec_len(vec); i++) {
 		if (!is_pure_expr(vec_get(vec, i))) {
 			return false;
@@ -580,19 +581,29 @@ static void type_check(struct expr *expr)
 	}
 }
 
-static void check_decl(struct decl *decl)
-// TODO: Add a maximum nest level
+static void ensure_not_declared(unsigned lineno, char *name)
 {
-	unsigned lineno = decl->lineno;
-	bool is_const = decl->is_const;
-	struct type *type = decl->type;
-	char *name = decl->name;
-	struct expr *init = decl->init;
-
 	if (lookup_symbol(sym_tbl, name) != NULL) {
 		fatal_error(lineno, "Name `%s` already declared in scope",
 				name);
 	}
+}
+
+static void check_data_decl(struct decl *decl)
+{
+	unsigned lineno;
+	bool is_const;
+	struct type *type;
+	char *name;
+	struct expr *init;
+
+	lineno = decl->lineno;
+	is_const = decl->u.data.is_const;
+	type = decl->u.data.type;
+	name = decl->u.data.name;
+	init = decl->u.data.init;
+
+	ensure_not_declared(lineno, name);
 	if (is_global_scope(sym_tbl)) {
 		if (init == NULL) {
 			fatal_error(lineno, "Top level declaration of `%s` "
@@ -615,6 +626,175 @@ static void check_decl(struct decl *decl)
 		}
 	}
 	insert_symbol(sym_tbl, name, type);
+}
+
+static void ensure_valid_cond(struct expr *cond)
+{
+	if (cond->type->kind != BOOL_TYPE || is_pure_expr(cond)) {
+		fatal_error(cond->lineno, "Conditions must be impure, boolean "
+		                          "expressions");
+	}
+}
+
+static void check_compound_stmt(Vec *);
+
+static void check_if_stmt(struct stmt *stmt)
+{
+	struct expr *cond;
+	Vec *then_stmts, *else_stmts;
+
+	cond = stmt->u.if_.cond;
+	then_stmts = stmt->u.if_.then_stmts;
+	else_stmts = stmt->u.if_.else_stmts;
+
+	type_check(cond);
+	ensure_valid_cond(cond);
+	enter_new_scope(sym_tbl);
+	check_compound_stmt(then_stmts);
+	leave_scope(sym_tbl);
+	enter_new_scope(sym_tbl);
+	if (else_stmts != NULL) {
+		check_compound_stmt(else_stmts);
+	}
+	leave_scope(sym_tbl);
+}
+
+static void check_do_stmt(struct stmt *stmt)
+{
+	Vec *stmts;
+	struct expr *cond;
+
+	stmts = stmt->u.do_.stmts;
+	cond = stmt->u.do_.cond;
+
+	enter_new_scope(sym_tbl);
+	check_compound_stmt(stmts);
+	type_check(cond);
+	ensure_valid_cond(cond);
+	leave_scope(sym_tbl);
+}
+
+static void check_while_stmt(struct stmt *stmt)
+{
+	struct expr *cond;
+	Vec *stmts;
+
+	cond = stmt->u.while_.cond;
+	stmts = stmt->u.while_.stmts;
+
+	type_check(cond);
+	ensure_valid_cond(cond);
+	enter_new_scope(sym_tbl);
+	check_compound_stmt(stmts);
+	leave_scope(sym_tbl);
+}
+
+static void check_for_stmt(struct stmt *stmt)
+{
+	struct expr *init, *cond, *post;
+	Vec *stmts;
+
+	init = stmt->u.for_.init;
+	cond = stmt->u.for_.cond;
+	post = stmt->u.for_.post;
+	stmts = stmt->u.for_.stmts;
+
+	type_check(init);
+	// TODO: Ensure init has side effects
+	type_check(cond);
+	ensure_valid_cond(cond);
+	type_check(post);
+	// TODO: Ensure post has side effects
+	enter_new_scope(sym_tbl);
+	check_compound_stmt(stmts);
+	leave_scope(sym_tbl);
+}
+
+static void check_decl(struct decl *);
+
+static void check_stmt(struct stmt *stmt)
+{
+	switch (stmt->kind) {
+	case DECL_STMT:
+		check_decl(stmt->u.decl.decl);
+		break;
+	case EXPR_STMT:
+		type_check(stmt->u.expr.expr);
+		break;
+	case IF_STMT:
+		check_if_stmt(stmt);
+		break;
+	case DO_STMT:
+		check_do_stmt(stmt);
+		break;
+	case WHILE_STMT:
+		check_while_stmt(stmt);
+		break;
+	case FOR_STMT:
+		check_for_stmt(stmt);
+		break;
+	}
+}
+
+static void check_compound_stmt(Vec *stmts)
+{
+	size_t i;
+
+	for (i = 0; i < vec_len(stmts); i++) {
+		check_stmt(vec_get(stmts, i));
+	}
+}
+
+static void check_func_decl(struct decl *decl)
+{
+	unsigned lineno;
+	// TODO: Use this
+#if 0
+	struct type *return_type;
+#endif
+	char *name;
+	Vec *param_types, *param_names;
+	Vec *body_stmts;
+	size_t i, nparams;
+	struct type *param_type;
+	char *param_name;
+
+	lineno = decl->lineno;
+	// TODO: Use this
+#if 0
+	return_type = decl->u.func.return_type;
+#endif
+	name = decl->u.func.name;
+	param_types = decl->u.func.param_types;
+	param_names = decl->u.func.param_names;
+	body_stmts = decl->u.func.body_stmts;
+
+	ensure_not_declared(lineno, name);
+	if (is_global_scope(sym_tbl)) {
+		fatal_error(lineno, "Function defined with local scope");
+	}
+	enter_new_scope(sym_tbl);
+	nparams = vec_len(param_types);
+	for (i = 0; i < nparams; i++) {
+		param_type = vec_get(param_types, i);
+		param_name = vec_get(param_names, i);
+		insert_symbol(sym_tbl, param_name, param_type);
+	}
+	check_compound_stmt(body_stmts);
+	leave_scope(sym_tbl);
+}
+
+// TODO: Add a maximum nest level
+static void check_decl(struct decl *decl)
+{
+	switch (decl->kind) {
+	case DATA_DECL:
+		check_data_decl(decl);
+		break;
+	case FUNC_DECL:
+		check_func_decl(decl);
+		break;
+	}
 }
 
 void check_ast(struct ast ast)

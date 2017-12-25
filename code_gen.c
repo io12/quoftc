@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,21 @@ static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 	struct_item_types[0] = LLVMInt16Type();
 	struct_item_types[1] = LLVMPointerType(item_type, 0);
 	return LLVMStructType(struct_item_types, 2, false);
+}
+
+static LLVMTypeRef get_llvm_type(struct type *);
+
+static LLVMTypeRef *get_llvm_types(Vec *types)
+{
+	LLVMTypeRef *llvm_types;
+	size_t i, ntypes;
+
+	ntypes = vec_len(types);
+	llvm_types = xmalloc(sizeof(LLVMTypeRef) * ntypes);
+	for (i = 0; i < ntypes; i++) {
+		llvm_types[i] = get_llvm_type(vec_get(types, i));
+	}
+	return llvm_types;
 }
 
 static LLVMTypeRef get_llvm_type(struct type *type)
@@ -56,9 +72,11 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 	case PARAM_TYPE:
 		// TODO: Resolve type
 	case ARRAY_TYPE: {
-		LLVMTypeRef item_type = get_llvm_type(type->u.array.l);
-		unsigned len = type->u.array.len;
+		LLVMTypeRef item_type;
+		unsigned len;
 
+		item_type = get_llvm_type(type->u.array.l);
+		len = type->u.array.len;
 		if (len == 0) {
 			return get_fat_ptr_type(item_type);
 		} else {
@@ -68,22 +86,22 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 	case POINTER_TYPE:
 		return LLVMPointerType(get_llvm_type(type->u.pointer.l), 0);
 	case TUPLE_TYPE: {
-		Vec *types = type->u.tuple.types;
-		size_t len = vec_len(types), i;
-		LLVMTypeRef *llvm_types = xmalloc(sizeof(LLVMTypeRef) * len);
+		LLVMTypeRef *types;
+		size_t len;
 
-		for (i = 0; i < len; i++) {
-			llvm_types[i] = get_llvm_type(vec_get(types, i));
-		}
-		return LLVMStructType(llvm_types, len, false);
+		types = get_llvm_types(type->u.tuple.types);
+		len = vec_len(type->u.tuple.types);
+		return LLVMStructType(types, len, false);
 	}
 	case FUNC_TYPE: {
-		Vec *params = type->u.func.params;
-		size_t len = vec_len(params);
-		LLVMTypeRef *llvm_params = xmalloc(sizeof(LLVMTypeRef) * len);
+		LLVMTypeRef ret;
+		LLVMTypeRef *params;
+		size_t len;
 
-		return LLVMFunctionType(get_llvm_type(type->u.func.ret),
-				llvm_params, len, false);
+		ret = get_llvm_type(type->u.func.ret);
+		params = get_llvm_types(type->u.func.params);
+		len = vec_len(type->u.func.params);
+		return LLVMFunctionType(ret, params, len, false);
 	}
 	}
 	internal_error();
@@ -585,14 +603,21 @@ static LLVMValueRef emit_const_expr(struct expr *expr)
 	return emit_expr(NULL, expr);
 }
 
-static void emit_global_val(LLVMModuleRef module, struct decl *decl)
+static void emit_global_data_decl(LLVMModuleRef module, struct decl *decl)
 {
-	bool is_const = decl->is_const;
-	LLVMTypeRef type = get_llvm_type(decl->type);
-	const char *name = decl->name;
-	struct expr *init_expr = decl->init;
+	bool is_const;
+	LLVMTypeRef type;
+	const char *name;
+	struct expr *init_expr;
 	LLVMValueRef global, init;
-	bool is_signed_int = is_signed_int_type(decl->type);
+	bool is_signed_int;
+
+	assert(decl->kind == DATA_DECL);
+	is_const = decl->u.data.is_const;
+	type = get_llvm_type(decl->u.data.type);
+	name = decl->u.data.name;
+	init_expr = decl->u.data.init;
+	is_signed_int = is_signed_int_type(decl->u.data.type);
 
 	global = LLVMAddGlobal(module, type, name);
 	init = emit_const_expr(init_expr);
@@ -603,12 +628,18 @@ static void emit_global_val(LLVMModuleRef module, struct decl *decl)
 	LLVMSetGlobalConstant(global, is_const);
 }
 
-static void emit_local_val(LLVMBuilderRef builder, struct type *type,
-		char *name, struct expr *init)
+static void emit_local_data_decl(LLVMBuilderRef builder, struct decl *decl)
 {
+	LLVMTypeRef type;
 	LLVMValueRef local_ptr;
+	struct expr *init;
+	char *name;
 
-	local_ptr = LLVMBuildAlloca(builder, get_llvm_type(type), name);
+	assert(decl->kind == DATA_DECL);
+	type = get_llvm_type(decl->u.data.type);
+	name = decl->u.data.name;
+	init = decl->u.data.init;
+	local_ptr = LLVMBuildAlloca(builder, type, name);
 	if (init != NULL) {
 		LLVMBuildStore(builder, emit_expr(builder, init), local_ptr);
 	}
@@ -676,12 +707,9 @@ static void emit_stmts(LLVMBuilderRef builder, Vec *stmts)
 static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
 	switch (stmt->kind) {
-	case DECL_STMT: {
-		struct decl *decl = stmt->u.decl.decl;
-
-		emit_local_val(builder, decl->type, decl->name, decl->init);
+	case DECL_STMT:
+		emit_local_data_decl(builder, stmt->u.decl.decl);
 		break;
-	}
 	case EXPR_STMT:
 		emit_expr(builder, stmt->u.expr.expr);
 		break;
@@ -700,62 +728,69 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	}
 }
 
-static void emit_func(LLVMModuleRef module, struct decl *decl)
+static void emit_compound_stmt(LLVMBuilderRef builder, Vec *stmts)
 {
-	struct type *type = decl->type;
-	const char *name = decl->name;
-	Vec *param_names = decl->init->u.lambda.params;
-	struct expr *body = decl->init->u.lambda.body;
-	LLVMValueRef func_val;
+	size_t i;
+
+	for (i = 0; i < vec_len(stmts); i++) {
+		emit_stmt(builder, vec_get(stmts, i));
+	}
+}
+
+static LLVMTypeRef get_llvm_func_type(struct decl *decl)
+{
+	LLVMTypeRef return_type, *param_types;
+	size_t nparams;
+
+	assert(decl->kind == FUNC_DECL);
+	return_type = get_llvm_type(decl->u.func.return_type);
+	param_types = get_llvm_types(decl->u.func.param_types);
+	nparams = vec_len(decl->u.func.param_types);
+	return LLVMFunctionType(return_type, param_types, nparams, false);
+}
+
+static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
+{
+	char *name;
+	Vec *param_names;
+	Vec *body_stmts;
+	LLVMTypeRef func_type;
+	LLVMValueRef func_val, param_val;
 	LLVMBasicBlockRef block;
 	LLVMBuilderRef builder;
-	size_t i;
 	char *param_name;
-	LLVMValueRef param_val;
+	size_t i;
 
-	func_val = LLVMAddFunction(module, name, get_llvm_type(type));
+	assert(decl->kind == FUNC_DECL);
+	name = decl->u.func.name;
+	param_names = decl->u.func.param_names;
+	body_stmts = decl->u.func.body_stmts;
+
+	func_type = get_llvm_func_type(decl);
+	func_val = LLVMAddFunction(module, name, func_type);
 	block = LLVMAppendBasicBlock(func_val, name);
-	builder = LLVMCreateBuilder();
-	LLVMPositionBuilderAtEnd(builder, block);
 	enter_new_scope(sym_tbl);
 	for (i = 0; i < vec_len(param_names); i++) {
 		param_name = vec_get(param_names, i);
 		param_val = LLVMGetParam(func_val, i);
 		insert_symbol(sym_tbl, param_name, param_val);
 	}
+	builder = LLVMCreateBuilder();
+	LLVMPositionBuilderAtEnd(builder, block);
 	// TODO: Return the result
-	emit_expr(builder, body);
-	leave_scope(sym_tbl);
+	emit_compound_stmt(builder, body_stmts);
 	LLVMDisposeBuilder(builder);
+	leave_scope(sym_tbl);
 }
 
 static void emit_global_decl(LLVMModuleRef module, struct decl *decl)
 {
-	switch (decl->type->kind) {
-	case UNSIZED_INT_TYPE:
-	case VOID_TYPE:
-		internal_error();
-	case U8_TYPE:
-	case U16_TYPE:
-	case U32_TYPE:
-	case U64_TYPE:
-	case I8_TYPE:
-	case I16_TYPE:
-	case I32_TYPE:
-	case I64_TYPE:
-	case F32_TYPE:
-	case F64_TYPE:
-	case BOOL_TYPE:
-	case CHAR_TYPE:
-	case ALIAS_TYPE:
-	case PARAM_TYPE:
-	case ARRAY_TYPE:
-	case POINTER_TYPE:
-	case TUPLE_TYPE:
-		emit_global_val(module, decl);
+	switch (decl->kind) {
+	case DATA_DECL:
+		emit_global_data_decl(module, decl);
 		break;
-	case FUNC_TYPE:
-		emit_func(module, decl);
+	case FUNC_DECL:
+		emit_func_decl(module, decl);
 		break;
 	}
 }

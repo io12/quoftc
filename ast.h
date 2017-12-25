@@ -1,23 +1,23 @@
-#define ALLOC_STRUCT(struct_tag, lineno_, ...) \
-	((struct struct_tag *) \
-		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
-			.lineno = lineno_, \
-			__VA_ARGS__ \
+#define ALLOC_STRUCT(struct_tag, lineno_, ...)                        \
+	((struct struct_tag *)                                        \
+		memcpy(NEW(struct struct_tag), &(struct struct_tag){  \
+			.lineno = lineno_,                            \
+			__VA_ARGS__                                   \
 		}, sizeof(struct struct_tag)))
 
-#define ALLOC_UNION(struct_tag, kind_, sub_struct_name, lineno_, ...) \
-	((struct struct_tag *) \
-		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
-			.lineno = lineno_, \
-			.kind = kind_, \
-			.u.sub_struct_name = { __VA_ARGS__ }, \
+#define ALLOC_UNION(struct_tag, kind_, sub_struct_name, lineno_, ...)  \
+	((struct struct_tag *)                                         \
+		memcpy(NEW(struct struct_tag), &(struct struct_tag){   \
+			.lineno = lineno_,                             \
+			.kind = kind_,                                 \
+			.u.sub_struct_name = { __VA_ARGS__ },          \
 		}, sizeof(struct struct_tag)))
 
-#define ALLOC_UNION_KIND_ONLY(struct_tag, kind_, lineno_) \
-	((struct struct_tag *) \
-		memcpy(NEW(struct struct_tag), &(struct struct_tag){ \
-			.lineno = lineno_, \
-			.kind = kind_ \
+#define ALLOC_UNION_KIND_ONLY(struct_tag, kind_, lineno_)             \
+	((struct struct_tag *)                                        \
+		memcpy(NEW(struct struct_tag), &(struct struct_tag){  \
+			.lineno = lineno_,                            \
+			.kind = kind_                                 \
 		}, sizeof(struct struct_tag)))
 
 struct type {
@@ -250,14 +250,29 @@ void free_switch_case(void *);
 
 struct decl {
 	unsigned lineno;
-	bool is_const;
-	struct type *type;
-	char *name;
-	struct expr *init;
+	enum {
+		DATA_DECL, FUNC_DECL
+	} kind;
+	union {
+		struct {
+			bool is_const;
+			struct type *type;
+			char *name;
+			struct expr *init;
+		} data;
+		struct {
+			struct type *return_type;
+			char *name;
+			Vec *param_types, *param_names;
+			Vec *body_stmts;
+		} func;
+	} u;
 };
 
-#define ALLOC_DECL(...) \
-	ALLOC_STRUCT(decl, __VA_ARGS__)
+#define ALLOC_DATA_DECL(...) \
+	ALLOC_UNION(decl, DATA_DECL, data, __VA_ARGS__)
+#define ALLOC_FUNC_DECL(...) \
+	ALLOC_UNION(decl, FUNC_DECL, func, __VA_ARGS__)
 
 void free_decl(void *);
 

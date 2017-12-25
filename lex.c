@@ -216,7 +216,7 @@ static enum tok_kind lookup_op(const char *op)
 
 	if (UNLIKELY(ops == NULL)) {
 		ops = alloc_hash_table();
-#define K(keyword, tok) hash_table_set(keywords, keyword, (void *) tok)
+#define K(op, tok) hash_table_set(ops, op, (void *) tok)
 		K("++", PLUS_PLUS);
 		K("--", MINUS_MINUS);
 		K("+", PLUS);

@@ -29,12 +29,17 @@ static bool accept_tok(enum tok_kind kind)
 	return false;
 }
 
-static void expect_tok(enum tok_kind expected)
+static void expect_tok_no_consume(enum tok_kind expected)
 {
 	if (cur_tok.kind != expected) {
 		fatal_error(cur_tok.lineno, "Expected %s, instead got %s",
 				tok_to_str(expected), tok_to_str(cur_tok.kind));
 	}
+}
+
+static void expect_tok(enum tok_kind expected)
+{
+	expect_tok_no_consume(expected);
 	consume_tok();
 }
 
@@ -799,7 +804,8 @@ static struct stmt *parse_if_stmt(void)
 			else_stmts = parse_compound_stmt();
 			break;
 		default:
-			fatal_error(cur_tok.lineno, "Expected %s or %s, instead got %s",
+			fatal_error(cur_tok.lineno,
+					"Expected %s or %s, instead got %s",
 					tok_to_str(IF),
 					tok_to_str(OPEN_BRACE),
 					tok_to_str(cur_tok.kind));
@@ -896,7 +902,7 @@ static struct stmt *parse_stmt(void)
 	}
 }
 
-static struct decl *parse_decl(void)
+static struct decl *parse_data_decl(void)
 {
 	unsigned lineno;
 	bool is_const;
@@ -914,16 +920,13 @@ static struct decl *parse_decl(void)
 		break;
 	default:
 		fatal_error(cur_tok.lineno, "Expected %s or %s, instead got %s",
-				tok_to_str(CONST), tok_to_str(VAR),
+				tok_to_str(CONST),
+				tok_to_str(VAR),
 				tok_to_str(cur_tok.kind));
 	}
 	consume_tok();
 	type = parse_type();
-	if (cur_tok.kind != IDENT) {
-		fatal_error(cur_tok.lineno, "Expected %s, instead got %s",
-				tok_to_str(IDENT),
-				tok_to_str(cur_tok.kind));
-	}
+	expect_tok_no_consume(IDENT);
 	name = xstrdup(cur_tok.u.ident);
 	consume_tok();
 	if (accept_tok(SEMICOLON)) {
@@ -933,7 +936,50 @@ static struct decl *parse_decl(void)
 		init = parse_expr();
 		expect_tok(SEMICOLON);
 	}
-	return ALLOC_DECL(lineno, is_const, type, name, init);
+	return ALLOC_DATA_DECL(lineno, is_const, type, name, init);
+}
+
+static struct decl *parse_func_decl(void)
+{
+	unsigned lineno;
+	struct type *return_type;
+	char *name;
+	Vec *param_types, *param_names;
+	Vec *body_stmts;
+
+	return_type = parse_type();
+	expect_tok_no_consume(IDENT);
+	lineno = cur_tok.lineno;
+	name = xstrdup(cur_tok.u.ident);
+	consume_tok();
+	expect_tok(OPEN_PAREN);
+	param_types = alloc_vec(free_type);
+	param_names = alloc_vec(free);
+	if (cur_tok.kind == VOID) {
+		consume_tok();
+	} else {
+		do {
+			vec_push(param_types, parse_type());
+			expect_tok_no_consume(IDENT);
+			vec_push(param_names, xstrdup(cur_tok.u.ident));
+			consume_tok();
+		} while (accept_tok(COMMA));
+	}
+	expect_tok(CLOSE_PAREN);
+	body_stmts = parse_compound_stmt();
+	return ALLOC_FUNC_DECL(lineno, return_type, name, param_types,
+			param_names, body_stmts);
+}
+
+static struct decl *parse_decl(void)
+{
+	switch (cur_tok.kind) {
+	case CONST:
+	case VAR:
+		return parse_data_decl();
+	default:
+		return parse_func_decl();
+	}
 }
 
 static struct ast parse_file__(void)

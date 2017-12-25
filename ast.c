@@ -66,6 +66,9 @@ void free_type(void *p)
 {
 	struct type *type = p;
 
+	if (type == NULL) {
+		return;
+	}
 	switch (type->kind) {
 	case UNSIZED_INT_TYPE:
 	case U8_TYPE:
@@ -110,6 +113,9 @@ void free_expr(void *p)
 {
 	struct expr *expr = p;
 
+	if (expr == NULL) {
+		return;
+	}
 	switch (expr->kind) {
 	case BOOL_LIT_EXPR:
 	case INT_LIT_EXPR:
@@ -160,6 +166,9 @@ void free_switch_pattern(void *p)
 {
 	struct switch_pattern *sp = p;
 
+	if (sp == NULL) {
+		return;
+	}
 	switch (sp->kind) {
 	case UNDERSCORE_SWITCH_PATTERN:
 		break;
@@ -183,6 +192,9 @@ void free_switch_case(void *p)
 {
 	struct switch_case *sc = p;
 
+	if (sc == NULL) {
+		return;
+	}
 	free_switch_pattern(sc->l);
 	free_expr(sc->r);
 	free(sc);
@@ -192,9 +204,23 @@ void free_decl(void *p)
 {
 	struct decl *decl = p;
 
-	free_type(decl->type);
-	free(decl->name);
-	free_expr(decl->init);
+	if (decl == NULL) {
+		return;
+	}
+	switch (decl->kind) {
+	case DATA_DECL:
+		free_type(decl->u.data.type);
+		free(decl->u.data.name);
+		free_expr(decl->u.data.init);
+		break;
+	case FUNC_DECL:
+		free_type(decl->u.func.return_type);
+		free(decl->u.func.name);
+		free_vec(decl->u.func.param_types);
+		free_vec(decl->u.func.param_names);
+		free_vec(decl->u.func.body_stmts);
+		break;
+	}
 	free(decl);
 }
 
@@ -202,6 +228,9 @@ void free_stmt(void *p)
 {
 	struct stmt *stmt = p;
 
+	if (stmt == NULL) {
+		return;
+	}
 	switch (stmt->kind) {
 	case DECL_STMT:
 		free_decl(stmt->u.decl.decl);
