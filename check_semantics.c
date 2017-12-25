@@ -770,7 +770,7 @@ static void check_func_decl(struct decl *decl)
 	body_stmts = decl->u.func.body_stmts;
 
 	ensure_not_declared(lineno, name);
-	if (is_global_scope(sym_tbl)) {
+	if (!is_global_scope(sym_tbl)) {
 		fatal_error(lineno, "Function defined with local scope");
 	}
 	enter_new_scope(sym_tbl);
