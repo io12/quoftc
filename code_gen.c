@@ -652,7 +652,7 @@ static LLVMValueRef get_cur_func(LLVMBuilderRef builder)
 	return LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 }
 
-static void emit_stmts(LLVMBuilderRef, Vec *);
+static void emit_compound_stmt(LLVMBuilderRef, Vec *);
 
 static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
@@ -669,10 +669,10 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	merge_block = LLVMAppendBasicBlock(func_val, "merge");
 	LLVMBuildCondBr(builder, cond_val, then_block, else_block);
 	LLVMPositionBuilderAtEnd(builder, then_block);
-	emit_stmts(builder, then_stmts);
+	emit_compound_stmt(builder, then_stmts);
 	LLVMBuildBr(builder, merge_block);
 	LLVMPositionBuilderAtEnd(builder, else_block);
-	emit_stmts(builder, else_stmts);
+	emit_compound_stmt(builder, else_stmts);
 	LLVMBuildBr(builder, merge_block);
 	LLVMPositionBuilderAtEnd(builder, merge_block);
 }
@@ -689,7 +689,7 @@ static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	do_block = LLVMAppendBasicBlock(func_val, "do");
 	after_do_block = LLVMAppendBasicBlock(func_val, "after_do");
 	LLVMPositionBuilderAtEnd(builder, do_block);
-	emit_stmts(builder, stmts);
+	emit_compound_stmt(builder, stmts);
 	LLVMBuildCondBr(builder, cond_val, do_block, after_do_block);
 	LLVMPositionBuilderAtEnd(builder, after_do_block);
 }
@@ -703,17 +703,6 @@ static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 		LLVMBuildRetVoid(builder);
 	} else {
 		LLVMBuildRet(builder, emit_expr(builder, expr));
-	}
-}
-
-static void emit_stmt(LLVMBuilderRef, struct stmt *);
-
-static void emit_stmts(LLVMBuilderRef builder, Vec *stmts)
-{
-	size_t i;
-
-	for (i = 0; i < vec_len(stmts); i++) {
-		emit_stmt(builder, vec_get(stmts, i));
 	}
 }
 
