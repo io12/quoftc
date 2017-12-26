@@ -1,0 +1,6 @@
+I64 fibo(I64 n)
+{
+	return if (n <= 1)
+	       then n
+	       else fibo(n - 1) + fibo(n - 2);
+}
