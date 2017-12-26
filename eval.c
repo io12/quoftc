@@ -73,6 +73,7 @@ uint64_t eval_const_expr(struct expr *expr)
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
+	case FUNC_CALL_EXPR:
 		eval_error(expr);
 	case INT_LIT_EXPR:
 		return expr->u.int_lit.val;

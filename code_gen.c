@@ -593,6 +593,7 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
+	case FUNC_CALL_EXPR:
 	default:
 		return NULL; // TODO: Stub
 	}

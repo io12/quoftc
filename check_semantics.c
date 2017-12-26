@@ -68,9 +68,11 @@ static bool is_pure_expr(struct expr *expr)
 			&& is_pure_expr(expr->u.if_.then)
 			&& is_pure_expr(expr->u.if_.else_);
 	case SWITCH_EXPR:
-		return NULL; // TODO
+		return false; // TODO
 	case TUPLE_EXPR:
 		return vec_has_pure_items(expr->u.tuple.items);
+	case FUNC_CALL_EXPR:
+		return false; // TODO
 	}
 	internal_error();
 }
@@ -121,6 +123,7 @@ static bool is_lvalue(struct expr *expr)
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
+	case FUNC_CALL_EXPR:
 		return false;
 	}
 	internal_error();
@@ -577,6 +580,7 @@ static void type_check(struct expr *expr)
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
+	case FUNC_CALL_EXPR:
 		break; // TODO: Stub
 	}
 }

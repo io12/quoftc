@@ -124,7 +124,7 @@ struct expr {
 		BOOL_LIT_EXPR, INT_LIT_EXPR, FLOAT_LIT_EXPR, CHAR_LIT_EXPR,
 		STRING_LIT_EXPR, UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR,
 		ARRAY_LIT_EXPR, IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR,
-		TUPLE_EXPR
+		TUPLE_EXPR, FUNC_CALL_EXPR
 	} kind;
 	union {
 		struct {
@@ -174,6 +174,10 @@ struct expr {
 		struct {
 			Vec *items;
 		} tuple;
+		struct {
+			struct expr *func;
+			Vec *args;
+		} func_call;
 	} u;
 };
 
@@ -205,6 +209,8 @@ struct expr {
 	ALLOC_UNION(expr, SWITCH_EXPR, switch_, __VA_ARGS__)
 #define ALLOC_TUPLE_EXPR(...) \
 	ALLOC_UNION(expr, TUPLE_EXPR, tuple, __VA_ARGS__)
+#define ALLOC_FUNC_CALL_EXPR(...) \
+	ALLOC_UNION(expr, FUNC_CALL_EXPR, func_call, __VA_ARGS__)
 
 void free_expr(void *);
 

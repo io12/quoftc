@@ -486,25 +486,43 @@ static struct expr *parse_primary_expr(void)
 	                            "got %s", tok_to_str(cur_tok.kind));
 }
 
+static Vec *parse_func_call_args(void)
+{
+	Vec *args;
+
+	expect_tok(OPEN_PAREN);
+	args = alloc_vec(free_expr);
+	if (accept_tok(CLOSE_PAREN)) {
+		return args;
+	}
+	for (;;) {
+		vec_push(args, parse_expr());
+		if (accept_tok(CLOSE_PAREN)) {
+			break;
+		}
+		expect_tok(COMMA);
+	}
+	return args;
+}
+
 static struct expr *parse_postfix_unary_expr(void)
 {
 	unsigned lineno;
 	struct expr *operand;
-	enum unary_op op;
 
-	lineno = cur_tok.lineno;
 	operand = parse_primary_expr();
+	lineno = cur_tok.lineno;
 	switch (cur_tok.kind) {
 	case PLUS_PLUS:
-		op = POST_INC_OP;
-		break;
+		return ALLOC_UNARY_OP_EXPR(lineno, POST_INC_OP, operand);
 	case MINUS_MINUS:
-		op = POST_DEC_OP;
-		break;
+		return ALLOC_UNARY_OP_EXPR(lineno, POST_DEC_OP, operand);
+	case OPEN_PAREN:
+		return ALLOC_FUNC_CALL_EXPR(lineno, operand,
+				parse_func_call_args());
 	default:
 		return operand;
 	}
-	return ALLOC_UNARY_OP_EXPR(lineno, op, operand);
 }
 
 static struct expr *parse_unary_expr(void)
