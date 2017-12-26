@@ -210,66 +210,6 @@ static enum tok_kind lookup_keyword(const char *keyword)
 	return (enum tok_kind) hash_table_get(keywords, keyword);
 }
 
-static enum tok_kind lookup_op(const char *op)
-{
-	static HashTable *ops = NULL;
-
-	if (UNLIKELY(ops == NULL)) {
-		ops = alloc_hash_table();
-#define K(op, tok) hash_table_set(ops, op, (void *) tok)
-		K("++", PLUS_PLUS);
-		K("--", MINUS_MINUS);
-		K("+", PLUS);
-		K("-", MINUS);
-		K("*", STAR);
-		K("/", SLASH);
-		K("%", PERCENT);
-		K("<", LT);
-		K(">", GT);
-		K("<=", LT_EQ);
-		K(">=", GT_EQ);
-		K("==", EQ_EQ);
-		K("!=", BANG_EQ);
-		K("&", AMP);
-		K("|", PIPE);
-		K("^", CARET);
-		K("~", TILDE);
-		K("<<", LT_LT);
-		K(">>", GT_GT);
-		K("&&", AMP_AMP);
-		K("||", PIPE_PIPE);
-		K("!", BANG);
-		K("=", EQ);
-		K("+=", PLUS_EQ);
-		K("-=", MINUS_EQ);
-		K("*=", STAR_EQ);
-		K("/=", SLASH_EQ);
-		K("%=", PERCENT_EQ);
-		K("&=", AMP_EQ);
-		K("|=", PIPE_EQ);
-		K("^=", CARET_EQ);
-		K("<<=", LT_LT_EQ);
-		K(">>=", GT_GT_EQ);
-		K(".", DOT);
-		K(":", COLON);
-		K(";", SEMICOLON);
-		K(",", COMMA);
-		K("->", ARROW);
-		K("<-", BACK_ARROW);
-		K("=>", BIG_ARROW);
-		K("\\", BACKSLASH);
-		K("[", OPEN_BRACKET);
-		K("]", CLOSE_BRACKET);
-		K("(", OPEN_PAREN);
-		K(")", CLOSE_PAREN);
-		K("{", OPEN_BRACE);
-		K("}", CLOSE_BRACE);
-#undef K
-	}
-	// Returns INVALID_TOK if not found
-	return (enum tok_kind) hash_table_get(ops, op);
-}
-
 static bool is_ident_head(int c)
 {
 	return c == '_' || isalpha(c);
@@ -465,27 +405,114 @@ static bool is_op_char(int c)
 	return strchr("+-*/%<>=!&|^~.:;,[](){}", c) != NULL;
 }
 
+static void lex_op_0__(struct tok *tok, enum tok_kind kind)
+{
+	inp++;
+	init_basic_tok(tok, kind);
+}
+
+static void lex_op_1__(struct tok *tok, enum tok_kind kind,
+		int c1, enum tok_kind kind1)
+{
+	if (inp[1] == c1) {
+		inp += 2;
+		init_basic_tok(tok, kind1);
+	} else {
+		inp++;
+		init_basic_tok(tok, kind);
+	}
+}
+
+static void lex_op_2__(struct tok *tok, enum tok_kind kind,
+		int c1, enum tok_kind kind1, int c2, enum tok_kind kind2)
+{
+	if (inp[1] == c1) {
+		inp += 2;
+		init_basic_tok(tok, kind1);
+	} else if (inp[1] == c2) {
+		inp += 2;
+		init_basic_tok(tok, kind2);
+	} else {
+		inp++;
+		init_basic_tok(tok, kind);
+	}
+}
+
 static void lex_op(struct tok *tok)
 {
-	int i = 0;
-	char op_text[MAX_OP_SIZE + 1];
-	enum tok_kind tok_kind;
-
-	assert(is_op_char(*inp));
-	do {
-		if (i == MAX_IDENT_SIZE) {
-			fatal_error(lineno, "Operator longer than the "
-			                    "maximum allowed size "
-			                    "("XSTR(MAX_IDENT_SIZE)")");
-		}
-		op_text[i++] = *inp++;
-	} while (is_op_char(*inp));
-	op_text[i] = '\0';
-	tok_kind = lookup_op(op_text);
-	if (tok_kind == INVALID_TOK) {
-		fatal_error(lineno, "`%s` is not a valid operator", op_text);
+	switch (*inp) {
+	case '+':
+		lex_op_2__(tok, PLUS, '+', PLUS_PLUS, '=', PLUS_EQ);
+		break;
+	case '-':
+		lex_op_2__(tok, MINUS, '-', MINUS_MINUS, '=', MINUS_EQ);
+		break;
+	case '*':
+		lex_op_1__(tok, STAR, '=', STAR_EQ);
+		break;
+	case '/':
+		lex_op_1__(tok, SLASH, '=', SLASH_EQ);
+		break;
+	case '%':
+		lex_op_1__(tok, PERCENT, '=', PERCENT_EQ);
+		break;
+	case '<':
+		lex_op_1__(tok, LT, '=', LT_EQ);
+		break;
+	case '>':
+		lex_op_1__(tok, GT, '=', GT_EQ);
+		break;
+	case '=':
+		lex_op_1__(tok, EQ, '=', EQ_EQ);
+		break;
+	case '!':
+		lex_op_1__(tok, BANG, '=', BANG_EQ);
+		break;
+	case '&':
+		lex_op_2__(tok, AMP, '&', AMP_AMP, '=', AMP_EQ);
+		break;
+	case '|':
+		lex_op_2__(tok, PIPE, '|', PIPE_PIPE, '=', PIPE_EQ);
+		break;
+	case '^':
+		lex_op_1__(tok, CARET, '=', CARET_EQ);
+		break;
+	case '~':
+		lex_op_0__(tok, TILDE);
+		break;
+	case '.':
+		lex_op_0__(tok, DOT);
+		break;
+	case ':':
+		lex_op_0__(tok, COLON);
+		break;
+	case ';':
+		lex_op_0__(tok, SEMICOLON);
+		break;
+	case ',':
+		lex_op_0__(tok, COMMA);
+		break;
+	case '[':
+		lex_op_0__(tok, OPEN_BRACKET);
+		break;
+	case ']':
+		lex_op_0__(tok, CLOSE_BRACKET);
+		break;
+	case '(':
+		lex_op_0__(tok, OPEN_PAREN);
+		break;
+	case ')':
+		lex_op_0__(tok, CLOSE_PAREN);
+		break;
+	case '{':
+		lex_op_0__(tok, OPEN_BRACE);
+		break;
+	case '}':
+		lex_op_0__(tok, CLOSE_BRACE);
+		break;
+	default:
+		internal_error();
 	}
-	init_basic_tok(tok, tok_kind);
 }
 
 const char *tok_to_str(enum tok_kind kind)
