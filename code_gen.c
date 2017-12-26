@@ -751,6 +751,7 @@ static LLVMTypeRef get_llvm_func_type(struct decl *decl)
 
 static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 {
+	struct type *return_type;
 	char *name;
 	Vec *param_names;
 	Vec *body_stmts;
@@ -762,13 +763,13 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	size_t i;
 
 	assert(decl->kind == FUNC_DECL);
+	return_type = decl->u.func.return_type;
 	name = decl->u.func.name;
 	param_names = decl->u.func.param_names;
 	body_stmts = decl->u.func.body_stmts;
 
 	func_type = get_llvm_func_type(decl);
 	func_val = LLVMAddFunction(module, name, func_type);
-	block = LLVMAppendBasicBlock(func_val, name);
 	enter_new_scope(sym_tbl);
 	for (i = 0; i < vec_len(param_names); i++) {
 		param_name = vec_get(param_names, i);
@@ -776,9 +777,13 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 		insert_symbol(sym_tbl, param_name, param_val);
 	}
 	builder = LLVMCreateBuilder();
+	block = LLVMAppendBasicBlock(func_val, name);
 	LLVMPositionBuilderAtEnd(builder, block);
 	// TODO: Return the result
 	emit_compound_stmt(builder, body_stmts);
+	if (return_type->kind == VOID_TYPE) {
+		LLVMBuildRetVoid(builder);
+	}
 	LLVMDisposeBuilder(builder);
 	leave_scope(sym_tbl);
 }
