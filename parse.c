@@ -878,6 +878,22 @@ static struct stmt *parse_for_stmt(void)
 	return ALLOC_FOR_STMT(lineno, init, cond, post, stmts);
 }
 
+static struct stmt *parse_return_stmt(void)
+{
+	unsigned lineno;
+	struct expr *expr;
+
+	lineno = cur_tok.lineno;
+	expect_tok(RETURN);
+	if (accept_tok(SEMICOLON)) {
+		expr = NULL;
+	} else {
+		expr = parse_expr();
+		expect_tok(SEMICOLON);
+	}
+	return ALLOC_RETURN_STMT(lineno, expr);
+}
+
 static struct stmt *parse_expr_stmt(void)
 {
 	unsigned lineno;
@@ -900,6 +916,8 @@ static struct stmt *parse_stmt(void)
 		return parse_while_stmt();
 	case FOR:
 		return parse_for_stmt();
+	case RETURN:
+		return parse_return_stmt();
 	default:
 		return parse_expr_stmt();
 	}

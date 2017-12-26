@@ -710,6 +710,11 @@ static void check_for_stmt(struct stmt *stmt)
 	leave_scope(sym_tbl);
 }
 
+static void check_return_stmt(struct stmt *stmt)
+{
+	(void) stmt; // TODO: Stub
+}
+
 static void check_decl(struct decl *);
 
 static void check_stmt(struct stmt *stmt)
@@ -732,6 +737,9 @@ static void check_stmt(struct stmt *stmt)
 		break;
 	case FOR_STMT:
 		check_for_stmt(stmt);
+		break;
+	case RETURN_STMT:
+		check_return_stmt(stmt);
 		break;
 	}
 }

@@ -693,6 +693,18 @@ static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	LLVMPositionBuilderAtEnd(builder, after_do_block);
 }
 
+static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
+{
+	struct expr *expr;
+
+	expr = stmt->u.return_.expr;
+	if (expr == NULL) {
+		LLVMBuildRetVoid(builder);
+	} else {
+		LLVMBuildRet(builder, emit_expr(builder, expr));
+	}
+}
+
 static void emit_stmt(LLVMBuilderRef, struct stmt *);
 
 static void emit_stmts(LLVMBuilderRef builder, Vec *stmts)
@@ -724,6 +736,9 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 		break;
 	case FOR_STMT:
 		// TODO: emit_for_stmt(builder, stmt);
+		break;
+	case RETURN_STMT:
+		emit_return_stmt(builder, stmt);
 		break;
 	}
 }

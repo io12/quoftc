@@ -257,6 +257,9 @@ void free_stmt(void *p)
 		free_expr(stmt->u.for_.post);
 		free_vec(stmt->u.for_.stmts);
 		break;
+	case RETURN_STMT:
+		free_expr(stmt->u.return_.expr);
+		break;
 	}
 	free(stmt);
 }

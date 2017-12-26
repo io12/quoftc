@@ -280,7 +280,7 @@ struct stmt {
 	unsigned lineno;
 	enum {
 		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
-		WHILE_STMT, FOR_STMT
+		WHILE_STMT, FOR_STMT, RETURN_STMT
 	} kind;
 	union {
 		struct {
@@ -301,6 +301,9 @@ struct stmt {
 			struct expr *init, *cond, *post;
 			Vec *stmts;
 		} for_;
+		struct {
+			struct expr *expr; // NULL if no expr
+		} return_;
 	} u;
 };
 
@@ -316,6 +319,8 @@ struct stmt {
 	ALLOC_UNION(stmt, WHILE_STMT, while_, __VA_ARGS__)
 #define ALLOC_FOR_STMT(...) \
 	ALLOC_UNION(stmt, FOR_STMT, for_, __VA_ARGS__)
+#define ALLOC_RETURN_STMT(...) \
+	ALLOC_UNION(stmt, RETURN_STMT, return_, __VA_ARGS__)
 
 void free_stmt(void *);
 
