@@ -696,6 +696,7 @@ static LLVMValueRef get_cur_func(LLVMBuilderRef builder)
 
 static void emit_compound_stmt(LLVMBuilderRef, Vec *);
 
+// TODO: Handle the case when there is no else
 static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
 	struct expr *cond = stmt->u.if_.cond;
