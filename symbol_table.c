@@ -36,23 +36,23 @@ bool is_global_scope(struct symbol_table sym_tbl)
 	return vec_len(sym_tbl.scopes) == 1;
 }
 
-void insert_symbol(struct symbol_table sym_tbl, char *ident, void *info)
+void insert_symbol(struct symbol_table sym_tbl, char *name, void *info)
 {
-	hash_table_set(vec_top(sym_tbl.scopes), ident, info);
+	hash_table_set(vec_top(sym_tbl.scopes), name, info);
 }
 
-struct type *lookup_symbol(struct symbol_table sym_tbl, char *ident)
+void *lookup_symbol(struct symbol_table sym_tbl, char *name)
 {
-	size_t i;
 	Vec *scopes = sym_tbl.scopes;
 	HashTable *scope;
-	struct type *type;
+	void *info;
+	size_t i;
 
 	for (i = vec_len(scopes); i > 0; i--) {
 		scope = vec_get(scopes, i - 1);
-		type = hash_table_get(scope, ident);
-		if (type != NULL) {
-			return type;
+		info = hash_table_get(scope, name);
+		if (info != NULL) {
+			return info;
 		}
 	}
 	return NULL;

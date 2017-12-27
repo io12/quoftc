@@ -551,6 +551,18 @@ assign_store:
 	return LLVMBuildStore(builder, new_val, l);
 }
 
+static LLVMValueRef emit_ident_expr(struct expr *expr)
+{
+	LLVMValueRef val;
+	char *name;
+
+	assert(expr->kind == IDENT_EXPR);
+	name = expr->u.ident.name;
+	val = lookup_symbol(sym_tbl, name);
+	assert(val != NULL);
+	return val;
+}
+
 static LLVMValueRef *emit_exprs(LLVMBuilderRef builder, Vec *exprs)
 {
 	LLVMValueRef *llvm_exprs;
@@ -614,12 +626,14 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 		return emit_bin_op_expr(builder, expr);
 	case LAMBDA_EXPR:
 	case ARRAY_LIT_EXPR:
+		internal_error(); // TODO: Stub
 	case IDENT_EXPR:
+		return emit_ident_expr(expr);
 	case BLOCK_EXPR:
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
-		return NULL; // TODO: Stub
+		internal_error(); // TODO: Stub
 	case FUNC_CALL_EXPR:
 		return emit_func_call_expr(builder, expr);
 	default:
@@ -791,7 +805,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	return_type = decl->u.func.type->u.func.ret;
 
 	func_val = LLVMAddFunction(module, func_name, func_type);
-	// TODO: insert_symbol(sym_tbl, func_name, func_type);
+	insert_symbol(sym_tbl, func_name, func_val);
 	enter_new_scope(sym_tbl);
 	for (i = 0; i < vec_len(param_names); i++) {
 		param_name = vec_get(param_names, i);
