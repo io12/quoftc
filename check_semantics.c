@@ -54,8 +54,9 @@ static bool is_pure_expr(struct expr *expr)
 	case CHAR_LIT_EXPR:
 	case STRING_LIT_EXPR:
 	case LAMBDA_EXPR:
-	case IDENT_EXPR:
 		return true;
+	case IDENT_EXPR:
+		return false;
 	case UNARY_OP_EXPR:
 		return is_pure_expr(expr->u.unary_op.operand);
 	case BIN_OP_EXPR:
