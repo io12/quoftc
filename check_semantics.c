@@ -10,6 +10,7 @@
 #include "check_semantics.h"
 
 static struct symbol_table sym_tbl;
+static struct type *cur_func_type;
 
 static NORETURN void compat_error(unsigned lineno)
 {
@@ -771,7 +772,27 @@ static void check_for_stmt(struct stmt *stmt)
 
 static void check_return_stmt(struct stmt *stmt)
 {
-	(void) stmt; // TODO: Stub
+	struct type *return_type;
+	struct expr *expr;
+
+	assert(stmt->kind == RETURN_STMT);
+	expr = stmt->u.return_.expr;
+	assert(cur_func_type->kind == FUNC_TYPE);
+	return_type = cur_func_type->u.func.ret;
+	if (expr == NULL) {
+		if (return_type->kind != VOID_TYPE) {
+			fatal_error(stmt->lineno,
+					"Returning void in a non-void fuction");
+		}
+	} else {
+		type_check(expr);
+		if (!are_types_compat(return_type, expr->type)) {
+			fatal_error(stmt->lineno,
+					"Type of value returned is not "
+					"compatible with the function's return "
+					"type");
+		}
+	}
 }
 
 static void check_decl(struct decl *);
@@ -833,6 +854,7 @@ static void check_func_decl(struct decl *decl)
 		fatal_error(decl->lineno, "Function defined with local scope");
 	}
 	insert_symbol(sym_tbl, func_name, func_type);
+	cur_func_type = func_type;
 	enter_new_scope(sym_tbl);
 	nparams = vec_len(param_types);
 	for (i = 0; i < nparams; i++) {
