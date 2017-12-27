@@ -547,6 +547,15 @@ static void type_check_array_lit(struct expr *expr)
 	expr->type = ALLOC_ARRAY_TYPE(expr->lineno, strictest_type, len);
 }
 
+static void type_check_ident(struct expr *expr)
+{
+	char *name;
+
+	assert(expr->kind == IDENT_EXPR);
+	name = expr->u.ident.name;
+	expr->type = lookup_symbol(sym_tbl, name);
+}
+
 static void type_check_func_call(struct expr *expr)
 {
 	struct type *param_type, *return_type;
@@ -612,6 +621,8 @@ static void type_check(struct expr *expr)
 		type_check_array_lit(expr);
 		break;
 	case IDENT_EXPR:
+		type_check_ident(expr);
+		break;
 	case BLOCK_EXPR:
 	case IF_EXPR:
 	case SWITCH_EXPR:
