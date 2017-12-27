@@ -549,11 +549,17 @@ static void type_check_array_lit(struct expr *expr)
 
 static void type_check_ident(struct expr *expr)
 {
+	struct type *type;
 	char *name;
 
 	assert(expr->kind == IDENT_EXPR);
 	name = expr->u.ident.name;
-	expr->type = lookup_symbol(sym_tbl, name);
+	type = lookup_symbol(sym_tbl, name);
+	if (type == NULL) {
+		fatal_error(expr->lineno, "Name `%s` does not exist in scope; "
+		                          "did you spell it wrong?", name);
+	}
+	expr->type = type;
 }
 
 static void type_check_func_call(struct expr *expr)
