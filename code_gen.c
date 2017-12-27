@@ -551,6 +551,32 @@ assign_store:
 	return LLVMBuildStore(builder, new_val, l);
 }
 
+static LLVMValueRef *emit_exprs(LLVMBuilderRef builder, Vec *exprs)
+{
+	LLVMValueRef *llvm_exprs;
+	size_t nexprs, i;
+
+	nexprs = vec_len(exprs);
+	llvm_exprs = xmalloc(sizeof(LLVMValueRef) * nexprs);
+	for (i = 0; i < nexprs; i++) {
+		llvm_exprs[i] = emit_expr(builder, vec_get(exprs, i));
+	}
+	return llvm_exprs;
+}
+
+static LLVMValueRef emit_func_call_expr(LLVMBuilderRef builder,
+		struct expr *expr)
+{
+	LLVMValueRef func_val, *args;
+	unsigned nargs;
+
+	assert(expr->kind == FUNC_CALL_EXPR);
+	func_val = emit_expr(builder, expr->u.func_call.func);
+	args = emit_exprs(builder, expr->u.func_call.args);
+	nargs = vec_len(expr->u.func_call.args);
+	return LLVMBuildCall(builder, func_val, args, nargs, "func_call");
+}
+
 static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 {
 	LLVMTypeRef llvm_type = get_llvm_type(expr->type);
@@ -593,9 +619,11 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
-	case FUNC_CALL_EXPR:
-	default:
 		return NULL; // TODO: Stub
+	case FUNC_CALL_EXPR:
+		return emit_func_call_expr(builder, expr);
+	default:
+		internal_error();
 	}
 }
 
