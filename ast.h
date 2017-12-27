@@ -267,9 +267,9 @@ struct decl {
 			struct expr *init;
 		} data;
 		struct {
-			struct type *return_type;
+			struct type *type;
 			char *name;
-			Vec *param_types, *param_names;
+			Vec *param_names;
 			Vec *body_stmts;
 		} func;
 	} u;

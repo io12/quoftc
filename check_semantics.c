@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -516,19 +517,25 @@ static void type_check_lambda(struct expr *expr)
 #endif
 }
 
+static void type_check_exprs(Vec *exprs)
+{
+	size_t i;
+
+	for (i = 0; i < vec_len(exprs); i++) {
+		type_check(vec_get(exprs, i));
+	}
+}
+
 static void type_check_array_lit(struct expr *expr)
 {
 	Vec *items;
-	size_t i, len;
 	struct expr *item, *first_item;
 	struct type *strictest_type, *tmp;
+	size_t len, i;
 
 	items = expr->u.array_lit.val;
+	type_check_exprs(items);
 	len = vec_len(items);
-	for (i = 0; i < len; i++) {
-		item = vec_get(items, i);
-		type_check(item);
-	}
 	first_item = vec_get(items, 0);
 	strictest_type = dup_type(first_item->type);
 	for (i = 1; i < len; i++) {
@@ -538,6 +545,35 @@ static void type_check_array_lit(struct expr *expr)
 		free(tmp);
 	}
 	expr->type = ALLOC_ARRAY_TYPE(expr->lineno, strictest_type, len);
+}
+
+static void type_check_func_call(struct expr *expr)
+{
+	struct type *param_type, *return_type;
+	struct expr *func, *arg;
+	Vec *args, *param_types;
+	size_t i;
+
+	assert(expr->kind == FUNC_CALL_EXPR);
+	func = expr->u.func_call.func;
+	args = expr->u.func_call.args;
+	type_check(func);
+	type_check_exprs(args);
+	if (func->type->kind != FUNC_TYPE) {
+		fatal_error(expr->lineno,
+				"Expression is called but is not a function");
+	}
+	param_types = func->type->u.func.params;
+	for (i = 0; i < vec_len(args); i++) {
+		arg = vec_get(args, i);
+		param_type = vec_get(param_types, i);
+		if (!are_types_compat(arg->type, param_type)) {
+			fatal_error(arg->lineno, "Type of passed argument is "
+			                         "an unexpected type");
+		}
+	}
+	return_type = func->type->u.func.ret;
+	expr->type = dup_type(return_type);
 }
 
 static void type_check(struct expr *expr)
@@ -580,12 +616,14 @@ static void type_check(struct expr *expr)
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
-	case FUNC_CALL_EXPR:
 		break; // TODO: Stub
+	case FUNC_CALL_EXPR:
+		type_check_func_call(expr);
+		break;
 	}
 }
 
-static void ensure_not_declared(unsigned lineno, char *name)
+static void ensure_not_declared(char *name, unsigned lineno)
 {
 	if (lookup_symbol(sym_tbl, name) != NULL) {
 		fatal_error(lineno, "Name `%s` already declared in scope",
@@ -607,7 +645,7 @@ static void check_data_decl(struct decl *decl)
 	name = decl->u.data.name;
 	init = decl->u.data.init;
 
-	ensure_not_declared(lineno, name);
+	ensure_not_declared(name, decl->lineno);
 	if (is_global_scope(sym_tbl)) {
 		if (init == NULL) {
 			fatal_error(lineno, "Top level declaration of `%s` "
@@ -759,32 +797,25 @@ static void check_compound_stmt(Vec *stmts)
 
 static void check_func_decl(struct decl *decl)
 {
-	unsigned lineno;
-	// TODO: Use this
-#if 0
-	struct type *return_type;
-#endif
-	char *name;
+	struct type *func_type, *param_type;
+	char *func_name, *param_name;
 	Vec *param_types, *param_names;
 	Vec *body_stmts;
 	size_t i, nparams;
-	struct type *param_type;
-	char *param_name;
 
-	lineno = decl->lineno;
-	// TODO: Use this
-#if 0
-	return_type = decl->u.func.return_type;
-#endif
-	name = decl->u.func.name;
-	param_types = decl->u.func.param_types;
+	assert(decl->kind == FUNC_DECL);
+	func_type = decl->u.func.type;
+	func_name = decl->u.func.name;
 	param_names = decl->u.func.param_names;
 	body_stmts = decl->u.func.body_stmts;
+	assert(func_type->kind == FUNC_TYPE);
+	param_types = func_type->u.func.params;
 
-	ensure_not_declared(lineno, name);
+	ensure_not_declared(func_name, decl->lineno);
 	if (!is_global_scope(sym_tbl)) {
-		fatal_error(lineno, "Function defined with local scope");
+		fatal_error(decl->lineno, "Function defined with local scope");
 	}
+	insert_symbol(sym_tbl, func_name, func_type);
 	enter_new_scope(sym_tbl);
 	nparams = vec_len(param_types);
 	for (i = 0; i < nparams; i++) {

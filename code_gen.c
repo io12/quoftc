@@ -742,39 +742,28 @@ static void emit_compound_stmt(LLVMBuilderRef builder, Vec *stmts)
 	}
 }
 
-static LLVMTypeRef get_llvm_func_type(struct decl *decl)
-{
-	LLVMTypeRef return_type, *param_types;
-	size_t nparams;
-
-	assert(decl->kind == FUNC_DECL);
-	return_type = get_llvm_type(decl->u.func.return_type);
-	param_types = get_llvm_types(decl->u.func.param_types);
-	nparams = vec_len(decl->u.func.param_types);
-	return LLVMFunctionType(return_type, param_types, nparams, false);
-}
-
 static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 {
-	struct type *return_type;
-	char *name;
-	Vec *param_names;
-	Vec *body_stmts;
 	LLVMTypeRef func_type;
 	LLVMValueRef func_val, param_val;
 	LLVMBasicBlockRef block;
 	LLVMBuilderRef builder;
-	char *param_name;
+	struct type *return_type;
+	Vec *param_names;
+	Vec *body_stmts;
+	char *func_name, *param_name;
 	size_t i;
 
 	assert(decl->kind == FUNC_DECL);
-	return_type = decl->u.func.return_type;
-	name = decl->u.func.name;
+	func_type = get_llvm_type(decl->u.func.type);
+	func_name = decl->u.func.name;
 	param_names = decl->u.func.param_names;
 	body_stmts = decl->u.func.body_stmts;
+	assert(decl->u.func.type->kind == FUNC_TYPE);
+	return_type = decl->u.func.type->u.func.ret;
 
-	func_type = get_llvm_func_type(decl);
-	func_val = LLVMAddFunction(module, name, func_type);
+	func_val = LLVMAddFunction(module, func_name, func_type);
+	// TODO: insert_symbol(sym_tbl, func_name, func_type);
 	enter_new_scope(sym_tbl);
 	for (i = 0; i < vec_len(param_names); i++) {
 		param_name = vec_get(param_names, i);
@@ -782,7 +771,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 		insert_symbol(sym_tbl, param_name, param_val);
 	}
 	builder = LLVMCreateBuilder();
-	block = LLVMAppendBasicBlock(func_val, name);
+	block = LLVMAppendBasicBlock(func_val, func_name);
 	LLVMPositionBuilderAtEnd(builder, block);
 	// TODO: Return the result
 	emit_compound_stmt(builder, body_stmts);

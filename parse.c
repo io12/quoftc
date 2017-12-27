@@ -978,7 +978,7 @@ static struct decl *parse_data_decl(void)
 static struct decl *parse_func_decl(void)
 {
 	unsigned lineno;
-	struct type *return_type;
+	struct type *type, *return_type;
 	char *name;
 	Vec *param_types, *param_names;
 	Vec *body_stmts;
@@ -1003,8 +1003,8 @@ static struct decl *parse_func_decl(void)
 	}
 	expect_tok(CLOSE_PAREN);
 	body_stmts = parse_compound_stmt();
-	return ALLOC_FUNC_DECL(lineno, return_type, name, param_types,
-			param_names, body_stmts);
+	type = ALLOC_FUNC_TYPE(lineno, return_type, param_types);
+	return ALLOC_FUNC_DECL(lineno, type, name, param_names, body_stmts);
 }
 
 static struct decl *parse_decl(void)
