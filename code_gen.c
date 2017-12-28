@@ -15,7 +15,7 @@
 
 static struct symbol_table sym_tbl;
 static LLVMBasicBlockRef cur_func_return_block;
-static LLVMValueRef cur_func_return_val;
+static LLVMValueRef cur_func_return_val_ptr;
 
 static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 {
@@ -757,12 +757,12 @@ static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	expr = stmt->u.return_.expr;
 	if (expr != NULL) {
 		/*
-		 * The value in `cur_func_return_val` will be returned in a
+		 * The value in `cur_func_return_val_ptr` will be returned in a
 		 * block at the end of the function.  LLVM complains if the
 		 * LLVMBuildRet is done here.
 		 */
 		LLVMBuildStore(builder, emit_expr(builder, expr),
-				cur_func_return_val);
+				cur_func_return_val_ptr);
 	}
 	LLVMBuildBr(builder, cur_func_return_block);
 }
@@ -803,10 +803,11 @@ static void emit_compound_stmt(LLVMBuilderRef builder, Vec *stmts)
 	}
 }
 
+// TODO: Add comments and maybe split this
 static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 {
 	LLVMTypeRef func_type;
-	LLVMValueRef func_val, param_val;
+	LLVMValueRef func_val, param_val, return_val;
 	LLVMBasicBlockRef entry_block, last_block;
 	LLVMBuilderRef builder;
 	struct type *return_type;
@@ -834,6 +835,8 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	builder = LLVMCreateBuilder();
 	entry_block = LLVMAppendBasicBlock(func_val, "entry");
 	LLVMPositionBuilderAtEnd(builder, entry_block);
+	cur_func_return_val_ptr = LLVMBuildAlloca(builder,
+			get_llvm_type(return_type), "return_val_ptr");
 	cur_func_return_block = LLVMAppendBasicBlock(func_val, "return");
 	emit_compound_stmt(builder, body_stmts);
 	last_block = LLVMGetLastBasicBlock(func_val);
@@ -845,7 +848,9 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	if (return_type->kind == VOID_TYPE) {
 		LLVMBuildRetVoid(builder);
 	} else {
-		LLVMBuildRet(builder, cur_func_return_val);
+		return_val = LLVMBuildLoad(builder, cur_func_return_val_ptr,
+				"return_val");
+		LLVMBuildRet(builder, return_val);
 	}
 	LLVMDisposeBuilder(builder);
 	leave_scope(sym_tbl);
