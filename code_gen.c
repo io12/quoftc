@@ -844,8 +844,10 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	builder = LLVMCreateBuilder();
 	entry_block = LLVMAppendBasicBlock(func_val, "entry");
 	LLVMPositionBuilderAtEnd(builder, entry_block);
-	cur_func_return_val_ptr = LLVMBuildAlloca(builder,
-			get_llvm_type(return_type), "return_val_ptr");
+	if (return_type->kind != VOID_TYPE) {
+		cur_func_return_val_ptr = LLVMBuildAlloca(builder,
+				get_llvm_type(return_type), "return_val_ptr");
+	}
 	cur_func_return_block = LLVMAppendBasicBlock(func_val, "return");
 	emit_compound_stmt(builder, body_stmts);
 	last_block = LLVMGetLastBasicBlock(func_val);
