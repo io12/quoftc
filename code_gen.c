@@ -450,12 +450,23 @@ static bool is_assignment(enum bin_op op)
 static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 {
 	enum bin_op op = expr->u.bin_op.op;
-	LLVMValueRef l = emit_expr(builder, expr->u.bin_op.l),
-	             r = emit_expr(builder, expr->u.bin_op.r);
+	struct expr *l_expr = expr->u.bin_op.l,
+	            *r_expr = expr->u.bin_op.r;
+	LLVMValueRef l = emit_expr(builder, l_expr),
+	             r = emit_expr(builder, r_expr);
+	LLVMTypeRef l_type, r_type;
 	struct type *type = expr->type;
 	LLVMValueRef old_val = NULL, new_val = NULL;
 	bool is_const_expr = (builder == NULL);
 
+	if (l_expr->type->kind == UNSIZED_INT_TYPE) {
+		r_type = get_llvm_type(r_expr->type);
+		l = LLVMBuildIntCast(builder, l, r_type, "int_promotion");
+	} else if (r_expr->type->kind == UNSIZED_INT_TYPE) {
+		l_type = get_llvm_type(l_expr->type);
+		r = LLVMBuildIntCast(builder, r, l_type, "int_promotion");
+	}
+	// TODO: l won't be a pointer type
 	if (is_assignment(op)) {
 		old_val = LLVMBuildLoad(builder, l, "assign_load");
 	}
