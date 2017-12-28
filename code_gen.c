@@ -903,7 +903,8 @@ static NORETURN void llvm_error(const char *errmsg)
 
 static void compile_module(LLVMModuleRef module)
 {
-	const char *target_triplet, *cpu, *features;
+	char *target_triplet;
+	const char *cpu, *features;
 	LLVMTargetRef target;
 	bool failed;
 	char *errmsg;
@@ -942,6 +943,7 @@ TODO: Add data layout to module
 		llvm_error(errmsg);
 	}
 	LLVMDisposeTargetMachine(target_machine);
+	LLVMDisposeMessage(target_triplet);
 }
 
 void compile_ast(struct ast ast)
