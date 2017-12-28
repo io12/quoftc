@@ -14,6 +14,8 @@
 #include "code_gen.h"
 
 static struct symbol_table sym_tbl;
+static LLVMBasicBlockRef cur_func_return_block;
+static LLVMValueRef cur_func_return_val;
 
 static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 {
@@ -742,11 +744,16 @@ static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	struct expr *expr;
 
 	expr = stmt->u.return_.expr;
-	if (expr == NULL) {
-		LLVMBuildRetVoid(builder);
-	} else {
-		LLVMBuildRet(builder, emit_expr(builder, expr));
+	if (expr != NULL) {
+		/*
+		 * The value in `cur_func_return_val` will be returned in a
+		 * block at the end of the function.  LLVM complains if the
+		 * LLVMBuildRet is done here.
+		 */
+		LLVMBuildStore(builder, emit_expr(builder, expr),
+				cur_func_return_val);
 	}
+	LLVMBuildBr(builder, cur_func_return_block);
 }
 
 static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
@@ -789,7 +796,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 {
 	LLVMTypeRef func_type;
 	LLVMValueRef func_val, param_val;
-	LLVMBasicBlockRef block;
+	LLVMBasicBlockRef entry_block, last_block;
 	LLVMBuilderRef builder;
 	struct type *return_type;
 	Vec *param_names;
@@ -814,12 +821,20 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 		insert_symbol(sym_tbl, param_name, param_val);
 	}
 	builder = LLVMCreateBuilder();
-	block = LLVMAppendBasicBlock(func_val, func_name);
-	LLVMPositionBuilderAtEnd(builder, block);
-	// TODO: Return the result
+	entry_block = LLVMAppendBasicBlock(func_val, "entry");
+	LLVMPositionBuilderAtEnd(builder, entry_block);
+	cur_func_return_block = LLVMAppendBasicBlock(func_val, "return");
 	emit_compound_stmt(builder, body_stmts);
+	last_block = LLVMGetLastBasicBlock(func_val);
+	if (LLVMGetBasicBlockTerminator(last_block) == NULL) {
+		LLVMBuildBr(builder, cur_func_return_block);
+	}
+	LLVMMoveBasicBlockAfter(cur_func_return_block, last_block);
+	LLVMPositionBuilderAtEnd(builder, cur_func_return_block);
 	if (return_type->kind == VOID_TYPE) {
 		LLVMBuildRetVoid(builder);
+	} else {
+		LLVMBuildRet(builder, cur_func_return_val);
 	}
 	LLVMDisposeBuilder(builder);
 	leave_scope(sym_tbl);
@@ -871,6 +886,7 @@ static void compile_module(LLVMModuleRef module)
 #endif
 	char filename[] = "a.out";
 
+	LLVMDumpModule(module);
 	LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
 	LLVMInitializeAllTargetInfos();
 	LLVMInitializeAllTargets();
