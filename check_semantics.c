@@ -561,7 +561,7 @@ static void type_check_ident(struct expr *expr)
 		fatal_error(expr->lineno, "Name `%s` does not exist in scope; "
 		                          "did you spell it wrong?", name);
 	}
-	expr->type = type;
+	expr->type = dup_type(type);
 }
 
 static void type_check_func_call(struct expr *expr)
