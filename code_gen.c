@@ -707,6 +707,11 @@ static LLVMValueRef get_cur_func(LLVMBuilderRef builder)
 	return LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 }
 
+static bool block_has_terminator(LLVMBasicBlockRef block)
+{
+	return LLVMGetBasicBlockTerminator(block) != NULL;
+}
+
 static void emit_compound_stmt(LLVMBuilderRef, Vec *);
 
 // TODO: Handle the case when there is no else
@@ -726,10 +731,14 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	LLVMBuildCondBr(builder, cond_val, then_block, else_block);
 	LLVMPositionBuilderAtEnd(builder, then_block);
 	emit_compound_stmt(builder, then_stmts);
-	LLVMBuildBr(builder, merge_block);
+	if (!block_has_terminator(then_block)) {
+		LLVMBuildBr(builder, merge_block);
+	}
 	LLVMPositionBuilderAtEnd(builder, else_block);
 	emit_compound_stmt(builder, else_stmts);
-	LLVMBuildBr(builder, merge_block);
+	if (!block_has_terminator(else_block)) {
+		LLVMBuildBr(builder, merge_block);
+	}
 	LLVMPositionBuilderAtEnd(builder, merge_block);
 }
 
@@ -840,7 +849,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	cur_func_return_block = LLVMAppendBasicBlock(func_val, "return");
 	emit_compound_stmt(builder, body_stmts);
 	last_block = LLVMGetLastBasicBlock(func_val);
-	if (LLVMGetBasicBlockTerminator(last_block) == NULL) {
+	if (!block_has_terminator(last_block)) {
 		LLVMBuildBr(builder, cur_func_return_block);
 	}
 	LLVMMoveBasicBlockAfter(cur_func_return_block, last_block);
