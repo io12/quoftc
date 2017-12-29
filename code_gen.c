@@ -19,9 +19,8 @@ static LLVMValueRef cur_func_return_val_ptr;
 
 static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 {
-	LLVMTypeRef *struct_item_types;
+	LLVMTypeRef struct_item_types[2];
 
-	struct_item_types = xmalloc(sizeof(LLVMTypeRef) * 2);
 	struct_item_types[0] = LLVMInt16Type();
 	struct_item_types[1] = LLVMPointerType(item_type, 0);
 	return LLVMStructType(struct_item_types, 2, false);
@@ -29,6 +28,10 @@ static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 
 static LLVMTypeRef get_llvm_type(struct type *);
 
+/*
+ * The pointer returned from this function must be freed. It is okay to free
+ * it after passing to an LLVM function.
+ */
 static LLVMTypeRef *get_llvm_types(Vec *types)
 {
 	LLVMTypeRef *llvm_types;
@@ -88,22 +91,25 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 	case POINTER_TYPE:
 		return LLVMPointerType(get_llvm_type(type->u.pointer.l), 0);
 	case TUPLE_TYPE: {
-		LLVMTypeRef *types;
+		LLVMTypeRef tuple_type, *types;
 		size_t len;
 
 		types = get_llvm_types(type->u.tuple.types);
 		len = vec_len(type->u.tuple.types);
-		return LLVMStructType(types, len, false);
+		tuple_type = LLVMStructType(types, len, false);
+		free(types);
+		return tuple_type;
 	}
 	case FUNC_TYPE: {
-		LLVMTypeRef ret;
-		LLVMTypeRef *params;
-		size_t len;
+		LLVMTypeRef func_type, ret, *params;
+		size_t nparams;
 
 		ret = get_llvm_type(type->u.func.ret);
 		params = get_llvm_types(type->u.func.params);
-		len = vec_len(type->u.func.params);
-		return LLVMFunctionType(ret, params, len, false);
+		nparams = vec_len(type->u.func.params);
+		func_type = LLVMFunctionType(ret, params, nparams, false);
+		free(params);
+		return func_type;
 	}
 	}
 	internal_error();
@@ -576,6 +582,10 @@ static LLVMValueRef emit_ident_expr(struct expr *expr)
 	return val;
 }
 
+/*
+ * The pointer returned from this function must be freed. It is okay to free
+ * it after passing to an LLVM function.
+ */
 static LLVMValueRef *emit_exprs(LLVMBuilderRef builder, Vec *exprs)
 {
 	LLVMValueRef *llvm_exprs;
@@ -592,14 +602,16 @@ static LLVMValueRef *emit_exprs(LLVMBuilderRef builder, Vec *exprs)
 static LLVMValueRef emit_func_call_expr(LLVMBuilderRef builder,
 		struct expr *expr)
 {
-	LLVMValueRef func_val, *args;
+	LLVMValueRef call_val, func_val, *args;
 	unsigned nargs;
 
 	assert(expr->kind == FUNC_CALL_EXPR);
 	func_val = emit_expr(builder, expr->u.func_call.func);
 	args = emit_exprs(builder, expr->u.func_call.args);
 	nargs = vec_len(expr->u.func_call.args);
-	return LLVMBuildCall(builder, func_val, args, nargs, "func_call");
+	call_val = LLVMBuildCall(builder, func_val, args, nargs, "func_call");
+	free(args);
+	return call_val;
 }
 
 static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
