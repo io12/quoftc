@@ -129,12 +129,12 @@ static LLVMValueRef emit_inc_or_dec_expr(LLVMBuilderRef builder,
 	is_signed = !is_unsigned_int_type(expr->type);
 	is_inc = (op == PRE_INC_OP || op == POST_INC_OP);
 	is_prefix = (op == PRE_INC_OP || op == PRE_DEC_OP);
-	old_val = LLVMBuildLoad(builder, ptr_val, "inc_or_dec_load");
+	old_val = LLVMBuildLoad(builder, ptr_val, "old_val");
 	one_val = LLVMConstInt(type, 1, is_signed);
 	if (is_inc) {
-		new_val = LLVMBuildAdd(builder, old_val, one_val, "inc_add");
+		new_val = LLVMBuildAdd(builder, old_val, one_val, "inc_val");
 	} else {
-		new_val = LLVMBuildSub(builder, old_val, one_val, "dec_add");
+		new_val = LLVMBuildSub(builder, old_val, one_val, "dec_val");
 	}
 	LLVMBuildStore(builder, new_val, ptr_val);
 	if (is_prefix) {
@@ -165,14 +165,14 @@ static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 	case POST_DEC_OP:
 		return emit_inc_or_dec_expr(builder, expr);
 	case DEREF_OP:
-		return LLVMBuildLoad(builder, operand, "deref");
+		return LLVMBuildLoad(builder, operand, "loaded_val");
 	case REF_OP:
 		return operand;
 	case BIT_NOT_OP:
 		if (is_const_expr) {
 			return LLVMConstNot(operand);
 		} else {
-			return LLVMBuildNot(builder, operand, "bitwise_not");
+			return LLVMBuildNot(builder, operand, "bit_not");
 		}
 	case LOG_NOT_OP: {
 		LLVMValueRef zero_val;
@@ -182,7 +182,7 @@ static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 			return LLVMConstICmp(LLVMIntEQ, operand, zero_val);
 		} else {
 			return LLVMBuildICmp(builder, LLVMIntEQ, operand,
-					zero_val, "logical_not");
+					zero_val, "not");
 		}
 	}
 	}
@@ -202,9 +202,9 @@ static LLVMValueRef emit_add(LLVMBuilderRef builder, LLVMValueRef l,
 		}
 	} else {
 		if (is_float_type(type)) {
-			return LLVMBuildFAdd(builder, l, r, "add");
+			return LLVMBuildFAdd(builder, l, r, "sum");
 		} else {
-			return LLVMBuildAdd(builder, l, r, "add");
+			return LLVMBuildAdd(builder, l, r, "sum");
 		}
 	}
 }
@@ -222,9 +222,9 @@ static LLVMValueRef emit_sub(LLVMBuilderRef builder, LLVMValueRef l,
 		}
 	} else {
 		if (is_float_type(type)) {
-			return LLVMBuildFSub(builder, l, r, "sub");
+			return LLVMBuildFSub(builder, l, r, "diff");
 		} else {
-			return LLVMBuildSub(builder, l, r, "sub");
+			return LLVMBuildSub(builder, l, r, "diff");
 		}
 	}
 }
@@ -242,9 +242,9 @@ static LLVMValueRef emit_mul(LLVMBuilderRef builder, LLVMValueRef l,
 		}
 	} else {
 		if (is_float_type(type)) {
-			return LLVMBuildFMul(builder, l, r, "mul");
+			return LLVMBuildFMul(builder, l, r, "prod");
 		} else {
-			return LLVMBuildMul(builder, l, r, "mul");
+			return LLVMBuildMul(builder, l, r, "prod");
 		}
 	}
 }
@@ -264,11 +264,11 @@ static LLVMValueRef emit_div(LLVMBuilderRef builder, LLVMValueRef l,
 		}
 	} else {
 		if (is_float_type(type)) {
-			return LLVMBuildFDiv(builder, l, r, "div");
+			return LLVMBuildFDiv(builder, l, r, "quot");
 		} else if (is_unsigned_int_type(type)) {
-			return LLVMBuildUDiv(builder, l, r, "div");
+			return LLVMBuildUDiv(builder, l, r, "quot");
 		} else {
-			return LLVMBuildSDiv(builder, l, r, "div");
+			return LLVMBuildSDiv(builder, l, r, "quot");
 		}
 	}
 }
@@ -288,11 +288,11 @@ static LLVMValueRef emit_mod(LLVMBuilderRef builder, LLVMValueRef l,
 		}
 	} else {
 		if (is_float_type(type)) {
-			return LLVMBuildFRem(builder, l, r, "mod");
+			return LLVMBuildFRem(builder, l, r, "rem");
 		} else if (is_unsigned_int_type(type)) {
-			return LLVMBuildURem(builder, l, r, "mod");
+			return LLVMBuildURem(builder, l, r, "rem");
 		} else {
-			return LLVMBuildSRem(builder, l, r, "mod");
+			return LLVMBuildSRem(builder, l, r, "rem");
 		}
 	}
 }
@@ -467,14 +467,14 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 
 	if (l_expr->type->kind == UNSIZED_INT_TYPE) {
 		r_type = get_llvm_type(r_expr->type);
-		l = LLVMBuildIntCast(builder, l, r_type, "int_promotion");
+		l = LLVMBuildIntCast(builder, l, r_type, "promoted_int");
 	} else if (r_expr->type->kind == UNSIZED_INT_TYPE) {
 		l_type = get_llvm_type(l_expr->type);
-		r = LLVMBuildIntCast(builder, r, l_type, "int_promotion");
+		r = LLVMBuildIntCast(builder, r, l_type, "promoted_int");
 	}
 	// TODO: l won't be a pointer type
 	if (is_assignment(op)) {
-		old_val = LLVMBuildLoad(builder, l, "assign_load");
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 	}
 	switch (op) {
 	case ADD_OP:
@@ -609,7 +609,7 @@ static LLVMValueRef emit_func_call_expr(LLVMBuilderRef builder,
 	func_val = emit_expr(builder, expr->u.func_call.func);
 	args = emit_exprs(builder, expr->u.func_call.args);
 	nargs = vec_len(expr->u.func_call.args);
-	call_val = LLVMBuildCall(builder, func_val, args, nargs, "func_call");
+	call_val = LLVMBuildCall(builder, func_val, args, nargs, "call_ret");
 	free(args);
 	return call_val;
 }
