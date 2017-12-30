@@ -582,6 +582,21 @@ static LLVMValueRef emit_ident_expr(struct expr *expr)
 	return val;
 }
 
+static void emit_compound_stmt(LLVMBuilderRef, Vec *);
+
+static LLVMValueRef emit_block_expr(LLVMBuilderRef builder, struct expr *expr)
+{
+	Vec *stmts;
+
+	assert(expr->kind == BLOCK_EXPR);
+	stmts = expr->u.block.stmts;
+
+	enter_new_scope(sym_tbl);
+	emit_compound_stmt(builder, stmts);
+	leave_scope(sym_tbl);
+	return NULL;
+}
+
 /*
  * The pointer returned from this function must be freed. It is okay to free
  * it after passing to an LLVM function.
@@ -655,6 +670,7 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	case IDENT_EXPR:
 		return emit_ident_expr(expr);
 	case BLOCK_EXPR:
+		return emit_block_expr(builder, expr);
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
@@ -723,8 +739,6 @@ static bool block_has_terminator(LLVMBasicBlockRef block)
 {
 	return LLVMGetBasicBlockTerminator(block) != NULL;
 }
-
-static void emit_compound_stmt(LLVMBuilderRef, Vec *);
 
 // TODO: Handle the case when there is no else
 static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
