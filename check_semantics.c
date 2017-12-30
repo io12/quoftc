@@ -576,9 +576,13 @@ static void check_compound_stmt(Vec *);
 
 static void type_check_block(struct expr *expr)
 {
+	Vec *stmts;
+
 	assert(expr->kind == BLOCK_EXPR);
+	stmts = expr->u.block.stmts;
+
 	enter_new_scope(sym_tbl);
-	check_compound_stmt(expr->u.block.stmts);
+	check_compound_stmt(stmts);
 	leave_scope(sym_tbl);
 	expr->type = ALLOC_VOID_TYPE(expr->lineno);
 }
@@ -601,6 +605,24 @@ static void type_check_if(struct expr *expr)
 		                          "expressions are not compatible");
 	}
 	expr->type = dup_stricter_type(then->type, else_->type);
+}
+
+static void type_check_tuple(struct expr *expr)
+{
+	struct expr *item;
+	Vec *items, *types;
+	size_t i;
+
+	assert(expr->kind == TUPLE_EXPR);
+	items = expr->u.tuple.items;
+
+	types = alloc_vec(free_type);
+	for (i = 0; i < vec_len(items); i++) {
+		item = vec_get(items, i);
+		type_check(item);
+		vec_push(types, item->type);
+	}
+	expr->type = ALLOC_TUPLE_TYPE(expr->lineno, types);
 }
 
 static void type_check_func_call(struct expr *expr)
@@ -677,8 +699,10 @@ static void type_check(struct expr *expr)
 		type_check_if(expr);
 		break;
 	case SWITCH_EXPR:
+		internal_error(); // TODO: Stub
 	case TUPLE_EXPR:
-		break; // TODO: Stub
+		type_check_tuple(expr);
+		break;
 	case FUNC_CALL_EXPR:
 		type_check_func_call(expr);
 		break;
