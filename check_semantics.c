@@ -405,6 +405,14 @@ static struct type *dup_stricter_type(struct type *type1, struct type *type2)
 	internal_error();
 }
 
+static void ensure_valid_cond(struct expr *cond)
+{
+	if (cond->type->kind != BOOL_TYPE || is_pure_expr(cond)) {
+		fatal_error(cond->lineno, "Conditions must be impure, boolean "
+		                          "expressions");
+	}
+}
+
 static void type_check_bin_op(struct expr *expr)
 {
 	enum bin_op op = expr->u.bin_op.op;
@@ -575,6 +583,26 @@ static void type_check_block(struct expr *expr)
 	expr->type = ALLOC_VOID_TYPE(expr->lineno);
 }
 
+static void type_check_if(struct expr *expr)
+{
+	struct expr *cond, *then, *else_;
+
+	assert(expr->kind == IF_EXPR);
+	cond = expr->u.if_.cond;
+	then = expr->u.if_.then;
+	else_ = expr->u.if_.else_;
+
+	type_check(cond);
+	ensure_valid_cond(cond);
+	type_check(then);
+	type_check(else_);
+	if (!are_types_compat(then->type, else_->type)) {
+		fatal_error(then->lineno, "Types of `then` and `else` "
+		                          "expressions are not compatible");
+	}
+	expr->type = dup_stricter_type(then->type, else_->type);
+}
+
 static void type_check_func_call(struct expr *expr)
 {
 	struct type *param_type, *return_type;
@@ -646,6 +674,8 @@ static void type_check(struct expr *expr)
 		type_check_block(expr);
 		break;
 	case IF_EXPR:
+		type_check_if(expr);
+		break;
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
 		break; // TODO: Stub
@@ -700,14 +730,6 @@ static void check_data_decl(struct decl *decl)
 		}
 	}
 	insert_symbol(sym_tbl, name, type);
-}
-
-static void ensure_valid_cond(struct expr *cond)
-{
-	if (cond->type->kind != BOOL_TYPE || is_pure_expr(cond)) {
-		fatal_error(cond->lineno, "Conditions must be impure, boolean "
-		                          "expressions");
-	}
 }
 
 static void check_if_stmt(struct stmt *stmt)
