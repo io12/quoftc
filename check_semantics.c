@@ -564,6 +564,17 @@ static void type_check_ident(struct expr *expr)
 	expr->type = dup_type(type);
 }
 
+static void check_compound_stmt(Vec *);
+
+static void type_check_block(struct expr *expr)
+{
+	assert(expr->kind == BLOCK_EXPR);
+	enter_new_scope(sym_tbl);
+	check_compound_stmt(expr->u.block.stmts);
+	leave_scope(sym_tbl);
+	expr->type = ALLOC_VOID_TYPE(expr->lineno);
+}
+
 static void type_check_func_call(struct expr *expr)
 {
 	struct type *param_type, *return_type;
@@ -632,6 +643,8 @@ static void type_check(struct expr *expr)
 		type_check_ident(expr);
 		break;
 	case BLOCK_EXPR:
+		type_check_block(expr);
+		break;
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
@@ -696,8 +709,6 @@ static void ensure_valid_cond(struct expr *cond)
 		                          "expressions");
 	}
 }
-
-static void check_compound_stmt(Vec *);
 
 static void check_if_stmt(struct stmt *stmt)
 {
