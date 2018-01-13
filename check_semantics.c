@@ -931,6 +931,8 @@ static void check_decl(struct decl *decl)
 	case DATA_DECL:
 		check_data_decl(decl);
 		break;
+	case TYPEDEF_DECL:
+		internal_error(); // TODO: Stub
 	case FUNC_DECL:
 		check_func_decl(decl);
 		break;

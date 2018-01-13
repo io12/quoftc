@@ -257,7 +257,7 @@ void free_switch_case(void *);
 struct decl {
 	unsigned lineno;
 	enum {
-		DATA_DECL, FUNC_DECL
+		DATA_DECL, TYPEDEF_DECL, FUNC_DECL
 	} kind;
 	union {
 		struct {
@@ -266,6 +266,11 @@ struct decl {
 			char *name;
 			struct expr *init;
 		} data;
+		struct {
+			char *name;
+			Vec *params;
+			struct type *type;
+		} typedef_;
 		struct {
 			struct type *type;
 			char *name;
@@ -277,6 +282,8 @@ struct decl {
 
 #define ALLOC_DATA_DECL(...) \
 	ALLOC_UNION(decl, DATA_DECL, data, __VA_ARGS__)
+#define ALLOC_TYPEDEF_DECL(...) \
+	ALLOC_UNION(decl, TYPEDEF_DECL, typedef_, __VA_ARGS__)
 #define ALLOC_FUNC_DECL(...) \
 	ALLOC_UNION(decl, FUNC_DECL, func, __VA_ARGS__)
 

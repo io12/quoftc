@@ -975,6 +975,32 @@ static struct decl *parse_data_decl(void)
 	return ALLOC_DATA_DECL(lineno, is_const, type, name, init);
 }
 
+static struct decl *parse_typedef(void)
+{
+	unsigned lineno;
+	char *name;
+	Vec *params;
+	struct type *type;
+
+	expect_tok(TYPEDEF);
+	expect_tok_no_consume(IDENT);
+	lineno = cur_tok.lineno;
+	name = xstrdup(cur_tok.u.ident);
+	consume_tok();
+	params = alloc_vec(free);
+	if (accept_tok(LT)) {
+		do {
+			expect_tok_no_consume(IDENT);
+			vec_push(params, xstrdup(cur_tok.u.ident));
+			consume_tok();
+		} while (accept_tok(COMMA));
+		expect_tok(GT);
+	}
+	type = parse_type();
+	expect_tok(SEMICOLON);
+	return ALLOC_TYPEDEF_DECL(lineno, name, params, type);
+}
+
 static struct decl *parse_func_decl(void)
 {
 	unsigned lineno;
@@ -1013,6 +1039,8 @@ static struct decl *parse_decl(void)
 	case CONST:
 	case VAR:
 		return parse_data_decl();
+	case TYPEDEF:
+		return parse_typedef();
 	default:
 		return parse_func_decl();
 	}

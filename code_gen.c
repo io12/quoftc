@@ -899,6 +899,8 @@ static void emit_global_decl(LLVMModuleRef module, struct decl *decl)
 	case DATA_DECL:
 		emit_global_data_decl(module, decl);
 		break;
+	case TYPEDEF_DECL:
+		internal_error(); // TODO: Stub
 	case FUNC_DECL:
 		emit_func_decl(module, decl);
 		break;

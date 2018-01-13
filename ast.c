@@ -217,6 +217,11 @@ void free_decl(void *p)
 		free(decl->u.data.name);
 		free_expr(decl->u.data.init);
 		break;
+	case TYPEDEF_DECL:
+		free(decl->u.typedef_.name);
+		free_vec(decl->u.typedef_.params);
+		free_type(decl->u.typedef_.type);
+		break;
 	case FUNC_DECL:
 		free_type(decl->u.func.type);
 		free(decl->u.func.name);
