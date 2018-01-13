@@ -17,6 +17,7 @@
 #include "lex.h"
 
 #define MAX_LINENO UINT16_MAX
+#define MAX_NUM_CHARS 128 // TODO: Maybe change this?
 
 static const char *filename;
 static char *inp_origin, *inp;

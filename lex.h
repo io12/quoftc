@@ -1,7 +1,5 @@
 #define MAX_IDENT_SIZE 512
 #define MAX_STRING_SIZE 1024 // TODO: Make this unlimited
-#define MAX_NUM_CHARS 128 // TODO: Maybe change this?
-#define MAX_OP_SIZE 3
 
 enum tok_kind {
 	INVALID_TOK,
