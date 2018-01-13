@@ -26,4 +26,4 @@ MALLOC void *xcalloc(size_t);
 void *xrealloc(void *, size_t);
 char *xstrdup(const char *);
 
-const char *argv0;
+extern const char *argv0;
