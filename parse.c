@@ -10,7 +10,7 @@
 #include "parse.h"
 
 #define MAX_FUNC_ARGS 127
-#define MAX_ARRAY_LEN UINT16_MAX
+#define MAX_ARRAY_LEN 65536
 
 static struct tok cur_tok, lookahead_tok;
 
@@ -84,8 +84,8 @@ static struct type *parse_tuple_or_func_type(void)
 			vec_push(types, parse_type());
 			if (vec_len(types) > MAX_FUNC_ARGS) {
 				fatal_error(lineno, "Function type has more "
-				                    "than "XSTR(MAX_FUNC_ARGS)
-				                    " parameters");
+				                    "than %d parameters",
+				                    MAX_FUNC_ARGS);
 			}
 		} while (accept_tok(COMMA));
 		expect_tok(CLOSE_PAREN);
@@ -111,7 +111,7 @@ static struct type *parse_array_type_suffix(struct type *type)
 		if (array_len > MAX_ARRAY_LEN) {
 			fatal_error(array_len_expr->lineno,
 					"Specified array length is greater "
-					"than "XSTR(MAX_ARRAY_LEN));
+					"than %d", MAX_ARRAY_LEN);
 		}
 		free(array_len_expr);
 		expect_tok(CLOSE_BRACKET);
@@ -245,7 +245,7 @@ static struct expr *parse_lambda_expr(void)
 		vec_push(params, xstrdup(cur_tok.u.ident));
 		if (vec_len(params) > MAX_FUNC_ARGS) {
 			fatal_error(lineno, "Lambda expression has more than "
-			                     XSTR(MAX_FUNC_ARGS)" parameters");
+			                    "%d parameters", MAX_FUNC_ARGS);
 		}
 	}
 	expect_tok(ARROW);
@@ -263,8 +263,8 @@ static struct expr *parse_array_lit_expr(void)
 	do {
 		vec_push(items, parse_expr());
 		if (vec_len(items) > MAX_ARRAY_LEN) {
-			fatal_error(lineno, "Array literal has more than "
-			                     XSTR(MAX_ARRAY_LEN)" items");
+			fatal_error(lineno, "Array literal has more than %d "
+			                    "items", MAX_ARRAY_LEN);
 		}
 	} while (accept_tok(COMMA));
 	expect_tok(CLOSE_BRACKET);

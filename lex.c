@@ -2,7 +2,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -16,7 +16,7 @@
 #include "utf8.h"
 #include "lex.h"
 
-#define MAX_LINENO UINT16_MAX
+#define MAX_LINENO 65536
 #define MAX_NUM_CHARS 128 // TODO: Maybe change this?
 
 static const char *filename;
@@ -31,8 +31,8 @@ const char *get_filename(void)
 static void inc_lineno(void)
 {
 	if (lineno == MAX_LINENO) {
-		fatal_error(lineno, "Source file longer than "XSTR(MAX_LINENO)
-		                    " lines");
+		fatal_error(lineno, "Source file longer than %d lines",
+				MAX_LINENO);
 	}
 	lineno++;
 }
@@ -153,8 +153,8 @@ static void lex_string_lit(struct tok *tok)
 		// TODO: Fix this
 		if (len == MAX_STRING_SIZE) {
 			fatal_error(lineno, "String literal is longer than the "
-			                    "maximum allowed length "
-					    "("XSTR(MAX_STRING_SIZE)" bytes)");
+		                            "maximum allowed length of %d "
+			                    "bytes", MAX_STRING_SIZE);
 		}
 		*p++ = *inp++;
 		len++;
@@ -244,8 +244,8 @@ static void lex_ident(struct tok *tok)
 	for (i = 0; is_ident_tail(*inp); i++) {
 		if (i == MAX_IDENT_SIZE) {
 			fatal_error(lineno, "Identifier longer than the "
-			                    "maximum allowed size "
-			                    "("XSTR(MAX_IDENT_SIZE)")");
+			                    "maximum allowed size of %d",
+			                    MAX_IDENT_SIZE);
 		}
 		ident[i] = *inp++;
 	}
@@ -334,7 +334,7 @@ static void lex_num_lit_with_base(struct tok *tok, int base)
 		num_text[i++] = *inp++;
 		if (i == MAX_NUM_CHARS + 1) {
 			fatal_error(lineno, "Numerical literal has more than "
-					XSTR(MAX_NUM_CHARS)" characters");
+			                    "%d characters", MAX_NUM_CHARS);
 		}
 	}
 	if (i == 0) {
@@ -368,7 +368,7 @@ static void lex_num_lit_with_base(struct tok *tok, int base)
 		 */
 		if (errno == ERANGE || inum > UINT64_MAX) {
 			fatal_error(lineno, "Integer literal greater than "
-					XSTR(UINT64_MAX));
+			                    "%"PRIu64, UINT64_MAX);
 		}
 		init_int_lit_tok(tok, inum);
 	}

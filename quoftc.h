@@ -12,8 +12,6 @@
 	#define UNLIKELY(x) (x)
 #endif
 
-#define XSTR(x) STR__(x)
-#define STR__(x) #x
 #define IN_RANGE(x, min, max) ((x) >= min && (x) <= max)
 #define EITHER_EQ(x, y, z) ((x) == (z) || (y) == (z))
 #define NEW(type) ((type *) xmalloc(sizeof(type)))
