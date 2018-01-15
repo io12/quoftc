@@ -173,6 +173,7 @@ static enum tok_kind lookup_keyword(const char *keyword)
 	if (UNLIKELY(keywords == NULL)) {
 		keywords = alloc_hash_table();
 #define K(keyword, tok) hash_table_set(keywords, keyword, (void *) tok)
+		K("let", LET);
 		K("const", CONST);
 		K("var", VAR);
 		K("impure", IMPURE);
@@ -518,6 +519,7 @@ static void lex_op(struct tok *tok)
 const char *tok_to_str(enum tok_kind kind)
 {
 	static const char *tok_names[] = {
+		[LET] = "`let`",
 		[CONST] = "`const`",
 		[VAR] = "`var`",
 		[IMPURE] = "`impure`",

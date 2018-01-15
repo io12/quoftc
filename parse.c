@@ -923,7 +923,7 @@ static struct stmt *parse_expr_stmt(void)
 static struct stmt *parse_stmt(void)
 {
 	switch (cur_tok.kind) {
-	case CONST:
+	case LET:
 	case VAR:
 		return parse_decl_stmt();
 	case IF:
@@ -951,14 +951,14 @@ static struct decl *parse_data_decl(void)
 
 	lineno = cur_tok.lineno;
 	switch (cur_tok.kind) {
-	case CONST:
+	case LET:
 		is_const = true;
 		break;
 	case VAR:
 		is_const = false;
 		break;
 	default:
-		expected_either_error(CONST, VAR);
+		expected_either_error(LET, VAR);
 	}
 	consume_tok();
 	type = parse_type();
@@ -1036,7 +1036,7 @@ static struct decl *parse_func_decl(void)
 static struct decl *parse_decl(void)
 {
 	switch (cur_tok.kind) {
-	case CONST:
+	case LET:
 	case VAR:
 		return parse_data_decl();
 	case TYPEDEF:
