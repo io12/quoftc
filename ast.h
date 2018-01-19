@@ -28,7 +28,7 @@ struct type {
 		I8_TYPE, I16_TYPE, I32_TYPE, I64_TYPE,
 		F32_TYPE, F64_TYPE, BOOL_TYPE, VOID_TYPE, CHAR_TYPE,
 		ALIAS_TYPE, PARAM_TYPE, ARRAY_TYPE, POINTER_TYPE,
-		TUPLE_TYPE, FUNC_TYPE
+		TUPLE_TYPE, FUNC_TYPE, CONST_TYPE, VOLATILE_TYPE
 	} kind;
 	union {
 		struct {
@@ -52,6 +52,9 @@ struct type {
 			struct type *ret;
 			Vec *params;
 		} func;
+		struct {
+			struct type *type;
+		} const_, volatile_;
 	} u;
 };
 
@@ -95,6 +98,10 @@ struct type {
 	ALLOC_UNION(type, TUPLE_TYPE, tuple, __VA_ARGS__)
 #define ALLOC_FUNC_TYPE(...) \
 	ALLOC_UNION(type, FUNC_TYPE, func, __VA_ARGS__)
+#define ALLOC_CONST_TYPE(...) \
+	ALLOC_UNION(type, CONST_TYPE, const_, __VA_ARGS__)
+#define ALLOC_VOLATILE_TYPE(...) \
+	ALLOC_UNION(type, VOLATILE_TYPE, volatile_, __VA_ARGS__)
 
 void *dup_type(void *);
 

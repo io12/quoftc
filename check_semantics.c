@@ -240,6 +240,18 @@ static void type_check_unary_op(struct expr *expr)
 	}
 }
 
+static struct type *remove_const_and_volatile(struct type *type)
+{
+	switch (type->kind) {
+	case CONST_TYPE:
+		return type->u.const_.type;
+	case VOLATILE_TYPE:
+		return type->u.volatile_.type;
+	default:
+		return type;
+	}
+}
+
 static bool are_types_compat(struct type *, struct type *);
 
 static bool vecs_have_compat_types(Vec *types1, Vec *types2)
@@ -260,6 +272,8 @@ static bool vecs_have_compat_types(Vec *types1, Vec *types2)
 
 static bool are_types_compat(struct type *type1, struct type *type2)
 {
+	type1 = remove_const_and_volatile(type1);
+	type2 = remove_const_and_volatile(type2);
 	switch (type1->kind) {
 	case UNSIZED_INT_TYPE:
 		return is_int_type(type2);
@@ -280,9 +294,8 @@ static bool are_types_compat(struct type *type1, struct type *type2)
 	case CHAR_TYPE:
 		return type1->kind == type2->kind;
 	case ALIAS_TYPE:
-		// TODO: Stub
 	case PARAM_TYPE:
-		// TODO: Stub
+		internal_error(); // TODO: Stub
 	case ARRAY_TYPE: {
 		struct type *subtype1, *subtype2;
 		unsigned len1, len2;
@@ -331,6 +344,10 @@ static bool are_types_compat(struct type *type1, struct type *type2)
 		return are_types_compat(ret1, ret2) &&
 			vecs_have_compat_types(params1, params2);
 	}
+	case CONST_TYPE:
+	case VOLATILE_TYPE:
+		// NOTREACHED
+		internal_error();
 	}
 	internal_error();
 }
@@ -400,7 +417,33 @@ static struct type *dup_stricter_type(struct type *type1, struct type *type2)
 		return ALLOC_TUPLE_TYPE(type1->lineno, strictest_types);
 	}
 	case FUNC_TYPE:
-		return NULL; // TODO: Stub
+		internal_error(); // TODO: Stub
+	case CONST_TYPE: {
+		struct type *subtype1, *subtype2;
+
+		subtype1 = type1->u.const_.type;
+		if (type2->kind == CONST_TYPE) {
+			subtype2 = type2->u.const_.type;
+			return ALLOC_CONST_TYPE(type1->lineno,
+					dup_stricter_type(subtype1, subtype2));
+		} else {
+			return ALLOC_CONST_TYPE(type1->lineno,
+					dup_stricter_type(subtype1, type2));
+		}
+	}
+	case VOLATILE_TYPE: {
+		struct type *subtype1, *subtype2;
+
+		subtype1 = type1->u.volatile_.type;
+		if (type2->kind == VOLATILE_TYPE) {
+			subtype2 = type2->u.volatile_.type;
+			return ALLOC_VOLATILE_TYPE(type1->lineno,
+					dup_stricter_type(subtype1, subtype2));
+		} else {
+			return ALLOC_VOLATILE_TYPE(type1->lineno,
+					dup_stricter_type(subtype1, type2));
+		}
+	}
 	}
 	internal_error();
 }
@@ -645,6 +688,7 @@ static void type_check_func_call(struct expr *expr)
 	for (i = 0; i < vec_len(args); i++) {
 		arg = vec_get(args, i);
 		param_type = vec_get(param_types, i);
+		// TODO: are_types_compat() may be the wrong check (const)
 		if (!are_types_compat(arg->type, param_type)) {
 			fatal_error(arg->lineno, "Type of passed argument is "
 			                         "an unexpected type");
@@ -749,6 +793,10 @@ static void check_data_decl(struct decl *decl)
 	}
 	if (init != NULL) {
 		type_check(init);
+		/*
+		 * TODO: are_types_compat() is problematic here; type must
+		 * always be stricter than init->type.
+		 */
 		if (!are_types_compat(type, init->type)) {
 			compat_error(lineno);
 		}
@@ -844,6 +892,10 @@ static void check_return_stmt(struct stmt *stmt)
 		}
 	} else {
 		type_check(expr);
+		/*
+		 * TODO: are_types_compat() does not recognize that return_type
+		 * must be at least as strict as expr->type.
+		 */
 		if (!are_types_compat(return_type, expr->type)) {
 			fatal_error(stmt->lineno,
 					"Type of value returned is not "

@@ -111,6 +111,10 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 		free(params);
 		return func_type;
 	}
+	case CONST_TYPE:
+		return get_llvm_type(type->u.const_.type);
+	case VOLATILE_TYPE: // TODO: Volatile code gen
+		return get_llvm_type(type->u.volatile_.type);
 	}
 	internal_error();
 }

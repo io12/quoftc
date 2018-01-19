@@ -58,6 +58,12 @@ void *dup_type(void *p)
 	case FUNC_TYPE:
 		return ALLOC_FUNC_TYPE(src->lineno, dup_type(src->u.func.ret),
 				dup_vec(src->u.func.params, dup_type));
+	case CONST_TYPE:
+		return ALLOC_CONST_TYPE(src->lineno,
+				dup_type(src->u.const_.type));
+	case VOLATILE_TYPE:
+		return ALLOC_VOLATILE_TYPE(src->lineno,
+				dup_type(src->u.volatile_.type));
 	}
 	internal_error();
 }
@@ -104,6 +110,12 @@ void free_type(void *p)
 	case FUNC_TYPE:
 		free_type(type->u.func.ret);
 		free_vec(type->u.func.params);
+		break;
+	case CONST_TYPE:
+		free_type(type->u.const_.type);
+		break;
+	case VOLATILE_TYPE:
+		free_type(type->u.volatile_.type);
 		break;
 	}
 	free(type);
