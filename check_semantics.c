@@ -709,6 +709,50 @@ static void type_check(struct expr *expr)
 	}
 }
 
+static void ensure_valid_data_decl_type(struct type *type)
+{
+	switch (type->kind) {
+	case UNSIZED_INT_TYPE:
+		internal_error(); // The parser shouldn't set this
+	case U8_TYPE:
+	case U16_TYPE:
+	case U32_TYPE:
+	case U64_TYPE:
+	case I8_TYPE:
+	case I16_TYPE:
+	case I32_TYPE:
+	case I64_TYPE:
+	case F32_TYPE:
+	case F64_TYPE:
+	case BOOL_TYPE:
+	case CHAR_TYPE:
+		break;
+	case VOID_TYPE:
+		fatal_error(type->lineno, "Void not allowed in data declarations");
+	case ALIAS_TYPE:
+	case PARAM_TYPE:
+		internal_error(); // TODO: Stub
+	case ARRAY_TYPE:
+		ensure_valid_data_decl_type(type->u.array.l);
+		break;
+	case POINTER_TYPE:
+		ensure_valid_data_decl_type(type->u.pointer.l);
+		break;
+	case TUPLE_TYPE: {
+		Vec *types;
+		size_t i;
+
+		types = type->u.tuple.types;
+		for (i = 0; i < vec_len(types); i++) {
+			ensure_valid_data_decl_type(vec_get(types, i));
+		}
+		break;
+	}
+	case FUNC_TYPE:
+		internal_error(); // TODO: Stub
+	}
+}
+
 static void ensure_not_declared(char *name, unsigned lineno)
 {
 	if (lookup_symbol(sym_tbl, name) != NULL) {
@@ -731,6 +775,7 @@ static void check_data_decl(struct decl *decl)
 	name = decl->u.data.name;
 	init = decl->u.data.init;
 
+	ensure_valid_data_decl_type(type);
 	ensure_not_declared(name, decl->lineno);
 	if (is_global_scope(sym_tbl)) {
 		if (init == NULL) {
