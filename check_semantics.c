@@ -448,6 +448,126 @@ static struct type *dup_stricter_type(struct type *type1, struct type *type2)
 	internal_error();
 }
 
+static bool type_is_promotable(struct type *, struct type *);
+
+static bool types_are_promotable(Vec *from_types, Vec *to_types)
+{
+	struct type *from_type, *to_type;
+	size_t len, i;
+
+	if (vec_len(from_types) != vec_len(to_types)) {
+		return false;
+	}
+	len = vec_len(from_types);
+	for (i = 0; i < len; i++) {
+		from_type = vec_get(from_types, i);
+		to_type = vec_get(to_types, i);
+		if (!type_is_promotable(from_type, to_type)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool type_is_promotable(struct type *from_type, struct type *to_type)
+{
+	switch (to_type->kind) {
+	case UNSIZED_INT_TYPE:
+		// Only `from_type` should ever be an `UNSIZED_INT_TYPE`
+		internal_error();
+	case U8_TYPE:
+	case U16_TYPE:
+	case U32_TYPE:
+	case U64_TYPE:
+	case I8_TYPE:
+	case I16_TYPE:
+	case I32_TYPE:
+	case I64_TYPE:
+		return from_type->kind == UNSIZED_INT_TYPE ||
+				from_type->kind == to_type->kind;
+	case F32_TYPE:
+	case F64_TYPE:
+	case BOOL_TYPE:
+	case VOID_TYPE:
+	case CHAR_TYPE:
+		return from_type->kind == to_type->kind;
+	case ALIAS_TYPE:
+	case PARAM_TYPE:
+		internal_error(); // TODO: Stub
+	case ARRAY_TYPE: {
+		struct type *from_subtype, *to_subtype;
+		unsigned from_len, to_len;
+
+		if (from_type->kind != ARRAY_TYPE) {
+			return false;
+		}
+		from_subtype = from_type->u.array.l;
+		to_subtype = to_type->u.array.l;
+		from_len = from_type->u.array.len;
+		to_len = to_type->u.array.len;
+		return type_is_promotable(from_subtype, to_subtype) &&
+			(to_len == 0 || from_len == to_len);
+	}
+	case POINTER_TYPE: {
+		struct type *from_subtype, *to_subtype;
+
+		if (from_type->kind != POINTER_TYPE) {
+			return false;
+		}
+		from_subtype = from_type->u.pointer.l;
+		to_subtype = to_type->u.pointer.l;
+		return type_is_promotable(from_subtype, to_subtype);
+	}
+	case TUPLE_TYPE: {
+		Vec *from_types, *to_types;
+
+		if (from_type->kind != TUPLE_TYPE) {
+			return false;
+		}
+		from_types = from_type->u.tuple.types;
+		to_types = to_type->u.tuple.types;
+		return types_are_promotable(from_types, to_types);
+	}
+	// TODO: Make sure this isn't problematic
+	case FUNC_TYPE: {
+		struct type *from_return_type, *to_return_type;
+		Vec *from_param_types, *to_param_types;
+
+		if (from_type->kind != FUNC_TYPE) {
+			return false;
+		}
+		from_return_type = from_type->u.func.ret;
+		to_return_type = to_type->u.func.ret;
+		from_param_types = from_type->u.func.params;
+		to_param_types = to_type->u.func.params;
+		return type_is_promotable(from_return_type, to_return_type) &&
+			types_are_promotable(from_param_types, to_param_types);
+	}
+	case CONST_TYPE: {
+		struct type *from_subtype, *to_subtype;
+
+		to_subtype = to_type->u.const_.type;
+		if (from_type->kind == CONST_TYPE) {
+			from_subtype = from_type->u.const_.type;
+			return type_is_promotable(from_subtype, to_subtype);
+		} else {
+			return type_is_promotable(from_type, to_subtype);
+		}
+	}
+	case VOLATILE_TYPE: {
+		struct type *from_subtype, *to_subtype;
+
+		to_subtype = to_type->u.volatile_.type;
+		if (from_type->kind == VOLATILE_TYPE) {
+			from_subtype = from_type->u.volatile_.type;
+			return type_is_promotable(from_subtype, to_subtype);
+		} else {
+			return type_is_promotable(from_type, to_subtype);
+		}
+	}
+	}
+}
+
 static void ensure_valid_cond(struct expr *cond)
 {
 	if (cond->type->kind != BOOL_TYPE || is_pure_expr(cond)) {
