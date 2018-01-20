@@ -772,7 +772,8 @@ static void ensure_valid_data_decl_type(struct type *type)
 	case CHAR_TYPE:
 		break;
 	case VOID_TYPE:
-		fatal_error(type->lineno, "Void not allowed in data declarations");
+		fatal_error(type->lineno,
+				"Void not allowed in data declarations");
 	case ALIAS_TYPE:
 	case PARAM_TYPE:
 		internal_error(); // TODO: Stub
@@ -793,6 +794,8 @@ static void ensure_valid_data_decl_type(struct type *type)
 		break;
 	}
 	case FUNC_TYPE:
+	case CONST_TYPE:
+	case VOLATILE_TYPE:
 		internal_error(); // TODO: Stub
 	}
 }
