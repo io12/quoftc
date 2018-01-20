@@ -21,12 +21,12 @@ void free_symbol_table(struct symbol_table sym_tbl)
 	free_vec(sym_tbl.scopes);
 }
 
-void enter_new_scope(struct symbol_table sym_tbl)
+void push_new_scope(struct symbol_table sym_tbl)
 {
 	vec_push(sym_tbl.scopes, alloc_hash_table());
 }
 
-void leave_scope(struct symbol_table sym_tbl)
+void pop_scope(struct symbol_table sym_tbl)
 {
 	vec_pop(sym_tbl.scopes);
 }
@@ -41,7 +41,7 @@ void insert_symbol(struct symbol_table sym_tbl, char *name, void *info)
 	hash_table_set(vec_top(sym_tbl.scopes), name, info);
 }
 
-void *lookup_symbol(struct symbol_table sym_tbl, char *name)
+void *lookup_symbol(struct symbol_table sym_tbl, const char *name)
 {
 	Vec *scopes = sym_tbl.scopes;
 	HashTable *scope;

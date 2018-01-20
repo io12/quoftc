@@ -9,7 +9,7 @@
 #include "symbol_table.h"
 #include "check_semantics.h"
 
-static struct symbol_table sym_tbl;
+static struct symbol_table val_sym_tbl, typedef_sym_tbl;
 static struct type *cur_func_type;
 
 static NORETURN void compat_error(unsigned lineno)
@@ -20,6 +20,18 @@ static NORETURN void compat_error(unsigned lineno)
 static NORETURN void lvalue_error(unsigned lineno)
 {
 	fatal_error(lineno, "Value mutated that is not an lvalue");
+}
+
+static void enter_new_scope(void)
+{
+	push_new_scope(val_sym_tbl);
+	push_new_scope(typedef_sym_tbl);
+}
+
+static void leave_scope(void)
+{
+	pop_scope(val_sym_tbl);
+	pop_scope(typedef_sym_tbl);
 }
 
 static bool is_pure_expr(struct expr *);
@@ -681,11 +693,11 @@ static void type_check_lambda(struct expr *expr)
 	params = expr->u.lambda.params;
 	enter_new_scope(sym_tbl);
 	for (i = 0; i < vec_len(param_names); i++) {
-		insert_symbol(sym_tbl, vec_get(param_names, i),
+		insert_symbol(val_sym_tbl, vec_get(param_names, i),
 				vec_get(param_types, i));
 	}
 	// TODO: Finish checking
-	leave_scope(sym_tbl);
+	leave_scope();
 	expr->type = dup_type(type);
 #endif
 }
@@ -727,7 +739,7 @@ static void type_check_ident(struct expr *expr)
 
 	assert(expr->kind == IDENT_EXPR);
 	name = expr->u.ident.name;
-	type = lookup_symbol(sym_tbl, name);
+	type = lookup_symbol(val_sym_tbl, name);
 	if (type == NULL) {
 		fatal_error(expr->lineno, "Name `%s` does not exist in scope; "
 		                          "did you spell it wrong?", name);
@@ -744,9 +756,9 @@ static void type_check_block(struct expr *expr)
 	assert(expr->kind == BLOCK_EXPR);
 	stmts = expr->u.block.stmts;
 
-	enter_new_scope(sym_tbl);
+	enter_new_scope();
 	check_compound_stmt(stmts);
-	leave_scope(sym_tbl);
+	leave_scope();
 	expr->type = ALLOC_VOID_TYPE(expr->lineno);
 }
 
@@ -873,7 +885,7 @@ static void type_check(struct expr *expr)
 	}
 }
 
-static void ensure_valid_data_decl_type(struct type *type)
+static void ensure_declarable_type(struct type *type)
 {
 	switch (type->kind) {
 	case UNSIZED_INT_TYPE:
@@ -892,16 +904,15 @@ static void ensure_valid_data_decl_type(struct type *type)
 	case CHAR_TYPE:
 		break;
 	case VOID_TYPE:
-		fatal_error(type->lineno,
-				"Void not allowed in data declarations");
+		fatal_error(type->lineno, "Void is not a declarable type");
 	case ALIAS_TYPE:
 	case PARAM_TYPE:
 		internal_error(); // TODO: Stub
 	case ARRAY_TYPE:
-		ensure_valid_data_decl_type(type->u.array.l);
+		ensure_declarable_type(type->u.array.l);
 		break;
 	case POINTER_TYPE:
-		ensure_valid_data_decl_type(type->u.pointer.l);
+		ensure_declarable_type(type->u.pointer.l);
 		break;
 	case TUPLE_TYPE: {
 		Vec *types;
@@ -909,7 +920,7 @@ static void ensure_valid_data_decl_type(struct type *type)
 
 		types = type->u.tuple.types;
 		for (i = 0; i < vec_len(types); i++) {
-			ensure_valid_data_decl_type(vec_get(types, i));
+			ensure_declarable_type(vec_get(types, i));
 		}
 		break;
 	}
@@ -922,7 +933,7 @@ static void ensure_valid_data_decl_type(struct type *type)
 
 static void ensure_not_declared(char *name, unsigned lineno)
 {
-	if (lookup_symbol(sym_tbl, name) != NULL) {
+	if (lookup_symbol(val_sym_tbl, name) != NULL) {
 		fatal_error(lineno, "Name `%s` already declared in scope",
 				name);
 	}
@@ -942,9 +953,9 @@ static void check_data_decl(struct decl *decl)
 	name = decl->u.data.name;
 	init = decl->u.data.init;
 
-	ensure_valid_data_decl_type(type);
+	ensure_declarable_type(type);
 	ensure_not_declared(name, decl->lineno);
-	if (is_global_scope(sym_tbl)) {
+	if (is_global_scope(val_sym_tbl)) {
 		if (init == NULL) {
 			fatal_error(lineno, "Top level declaration of `%s` "
 			                    "lacks an initializer", name);
@@ -969,7 +980,33 @@ static void check_data_decl(struct decl *decl)
 			compat_error(lineno);
 		}
 	}
-	insert_symbol(sym_tbl, name, type);
+	insert_symbol(val_sym_tbl, name, type);
+}
+
+static void ensure_type_not_defined(const char *name, unsigned lineno)
+{
+	if (lookup_symbol(typedef_sym_tbl, name) != NULL) {
+		fatal_error(lineno, "Type `%s` already defined in scope", name);
+	}
+}
+
+static void check_typedef_decl(struct decl *decl)
+{
+	struct type *type;
+	Vec *params;
+	char *name;
+	size_t i;
+
+	assert(decl->kind == TYPEDEF_DECL);
+	name = decl->u.typedef_.name;
+	params = decl->u.typedef_.params;
+	type = decl->u.typedef_.type;
+	ensure_type_not_defined(name, decl->lineno);
+	for (i = 0; i < vec_len(params); i++) {
+		// TODO: Handle type parameters
+	}
+	ensure_declarable_type(type);
+	internal_error(); // TODO: Stub
 }
 
 static void check_if_stmt(struct stmt *stmt)
@@ -983,14 +1020,14 @@ static void check_if_stmt(struct stmt *stmt)
 
 	type_check(cond);
 	ensure_valid_cond(cond);
-	enter_new_scope(sym_tbl);
+	enter_new_scope();
 	check_compound_stmt(then_stmts);
-	leave_scope(sym_tbl);
-	enter_new_scope(sym_tbl);
+	leave_scope();
 	if (else_stmts != NULL) {
+		enter_new_scope();
 		check_compound_stmt(else_stmts);
+		leave_scope();
 	}
-	leave_scope(sym_tbl);
 }
 
 static void check_do_stmt(struct stmt *stmt)
@@ -1001,11 +1038,11 @@ static void check_do_stmt(struct stmt *stmt)
 	stmts = stmt->u.do_.stmts;
 	cond = stmt->u.do_.cond;
 
-	enter_new_scope(sym_tbl);
+	enter_new_scope();
 	check_compound_stmt(stmts);
 	type_check(cond);
 	ensure_valid_cond(cond);
-	leave_scope(sym_tbl);
+	leave_scope();
 }
 
 static void check_while_stmt(struct stmt *stmt)
@@ -1018,9 +1055,9 @@ static void check_while_stmt(struct stmt *stmt)
 
 	type_check(cond);
 	ensure_valid_cond(cond);
-	enter_new_scope(sym_tbl);
+	enter_new_scope();
 	check_compound_stmt(stmts);
-	leave_scope(sym_tbl);
+	leave_scope();
 }
 
 static void check_for_stmt(struct stmt *stmt)
@@ -1039,9 +1076,9 @@ static void check_for_stmt(struct stmt *stmt)
 	ensure_valid_cond(cond);
 	type_check(post);
 	// TODO: Ensure post has side effects
-	enter_new_scope(sym_tbl);
+	enter_new_scope();
 	check_compound_stmt(stmts);
-	leave_scope(sym_tbl);
+	leave_scope();
 }
 
 static void check_return_stmt(struct stmt *stmt)
@@ -1128,20 +1165,20 @@ static void check_func_decl(struct decl *decl)
 	param_types = func_type->u.func.params;
 
 	ensure_not_declared(func_name, decl->lineno);
-	if (!is_global_scope(sym_tbl)) {
+	if (!is_global_scope(val_sym_tbl)) {
 		fatal_error(decl->lineno, "Function defined with local scope");
 	}
-	insert_symbol(sym_tbl, func_name, func_type);
+	insert_symbol(val_sym_tbl, func_name, func_type);
 	cur_func_type = func_type;
-	enter_new_scope(sym_tbl);
+	enter_new_scope();
 	nparams = vec_len(param_types);
 	for (i = 0; i < nparams; i++) {
 		param_type = vec_get(param_types, i);
 		param_name = vec_get(param_names, i);
-		insert_symbol(sym_tbl, param_name, param_type);
+		insert_symbol(val_sym_tbl, param_name, param_type);
 	}
 	check_compound_stmt(body_stmts);
-	leave_scope(sym_tbl);
+	leave_scope();
 }
 
 // TODO: Add a maximum nest level
@@ -1152,7 +1189,8 @@ static void check_decl(struct decl *decl)
 		check_data_decl(decl);
 		break;
 	case TYPEDEF_DECL:
-		internal_error(); // TODO: Stub
+		check_typedef_decl(decl);
+		break;
 	case FUNC_DECL:
 		check_func_decl(decl);
 		break;
@@ -1165,10 +1203,12 @@ void check_ast(struct ast ast)
 	Vec *decls = ast.decls;
 	size_t i;
 
-	sym_tbl = alloc_symbol_table();
-	enter_new_scope(sym_tbl); // Global scope
+	val_sym_tbl = alloc_symbol_table();
+	typedef_sym_tbl = alloc_symbol_table();
+	enter_new_scope(); // Global scope
 	for (i = 0; i < vec_len(decls); i++) {
 		check_decl(vec_get(decls, i));
 	}
-	free_symbol_table(sym_tbl);
+	free_symbol_table(val_sym_tbl);
+	free_symbol_table(typedef_sym_tbl);
 }

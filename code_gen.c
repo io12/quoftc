@@ -17,6 +17,16 @@ static struct symbol_table sym_tbl;
 static LLVMBasicBlockRef cur_func_return_block;
 static LLVMValueRef cur_func_return_val_ptr;
 
+static void enter_new_scope(void)
+{
+	push_new_scope(sym_tbl);
+}
+
+static void leave_scope(void)
+{
+	pop_scope(sym_tbl);
+}
+
 static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 {
 	LLVMTypeRef struct_item_types[2];
@@ -595,9 +605,9 @@ static LLVMValueRef emit_block_expr(LLVMBuilderRef builder, struct expr *expr)
 	assert(expr->kind == BLOCK_EXPR);
 	stmts = expr->u.block.stmts;
 
-	enter_new_scope(sym_tbl);
+	enter_new_scope();
 	emit_compound_stmt(builder, stmts);
-	leave_scope(sym_tbl);
+	leave_scope();
 	return NULL;
 }
 
@@ -865,7 +875,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 
 	func_val = LLVMAddFunction(module, func_name, func_type);
 	insert_symbol(sym_tbl, func_name, func_val);
-	enter_new_scope(sym_tbl);
+	enter_new_scope();
 	for (i = 0; i < vec_len(param_names); i++) {
 		param_name = vec_get(param_names, i);
 		param_val = LLVMGetParam(func_val, i);
@@ -894,7 +904,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 		LLVMBuildRet(builder, return_val);
 	}
 	LLVMDisposeBuilder(builder);
-	leave_scope(sym_tbl);
+	leave_scope();
 }
 
 static void emit_global_decl(LLVMModuleRef module, struct decl *decl)
@@ -918,7 +928,7 @@ static LLVMModuleRef emit_ast(struct ast ast)
 	size_t i;
 
 	sym_tbl = alloc_symbol_table();
-	enter_new_scope(sym_tbl); // Global scope
+	enter_new_scope(); // Global scope
 	module = LLVMModuleCreateWithName(get_filename());
 	for (i = 0; i < vec_len(decls); i++) {
 		emit_global_decl(module, vec_get(decls, i));
