@@ -35,8 +35,6 @@ void *dup_type(void *p)
 		return ALLOC_F64_TYPE(src->lineno);
 	case BOOL_TYPE:
 		return ALLOC_BOOL_TYPE(src->lineno);
-	case VOID_TYPE:
-		return ALLOC_VOID_TYPE(src->lineno);
 	case CHAR_TYPE:
 		return ALLOC_CHAR_TYPE(src->lineno);
 	case ALIAS_TYPE:
@@ -88,7 +86,6 @@ void free_type(void *p)
 	case F32_TYPE:
 	case F64_TYPE:
 	case BOOL_TYPE:
-	case VOID_TYPE:
 	case CHAR_TYPE:
 		break;
 	case ALIAS_TYPE:
