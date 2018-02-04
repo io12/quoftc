@@ -164,6 +164,21 @@ static struct type *parse_type(void)
 		}
 		break;
 	}
+	case OPEN_BRACE: {
+		Vec *types, *names;
+
+		types = alloc_vec(free_type);
+		names = alloc_vec(free);
+		do {
+			vec_push(types, parse_type());
+			expect_tok_no_consume(IDENT);
+			vec_push(names, xstrdup(cur_tok.u.ident));
+			consume_tok();
+		} while (accept_tok(SEMICOLON));
+		expect_tok(CLOSE_BRACE);
+		type = ALLOC_STRUCT_TYPE(lineno, types, names);
+		break;
+	}
 	case CONST:
 		consume_tok();
 		expect_tok(LT);
