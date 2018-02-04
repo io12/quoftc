@@ -139,8 +139,6 @@ static struct type *parse_type(void)
 {
 	unsigned lineno;
 	struct type *type;
-	char *name;
-	Vec *params;
 
 	lineno = cur_tok.lineno;
 	switch (cur_tok.kind) {
@@ -148,7 +146,10 @@ static struct type *parse_type(void)
 		type = parse_tuple_or_func_type();
 		break;
 	case IDENT:
-	case IMPURE:
+	case IMPURE: {
+		Vec *params;
+		char *name;
+
 		name = xstrdup(cur_tok.u.ident);
 		consume_tok();
 		if (accept_tok(LT)) {
@@ -161,6 +162,21 @@ static struct type *parse_type(void)
 		} else {
 			type = ALLOC_ALIAS_TYPE(lineno, name);
 		}
+		break;
+	}
+	case CONST:
+		consume_tok();
+		expect_tok(LT);
+		type = parse_type();
+		expect_tok(GT);
+		type = ALLOC_CONST_TYPE(lineno, type);
+		break;
+	case VOLATILE:
+		consume_tok();
+		expect_tok(LT);
+		type = parse_type();
+		expect_tok(GT);
+		type = ALLOC_VOLATILE_TYPE(lineno, type);
 		break;
 	case U8:
 		consume_tok();

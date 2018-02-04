@@ -4,8 +4,9 @@
 enum tok_kind {
 	INVALID_TOK,
 
-	LET, CONST, VAR,
+	LET, VAR,
 	IMPURE,
+	CONST, VOLATILE,
 	IDENT,
 	TYPEDEF,
 
