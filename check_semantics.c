@@ -153,8 +153,16 @@ static bool is_lvalue(struct expr *expr)
 		return is_lvalue_unary_op(expr);
 	case BIN_OP_EXPR:
 		return is_lvalue_bin_op(expr);
-	case IDENT_EXPR:
-		return true; // TODO: Check for mutability
+	case IDENT_EXPR: {
+		struct symbol_info *sym_info;
+		char *name;
+
+		name = expr->u.ident.name;
+		sym_info = lookup_symbol(sym_tbl, name);
+		assert(sym_info != NULL);
+		assert(sym_info->kind == VALUE_SYM);
+		return !sym_info->u.value.is_const;
+	}
 	case BLOCK_EXPR:
 		// TODO: Stub
 	case IF_EXPR:
