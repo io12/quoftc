@@ -65,12 +65,19 @@ static struct type *parse_tuple_or_func_type(void)
 	Vec *types;
 
 	expect_tok(OPEN_PAREN);
-	first_type = parse_type();
+	if (accept_tok(VOID)) {
+		first_type = NULL;
+	} else {
+		first_type = parse_type();
+	}
 	types = alloc_vec(free_type);
 	switch (cur_tok.kind) {
 	case COMMA:
 		lineno = cur_tok.lineno;
 		consume_tok();
+		if (first_type == NULL) {
+			fatal_error(lineno, "First type in tuple is `void`");
+		}
 		vec_push(types, first_type);
 		do {
 			vec_push(types, parse_type());
@@ -80,14 +87,16 @@ static struct type *parse_tuple_or_func_type(void)
 	case BACK_ARROW:
 		lineno = cur_tok.lineno;
 		consume_tok();
-		do {
-			vec_push(types, parse_type());
-			if (vec_len(types) > MAX_FUNC_ARGS) {
-				fatal_error(lineno, "Function type has more "
-				                    "than %d parameters",
-				                    MAX_FUNC_ARGS);
-			}
-		} while (accept_tok(COMMA));
+		if (!accept_tok(VOID)) {
+			do {
+				vec_push(types, parse_type());
+				if (vec_len(types) > MAX_FUNC_ARGS) {
+					fatal_error(lineno, "Function type has more "
+							"than %d parameters",
+							MAX_FUNC_ARGS);
+				}
+			} while (accept_tok(COMMA));
+		}
 		expect_tok(CLOSE_PAREN);
 		return ALLOC_FUNC_TYPE(lineno, first_type, types);
 	default:
@@ -205,10 +214,6 @@ static struct type *parse_type(void)
 	case BOOL:
 		consume_tok();
 		type = ALLOC_BOOL_TYPE(lineno);
-		break;
-	case VOID:
-		consume_tok();
-		type = ALLOC_VOID_TYPE(lineno);
 		break;
 	case CHAR:
 		consume_tok();

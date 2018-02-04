@@ -80,8 +80,6 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 		return LLVMDoubleType();
 	case BOOL_TYPE:
 		return LLVMInt1Type();
-	case VOID_TYPE:
-		return LLVMVoidType();
 	case ALIAS_TYPE:
 		// TODO: Resolve type
 	case PARAM_TYPE:
@@ -884,7 +882,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	builder = LLVMCreateBuilder();
 	entry_block = LLVMAppendBasicBlock(func_val, "entry");
 	LLVMPositionBuilderAtEnd(builder, entry_block);
-	if (return_type->kind != VOID_TYPE) {
+	if (return_type != NULL) {
 		cur_func_return_val_ptr = LLVMBuildAlloca(builder,
 				get_llvm_type(return_type), "return_val_ptr");
 	}
@@ -896,7 +894,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	}
 	LLVMMoveBasicBlockAfter(cur_func_return_block, last_block);
 	LLVMPositionBuilderAtEnd(builder, cur_func_return_block);
-	if (return_type->kind == VOID_TYPE) {
+	if (return_type == NULL) {
 		LLVMBuildRetVoid(builder);
 	} else {
 		return_val = LLVMBuildLoad(builder, cur_func_return_val_ptr,
