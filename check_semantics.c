@@ -342,6 +342,8 @@ static bool are_types_compat(struct type *type1, struct type *type2)
 		types2 = type2->u.tuple.types;
 		return vecs_have_compat_types(types1, types2);
 	}
+	case STRUCT_TYPE:
+		internal_error(); // TODO: Stub
 	case FUNC_TYPE: {
 		struct type *ret1, *ret2;
 		Vec *params1, *params2;
@@ -389,7 +391,7 @@ static struct type *dup_stricter_type(struct type *type1, struct type *type2)
 		return dup_type(type1);
 	case ALIAS_TYPE:
 	case PARAM_TYPE:
-		// TODO: Stub
+		internal_error(); // TODO: Stub
 	case ARRAY_TYPE: {
 		struct type *subtype1, *subtype2, *stricter_subtype;
 		unsigned len;
@@ -428,6 +430,8 @@ static struct type *dup_stricter_type(struct type *type1, struct type *type2)
 		}
 		return ALLOC_TUPLE_TYPE(type1->lineno, strictest_types);
 	}
+	case STRUCT_TYPE:
+		internal_error(); // TODO: Stub
 	case FUNC_TYPE:
 		internal_error(); // TODO: Stub
 	case CONST_TYPE: {
@@ -540,6 +544,8 @@ static bool type_is_convertible(struct type *from_type, struct type *to_type)
 		to_types = to_type->u.tuple.types;
 		return types_are_convertible(from_types, to_types);
 	}
+	case STRUCT_TYPE:
+		internal_error(); // TODO: Stub
 	// TODO: Make sure this isn't problematic
 	case FUNC_TYPE: {
 		struct type *from_return_type, *to_return_type;
@@ -924,6 +930,7 @@ static void ensure_declarable_type(struct type *type)
 		}
 		break;
 	}
+	case STRUCT_TYPE:
 	case FUNC_TYPE:
 	case CONST_TYPE:
 	case VOLATILE_TYPE:

@@ -110,6 +110,16 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 		free(types);
 		return tuple_type;
 	}
+	case STRUCT_TYPE: {
+		LLVMTypeRef struct_type, *types;
+		size_t len;
+
+		types = get_llvm_types(type->u.struct_.types);
+		len = vec_len(type->u.struct_.types);
+		struct_type = LLVMStructType(types, len, false);
+		free(types);
+		return struct_type;
+	}
 	case FUNC_TYPE: {
 		LLVMTypeRef func_type, ret, *params;
 		size_t nparams;

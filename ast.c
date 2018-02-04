@@ -6,6 +6,11 @@
 #include "quoftc.h"
 #include "ast.h"
 
+static void *void_strdup(void *p)
+{
+	return xstrdup(p);
+}
+
 void *dup_type(void *p)
 {
 	struct type *src = p;
@@ -55,6 +60,10 @@ void *dup_type(void *p)
 	case TUPLE_TYPE:
 		return ALLOC_TUPLE_TYPE(src->lineno,
 				dup_vec(src->u.tuple.types, dup_type));
+	case STRUCT_TYPE:
+		return ALLOC_STRUCT_TYPE(src->lineno,
+				dup_vec(src->u.struct_.types, dup_type),
+				dup_vec(src->u.struct_.names, void_strdup));
 	case FUNC_TYPE:
 		return ALLOC_FUNC_TYPE(src->lineno, dup_type(src->u.func.ret),
 				dup_vec(src->u.func.params, dup_type));
@@ -106,6 +115,10 @@ void free_type(void *p)
 		break;
 	case TUPLE_TYPE:
 		free_vec(type->u.tuple.types);
+		break;
+	case STRUCT_TYPE:
+		free_vec(type->u.struct_.types);
+		free_vec(type->u.struct_.names);
 		break;
 	case FUNC_TYPE:
 		free_type(type->u.func.ret);
