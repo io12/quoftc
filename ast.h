@@ -26,7 +26,7 @@ struct type {
 		UNSIZED_INT_TYPE, // Unused until semantic analysis
 		U8_TYPE, U16_TYPE, U32_TYPE, U64_TYPE,
 		I8_TYPE, I16_TYPE, I32_TYPE, I64_TYPE,
-		F32_TYPE, F64_TYPE, BOOL_TYPE, CHAR_TYPE,
+		F32_TYPE, F64_TYPE, BOOL_TYPE, VOID_TYPE, CHAR_TYPE,
 		ALIAS_TYPE, PARAM_TYPE, ARRAY_TYPE, POINTER_TYPE,
 		TUPLE_TYPE, FUNC_TYPE, CONST_TYPE, VOLATILE_TYPE
 	} kind;
@@ -49,7 +49,7 @@ struct type {
 			Vec *types;
 		} tuple;
 		struct {
-			struct type *ret; // NULL if none
+			struct type *ret;
 			Vec *params;
 		} func;
 		struct {
@@ -82,6 +82,8 @@ struct type {
 	ALLOC_UNION_KIND_ONLY(type, F64_TYPE, lineno)
 #define ALLOC_BOOL_TYPE(lineno) \
 	ALLOC_UNION_KIND_ONLY(type, BOOL_TYPE, lineno)
+#define ALLOC_VOID_TYPE(lineno) \
+	ALLOC_UNION_KIND_ONLY(type, VOID_TYPE, lineno)
 #define ALLOC_CHAR_TYPE(lineno) \
 	ALLOC_UNION_KIND_ONLY(type, CHAR_TYPE, lineno)
 #define ALLOC_ALIAS_TYPE(...) \

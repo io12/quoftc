@@ -302,6 +302,7 @@ static bool are_types_compat(struct type *type1, struct type *type2)
 	case F32_TYPE:
 	case F64_TYPE:
 	case BOOL_TYPE:
+	case VOID_TYPE:
 	case CHAR_TYPE:
 		return type1->kind == type2->kind;
 	case ALIAS_TYPE:
@@ -383,6 +384,7 @@ static struct type *dup_stricter_type(struct type *type1, struct type *type2)
 	case F32_TYPE:
 	case F64_TYPE:
 	case BOOL_TYPE:
+	case VOID_TYPE:
 	case CHAR_TYPE:
 		return dup_type(type1);
 	case ALIAS_TYPE:
@@ -498,6 +500,7 @@ static bool type_is_convertible(struct type *from_type, struct type *to_type)
 	case F32_TYPE:
 	case F64_TYPE:
 	case BOOL_TYPE:
+	case VOID_TYPE:
 	case CHAR_TYPE:
 		return from_type->kind == to_type->kind;
 	case ALIAS_TYPE:
@@ -672,7 +675,7 @@ static void type_check_bin_op(struct expr *expr)
 		if (!are_types_compat(l->type, r->type)) {
 			compat_error(expr->lineno);
 		}
-		expr->type = NULL;
+		expr->type = ALLOC_VOID_TYPE(expr->lineno);
 		break;
 	case FIELD_OP:
 		break; // TODO: Dot operator
@@ -756,7 +759,7 @@ static void type_check_block(struct expr *expr)
 	enter_new_scope();
 	check_compound_stmt(stmts);
 	leave_scope();
-	expr->type = NULL;
+	expr->type = ALLOC_VOID_TYPE(expr->lineno);
 }
 
 static void type_check_if(struct expr *expr)
@@ -882,6 +885,52 @@ static void type_check(struct expr *expr)
 	}
 }
 
+static void ensure_declarable_type(struct type *type)
+{
+	switch (type->kind) {
+	case UNSIZED_INT_TYPE:
+		internal_error(); // The parser shouldn't set this
+	case U8_TYPE:
+	case U16_TYPE:
+	case U32_TYPE:
+	case U64_TYPE:
+	case I8_TYPE:
+	case I16_TYPE:
+	case I32_TYPE:
+	case I64_TYPE:
+	case F32_TYPE:
+	case F64_TYPE:
+	case BOOL_TYPE:
+	case CHAR_TYPE:
+		break;
+	case VOID_TYPE:
+		fatal_error(type->lineno, "Void is not a declarable type");
+	case ALIAS_TYPE:
+	case PARAM_TYPE:
+		internal_error(); // TODO: Stub
+	case ARRAY_TYPE:
+		ensure_declarable_type(type->u.array.l);
+		break;
+	case POINTER_TYPE:
+		ensure_declarable_type(type->u.pointer.l);
+		break;
+	case TUPLE_TYPE: {
+		Vec *types;
+		size_t i;
+
+		types = type->u.tuple.types;
+		for (i = 0; i < vec_len(types); i++) {
+			ensure_declarable_type(vec_get(types, i));
+		}
+		break;
+	}
+	case FUNC_TYPE:
+	case CONST_TYPE:
+	case VOLATILE_TYPE:
+		internal_error(); // TODO: Stub
+	}
+}
+
 static void ensure_not_declared(char *name, unsigned lineno)
 {
 	if (lookup_symbol(val_sym_tbl, name) != NULL) {
@@ -904,6 +953,7 @@ static void check_data_decl(struct decl *decl)
 	name = decl->u.data.name;
 	init = decl->u.data.init;
 
+	ensure_declarable_type(type);
 	ensure_not_declared(name, decl->lineno);
 	if (is_global_scope(val_sym_tbl)) {
 		if (init == NULL) {
@@ -955,7 +1005,7 @@ static void check_typedef_decl(struct decl *decl)
 	for (i = 0; i < vec_len(params); i++) {
 		// TODO: Handle type parameters
 	}
-	(void)type;
+	ensure_declarable_type(type);
 	internal_error(); // TODO: Stub
 }
 
@@ -1041,7 +1091,7 @@ static void check_return_stmt(struct stmt *stmt)
 	assert(cur_func_type->kind == FUNC_TYPE);
 	return_type = cur_func_type->u.func.ret;
 	if (expr == NULL) {
-		if (return_type != NULL) {
+		if (return_type->kind != VOID_TYPE) {
 			fatal_error(stmt->lineno,
 					"Returning void in a non-void fuction");
 		}
