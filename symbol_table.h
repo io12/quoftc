@@ -4,8 +4,8 @@ struct symbol_table {
 
 struct symbol_table alloc_symbol_table(void);
 void free_symbol_table(struct symbol_table);
-void push_new_scope(struct symbol_table);
-void pop_scope(struct symbol_table);
+void enter_new_scope(struct symbol_table);
+void leave_scope(struct symbol_table);
 bool is_global_scope(struct symbol_table);
 void insert_symbol(struct symbol_table, char *, void *);
 void *lookup_symbol(struct symbol_table, const char *);
