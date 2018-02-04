@@ -58,6 +58,77 @@ static NORETURN void lvalue_error(unsigned lineno)
 
 static bool is_pure_expr(struct expr *);
 
+static bool is_pure_unary_op_expr(struct expr *expr)
+{
+	struct expr *operand;
+	enum unary_op op;
+
+	assert(expr->kind == UNARY_OP_EXPR);
+	operand = expr->u.unary_op.operand;
+	op = expr->u.unary_op.op;
+	switch (op) {
+	case NEG_OP:
+	case DEREF_OP:
+	case REF_OP:
+	case BIT_NOT_OP:
+	case LOG_NOT_OP:
+		return is_pure_expr(operand);
+	case PRE_INC_OP:
+	case POST_INC_OP:
+	case PRE_DEC_OP:
+	case POST_DEC_OP:
+		return false;
+	}
+	internal_error();
+}
+
+static bool is_pure_bin_op_expr(struct expr *expr)
+{
+	struct expr *l, *r;
+	enum bin_op op;
+
+	assert(expr->kind == BIN_OP_EXPR);
+	l = expr->u.bin_op.l;
+	r = expr->u.bin_op.r;
+	op = expr->u.bin_op.op;
+	switch (op) {
+	case ADD_OP:
+	case SUB_OP:
+	case MUL_OP:
+	case DIV_OP:
+	case MOD_OP:
+	case LT_OP:
+	case GT_OP:
+	case LT_EQ_OP:
+	case GT_EQ_OP:
+	case EQ_OP:
+	case NOT_EQ_OP:
+	case BIT_AND_OP:
+	case BIT_OR_OP:
+	case BIT_XOR_OP:
+	case BIT_SHIFT_L_OP:
+	case BIT_SHIFT_R_OP:
+	case LOG_AND_OP:
+	case LOG_OR_OP:
+		return is_pure_expr(l) && is_pure_expr(r);
+	case ASSIGN_OP:
+	case ADD_ASSIGN_OP:
+	case SUB_ASSIGN_OP:
+	case MUL_ASSIGN_OP:
+	case DIV_ASSIGN_OP:
+	case MOD_ASSIGN_OP:
+	case BIT_AND_ASSIGN_OP:
+	case BIT_OR_ASSIGN_OP:
+	case BIT_XOR_ASSIGN_OP:
+	case BIT_SHIFT_L_ASSIGN_OP:
+	case BIT_SHIFT_R_ASSIGN_OP:
+		return false;
+	case FIELD_OP:
+		internal_error(); // TODO: Stub
+	}
+	internal_error();
+}
+
 static bool vec_has_pure_items(Vec *vec)
 {
 	size_t i;
@@ -92,10 +163,9 @@ static bool is_pure_expr(struct expr *expr)
 	case IDENT_EXPR:
 		return false;
 	case UNARY_OP_EXPR:
-		return is_pure_expr(expr->u.unary_op.operand);
+		return is_pure_unary_op_expr(expr);
 	case BIN_OP_EXPR:
-		return is_pure_expr(expr->u.bin_op.l)
-			&& is_pure_expr(expr->u.bin_op.r);
+		return is_pure_bin_op_expr(expr);
 	case ARRAY_LIT_EXPR:
 		return vec_has_pure_items(expr->u.array_lit.val);
 	case BLOCK_EXPR:
