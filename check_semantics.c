@@ -673,6 +673,7 @@ static bool type_is_convertible(struct type *from_type, struct type *to_type)
 		}
 	}
 	}
+	internal_error();
 }
 
 static void ensure_valid_cond(struct expr *cond)
@@ -929,6 +930,7 @@ static void type_check_func_call(struct expr *expr)
 
 static void type_check_field_access_expr(struct expr *expr)
 {
+	(void) expr;
 	internal_error(); // TODO: Stub
 }
 

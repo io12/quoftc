@@ -551,7 +551,6 @@ static struct expr *parse_postfix_unary_expr(void)
 		consume_tok();
 		return ALLOC_UNARY_OP_EXPR(lineno, POST_DEC_OP, operand);
 	case OPEN_PAREN:
-		consume_tok();
 		return ALLOC_FUNC_CALL_EXPR(lineno, operand,
 				parse_func_call_args());
 	case DOT: {
