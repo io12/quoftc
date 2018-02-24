@@ -701,7 +701,7 @@ static LLVMValueRef emit_const_expr(struct expr *expr)
 
 static void emit_global_data_decl(LLVMModuleRef module, struct decl *decl)
 {
-	bool is_const;
+	bool is_let;
 	LLVMTypeRef type;
 	const char *name;
 	struct expr *init_expr;
@@ -709,7 +709,7 @@ static void emit_global_data_decl(LLVMModuleRef module, struct decl *decl)
 	bool is_signed_int;
 
 	assert(decl->kind == DATA_DECL);
-	is_const = decl->u.data.is_const;
+	is_let = decl->u.data.is_let;
 	type = get_llvm_type(decl->u.data.type);
 	name = decl->u.data.name;
 	init_expr = decl->u.data.init;
@@ -721,7 +721,7 @@ static void emit_global_data_decl(LLVMModuleRef module, struct decl *decl)
 		init = LLVMConstIntCast(init, type, is_signed_int);
 	}
 	LLVMSetInitializer(global, init);
-	LLVMSetGlobalConstant(global, is_const);
+	LLVMSetGlobalConstant(global, is_let);
 }
 
 static void emit_local_data_decl(LLVMBuilderRef builder, struct decl *decl)

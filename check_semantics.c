@@ -13,7 +13,7 @@ struct symbol_info {
 	enum { VALUE_SYM, TYPE_SYM } kind;
 	union {
 		struct {
-			bool is_const;
+			bool is_let;
 			struct type *type;
 		} value;
 		struct type *type;
@@ -23,13 +23,13 @@ struct symbol_info {
 static struct symbol_table sym_tbl;
 static struct type *cur_func_type;
 
-static struct symbol_info *alloc_val_sym_info(bool is_const, struct type *type)
+static struct symbol_info *alloc_val_sym_info(bool is_let, struct type *type)
 {
 	struct symbol_info *sym_info;
 
 	sym_info = NEW(struct symbol_info);
 	sym_info->kind = VALUE_SYM;
-	sym_info->u.value.is_const = is_const;
+	sym_info->u.value.is_let = is_let;
 	sym_info->u.value.type = type;
 	return sym_info;
 }
@@ -219,7 +219,7 @@ static bool is_lvalue(struct expr *expr)
 		sym_info = lookup_symbol(sym_tbl, name);
 		assert(sym_info != NULL);
 		assert(sym_info->kind == VALUE_SYM);
-		return !sym_info->u.value.is_const;
+		return !sym_info->u.value.is_let;
 	}
 	case BLOCK_EXPR:
 		// TODO: Stub
@@ -1051,13 +1051,13 @@ static void ensure_not_declared(char *name, unsigned lineno)
 static void check_data_decl(struct decl *decl)
 {
 	unsigned lineno;
-	bool is_const;
+	bool is_let;
 	struct type *type;
 	char *name;
 	struct expr *init;
 
 	lineno = decl->lineno;
-	is_const = decl->u.data.is_const;
+	is_let = decl->u.data.is_let;
 	type = decl->u.data.type;
 	name = decl->u.data.name;
 	init = decl->u.data.init;
@@ -1075,7 +1075,7 @@ static void check_data_decl(struct decl *decl)
 			                    "expression", name);
 		}
 	}
-	if (is_const && init == NULL) {
+	if (is_let && init == NULL) {
 		fatal_error(lineno, "Constant declaration of `%s` lacks an "
 		                    "initializer", name);
 	}
@@ -1089,7 +1089,7 @@ static void check_data_decl(struct decl *decl)
 			compat_error(lineno);
 		}
 	}
-	insert_symbol(sym_tbl, name, alloc_val_sym_info(is_const, type));
+	insert_symbol(sym_tbl, name, alloc_val_sym_info(is_let, type));
 }
 
 static void check_typedef_decl(struct decl *decl)

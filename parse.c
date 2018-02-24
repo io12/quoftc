@@ -981,7 +981,7 @@ static struct stmt *parse_stmt(void)
 static struct decl *parse_data_decl(void)
 {
 	unsigned lineno;
-	bool is_const;
+	bool is_let;
 	struct type *type;
 	char *name;
 	struct expr *init;
@@ -989,10 +989,10 @@ static struct decl *parse_data_decl(void)
 	lineno = cur_tok.lineno;
 	switch (cur_tok.kind) {
 	case LET:
-		is_const = true;
+		is_let = true;
 		break;
 	case VAR:
-		is_const = false;
+		is_let = false;
 		break;
 	default:
 		expected_either_error(LET, VAR);
@@ -1009,7 +1009,7 @@ static struct decl *parse_data_decl(void)
 		init = parse_expr();
 		expect_tok(SEMICOLON);
 	}
-	return ALLOC_DATA_DECL(lineno, is_const, type, name, init);
+	return ALLOC_DATA_DECL(lineno, is_let, type, name, init);
 }
 
 static struct decl *parse_typedef(void)

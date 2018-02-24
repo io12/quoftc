@@ -279,7 +279,7 @@ struct decl {
 	} kind;
 	union {
 		struct {
-			bool is_const;
+			bool is_let;
 			struct type *type;
 			char *name;
 			struct expr *init;
