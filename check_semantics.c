@@ -123,8 +123,6 @@ static bool is_pure_bin_op_expr(struct expr *expr)
 	case BIT_SHIFT_L_ASSIGN_OP:
 	case BIT_SHIFT_R_ASSIGN_OP:
 		return false;
-	case FIELD_OP:
-		internal_error(); // TODO: Stub
 	}
 	internal_error();
 }
@@ -180,6 +178,8 @@ static bool is_pure_expr(struct expr *expr)
 		return vec_has_pure_items(expr->u.tuple.items);
 	case FUNC_CALL_EXPR:
 		return false; // TODO
+	case FIELD_ACCESS_EXPR:
+		internal_error(); // TODO: Stub
 	}
 	internal_error();
 }
@@ -190,18 +190,6 @@ static bool is_lvalue_unary_op(struct expr *expr)
 
 	switch (op) {
 	case DEREF_OP:
-		return true; // TODO: Check for mutability
-	default:
-		return false;
-	}
-}
-
-static bool is_lvalue_bin_op(struct expr *expr)
-{
-	enum bin_op op = expr->u.bin_op.op;
-
-	switch (op) {
-	case FIELD_OP:
 		return true; // TODO: Check for mutability
 	default:
 		return false;
@@ -222,7 +210,7 @@ static bool is_lvalue(struct expr *expr)
 	case UNARY_OP_EXPR:
 		return is_lvalue_unary_op(expr);
 	case BIN_OP_EXPR:
-		return is_lvalue_bin_op(expr);
+		return false;
 	case IDENT_EXPR: {
 		struct symbol_info *sym_info;
 		char *name;
@@ -239,6 +227,7 @@ static bool is_lvalue(struct expr *expr)
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
 	case FUNC_CALL_EXPR:
+	case FIELD_ACCESS_EXPR:
 		return false;
 	}
 	internal_error();
@@ -783,8 +772,6 @@ static void type_check_bin_op(struct expr *expr)
 		}
 		expr->type = ALLOC_VOID_TYPE(expr->lineno);
 		break;
-	case FIELD_OP:
-		break; // TODO: Dot operator
 	}
 }
 
@@ -940,8 +927,14 @@ static void type_check_func_call(struct expr *expr)
 	expr->type = dup_type(return_type);
 }
 
+static void type_check_field_access_expr(struct expr *expr)
+{
+	internal_error(); // TODO: Stub
+}
+
 static void type_check(struct expr *expr)
 {
+	assert(expr->type == NULL);
 	switch (expr->kind) {
 	case BOOL_LIT_EXPR:
 		expr->type = ALLOC_BOOL_TYPE(expr->lineno);
@@ -991,6 +984,9 @@ static void type_check(struct expr *expr)
 		break;
 	case FUNC_CALL_EXPR:
 		type_check_func_call(expr);
+		break;
+	case FIELD_ACCESS_EXPR:
+		type_check_field_access_expr(expr);
 		break;
 	}
 }

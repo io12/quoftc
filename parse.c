@@ -545,12 +545,24 @@ static struct expr *parse_postfix_unary_expr(void)
 	lineno = cur_tok.lineno;
 	switch (cur_tok.kind) {
 	case PLUS_PLUS:
+		consume_tok();
 		return ALLOC_UNARY_OP_EXPR(lineno, POST_INC_OP, operand);
 	case MINUS_MINUS:
+		consume_tok();
 		return ALLOC_UNARY_OP_EXPR(lineno, POST_DEC_OP, operand);
 	case OPEN_PAREN:
+		consume_tok();
 		return ALLOC_FUNC_CALL_EXPR(lineno, operand,
 				parse_func_call_args());
+	case DOT: {
+		char *field;
+
+		consume_tok();
+		expect_tok_no_consume(IDENT);
+		field = xstrdup(cur_tok.u.ident);
+		consume_tok();
+		return ALLOC_FIELD_ACCESS_EXPR(lineno, operand, field);
+	}
 	default:
 		return operand;
 	}
@@ -671,8 +683,6 @@ static enum bin_op tok_to_bin_op(enum tok_kind tok_kind)
 		return BIT_SHIFT_L_ASSIGN_OP;
 	case GT_GT_EQ:
 		return BIT_SHIFT_R_ASSIGN_OP;
-	case DOT:
-		return FIELD_OP;
 	default:
 		internal_error();
 	}
@@ -772,9 +782,6 @@ static struct {
 	},
 	[BIT_SHIFT_R_ASSIGN_OP] = {
 		.prec = 0, .assoc = NON_ASSOC
-	},
-	[FIELD_OP] = {
-		.prec = 12, .assoc = L_ASSOC
 	}
 };
 

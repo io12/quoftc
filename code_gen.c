@@ -577,8 +577,6 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 	case BIT_SHIFT_R_ASSIGN_OP:
 		new_val = LLVMBuildLShr(builder, old_val, r, "lshr");
 		goto assign_store;
-	case FIELD_OP:
-		return NULL; // TODO: Stub
 	}
 assign_store:
 	return LLVMBuildStore(builder, new_val, l);

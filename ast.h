@@ -126,7 +126,7 @@ enum bin_op {
 	BIT_SHIFT_L_OP, BIT_SHIFT_R_OP, LOG_AND_OP, LOG_OR_OP,
 	ASSIGN_OP, ADD_ASSIGN_OP, SUB_ASSIGN_OP, MUL_ASSIGN_OP, DIV_ASSIGN_OP,
 	MOD_ASSIGN_OP, BIT_AND_ASSIGN_OP, BIT_OR_ASSIGN_OP, BIT_XOR_ASSIGN_OP,
-	BIT_SHIFT_L_ASSIGN_OP, BIT_SHIFT_R_ASSIGN_OP, FIELD_OP
+	BIT_SHIFT_L_ASSIGN_OP, BIT_SHIFT_R_ASSIGN_OP
 };
 
 struct expr {
@@ -136,7 +136,7 @@ struct expr {
 		BOOL_LIT_EXPR, INT_LIT_EXPR, FLOAT_LIT_EXPR, CHAR_LIT_EXPR,
 		STRING_LIT_EXPR, UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR,
 		ARRAY_LIT_EXPR, IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR,
-		TUPLE_EXPR, FUNC_CALL_EXPR
+		TUPLE_EXPR, FUNC_CALL_EXPR, FIELD_ACCESS_EXPR
 	} kind;
 	union {
 		struct {
@@ -190,6 +190,10 @@ struct expr {
 			struct expr *func;
 			Vec *args;
 		} func_call;
+		struct {
+			struct expr *expr;
+			char *field;
+		} field_access;
 	} u;
 };
 
@@ -223,6 +227,8 @@ struct expr {
 	ALLOC_UNION(expr, TUPLE_EXPR, tuple, __VA_ARGS__)
 #define ALLOC_FUNC_CALL_EXPR(...) \
 	ALLOC_UNION(expr, FUNC_CALL_EXPR, func_call, __VA_ARGS__)
+#define ALLOC_FIELD_ACCESS_EXPR(...) \
+	ALLOC_UNION(expr, FIELD_ACCESS_EXPR, field_access, __VA_ARGS__)
 
 void free_expr(void *);
 

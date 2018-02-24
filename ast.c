@@ -186,6 +186,10 @@ void free_expr(void *p)
 		free_expr(expr->u.func_call.func);
 		free_vec(expr->u.func_call.args);
 		break;
+	case FIELD_ACCESS_EXPR:
+		free_expr(expr->u.field_access.expr);
+		free(expr->u.field_access.field);
+		break;
 	}
 	free_type(expr->type); // TODO: Is this safe?
 	free(expr);
