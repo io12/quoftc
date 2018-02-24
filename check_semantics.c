@@ -345,9 +345,9 @@ static struct type *remove_const_and_volatile(struct type *type)
 {
 	switch (type->kind) {
 	case CONST_TYPE:
-		return type->u.const_.type;
+		return remove_const_and_volatile(type->u.const_.type);
 	case VOLATILE_TYPE:
-		return type->u.volatile_.type;
+		return remove_const_and_volatile(type->u.volatile_.type);
 	default:
 		return type;
 	}
@@ -373,6 +373,7 @@ static bool vecs_have_compat_types(Vec *types1, Vec *types2)
 
 static bool are_types_compat(struct type *type1, struct type *type2)
 {
+	// TODO: Const and volatile checking
 	type1 = remove_const_and_volatile(type1);
 	type2 = remove_const_and_volatile(type2);
 	switch (type1->kind) {
@@ -394,9 +395,30 @@ static bool are_types_compat(struct type *type1, struct type *type2)
 	case VOID_TYPE:
 	case CHAR_TYPE:
 		return type1->kind == type2->kind;
-	case ALIAS_TYPE:
-	case PARAM_TYPE:
-		internal_error(); // TODO: Stub
+	case ALIAS_TYPE: {
+		const char *name1, *name2;
+
+		if (type2->kind != ALIAS_TYPE) {
+			return false;
+		}
+		name1 = type1->u.alias.name;
+		name2 = type2->u.alias.name;
+		return strcmp(name1, name2) == 0;
+	}
+	case PARAM_TYPE: {
+		Vec *params1, *params2;
+		const char *name1, *name2;
+
+		if (type2->kind != PARAM_TYPE) {
+			return false;
+		}
+		name1 = type1->u.param.name;
+		name2 = type2->u.param.name;
+		params1 = type1->u.param.params;
+		params2 = type2->u.param.params;
+		return strcmp(name1, name2) == 0 &&
+			vecs_have_compat_types(params1, params2);
+	}
 	case ARRAY_TYPE: {
 		struct type *subtype1, *subtype2;
 		unsigned len1, len2;
