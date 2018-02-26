@@ -582,16 +582,16 @@ assign_store:
 	return LLVMBuildStore(builder, new_val, l);
 }
 
-static LLVMValueRef emit_ident_expr(struct expr *expr)
+static LLVMValueRef emit_ident_expr(LLVMBuilderRef builder, struct expr *expr)
 {
-	LLVMValueRef val;
+	LLVMValueRef ref_val;
 	char *name;
 
 	assert(expr->kind == IDENT_EXPR);
 	name = expr->u.ident.name;
-	val = lookup_symbol(sym_tbl, name);
-	assert(val != NULL);
-	return val;
+	ref_val = lookup_symbol(sym_tbl, name);
+	assert(ref_val != NULL);
+	return LLVMBuildLoad(builder, ref_val, "get_var_value");
 }
 
 static void emit_compound_stmt(LLVMBuilderRef, Vec *);
@@ -680,7 +680,7 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	case ARRAY_LIT_EXPR:
 		internal_error(); // TODO: Stub
 	case IDENT_EXPR:
-		return emit_ident_expr(expr);
+		return emit_ident_expr(builder, expr);
 	case BLOCK_EXPR:
 		return emit_block_expr(builder, expr);
 	case IF_EXPR:
@@ -703,7 +703,7 @@ static void emit_global_data_decl(LLVMModuleRef module, struct decl *decl)
 {
 	bool is_let;
 	LLVMTypeRef type;
-	const char *name;
+	char *name;
 	struct expr *init_expr;
 	LLVMValueRef global, init;
 	bool is_signed_int;
@@ -722,6 +722,7 @@ static void emit_global_data_decl(LLVMModuleRef module, struct decl *decl)
 	}
 	LLVMSetInitializer(global, init);
 	LLVMSetGlobalConstant(global, is_let);
+	insert_symbol(sym_tbl, name, global);
 }
 
 static void emit_local_data_decl(LLVMBuilderRef builder, struct decl *decl)
