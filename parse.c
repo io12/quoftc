@@ -952,9 +952,12 @@ static struct stmt *parse_return_stmt(void)
 static struct stmt *parse_expr_stmt(void)
 {
 	unsigned lineno;
+	struct stmt *stmt;
 
 	lineno = cur_tok.lineno;
-	return ALLOC_EXPR_STMT(lineno, parse_expr());
+	stmt = ALLOC_EXPR_STMT(lineno, parse_expr());
+	expect_tok(SEMICOLON);
+	return stmt;
 }
 
 static struct stmt *parse_stmt(void)
