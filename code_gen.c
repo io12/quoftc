@@ -879,6 +879,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 		param_val = LLVMGetParam(func_val, i);
 		insert_symbol(sym_tbl, param_name, param_val);
 	}
+	cur_func_return_block = LLVMAppendBasicBlock(func_val, "return");
 	builder = LLVMCreateBuilder();
 	entry_block = LLVMAppendBasicBlock(func_val, "entry");
 	LLVMPositionBuilderAtEnd(builder, entry_block);
@@ -886,7 +887,6 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 		cur_func_return_val_ptr = LLVMBuildAlloca(builder,
 				get_llvm_type(return_type), "return_val_ptr");
 	}
-	cur_func_return_block = LLVMAppendBasicBlock(func_val, "return");
 	emit_compound_stmt(builder, body_stmts);
 	last_block = LLVMGetLastBasicBlock(func_val);
 	if (!block_has_terminator(last_block)) {
