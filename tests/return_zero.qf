@@ -1,0 +1,4 @@
+I32 return_zero(void)
+{
+	return 0;
+}
