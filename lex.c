@@ -379,24 +379,29 @@ static void lex_num_lit(struct tok *tok)
 {
 	if (*inp == '0') {
 		inp++;
-		switch (*inp++) {
+		switch (*inp) {
 		case 'b':
+			inp++;
 			lex_num_lit_with_base(tok, 2);
-			break;
+			return;
 		case 'o':
+			inp++;
 			lex_num_lit_with_base(tok, 8);
-			break;
+			return;
 		case 'x':
+			inp++;
 			lex_num_lit_with_base(tok, 16);
-			break;
+			return;
 		case '.':
-			inp -= 2;
+			inp--;
 			lex_num_lit_with_base(tok, 10);
-			break;
-		default:
+			return;
+		}
+		if (is_dec_digit(*inp)) {
 			fatal_error(lineno, "Numerical literal has a leading "
 			                    "zero");
 		}
+		init_int_lit_tok(tok, 0);
 	} else {
 		lex_num_lit_with_base(tok, 10);
 	}
