@@ -1,0 +1,7 @@
+var I64 x = 83;
+
+I64 assign_global(void)
+{
+	x = 0;
+	return x;
+}
