@@ -523,9 +523,6 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 		l_type = get_llvm_type(l_expr->type);
 		r = LLVMBuildIntCast(builder, r, l_type, "promoted_int");
 	}
-	if (is_assignment(op) && op != ASSIGN_OP) {
-		old_val = LLVMBuildLoad(builder, l, "old_val");
-	}
 	switch (op) {
 	case ADD_OP:
 		return emit_add(builder, l, r, type);
@@ -584,38 +581,47 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 	case ASSIGN_OP:
 		return LLVMBuildStore(builder, r, l);
 	case ADD_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = emit_add(builder, old_val, r, type);
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case SUB_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = emit_sub(builder, old_val, r, type);
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case MUL_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = emit_mul(builder, old_val, r, type);
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case DIV_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = emit_div(builder, old_val, r, type);
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case MOD_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = emit_mod(builder, old_val, r, type);
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case BIT_AND_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = LLVMBuildAnd(builder, old_val, r, "and");
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case BIT_OR_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = LLVMBuildOr(builder, old_val, r, "or");
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case BIT_XOR_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = LLVMBuildXor(builder, old_val, r, "xor");
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case BIT_SHIFT_L_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = LLVMBuildShl(builder, old_val, r, "shl");
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	case BIT_SHIFT_R_ASSIGN_OP:
+		old_val = LLVMBuildLoad(builder, l, "old_val");
 		new_val = LLVMBuildLShr(builder, old_val, r, "lshr");
-		goto assign_store;
+		return LLVMBuildStore(builder, new_val, l);
 	}
-assign_store:
-	return LLVMBuildStore(builder, new_val, l);
+	internal_error();
 }
 
 static LLVMValueRef emit_ident_expr(LLVMBuilderRef builder, struct expr *expr)
