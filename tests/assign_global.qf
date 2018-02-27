@@ -1,6 +1,6 @@
 var I64 x = 83;
 
-I64 assign_global(void)
+I64 assign_global_test(void)
 {
 	x = 0;
 	return x;

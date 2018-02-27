@@ -1,4 +1,4 @@
-I32 return_zero(void)
+I32 return_zero_test(void)
 {
 	return 0;
 }

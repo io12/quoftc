@@ -1,4 +1,4 @@
-U64 operators(void)
+U64 operators_test(void)
 {
 	var U64 x;
 

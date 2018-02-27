@@ -1,4 +1,4 @@
-I64 assign_local(void)
+I64 assign_local_test(void)
 {
 	var I64 x;
 
