@@ -1,0 +1,7 @@
+I64 assign_local(void)
+{
+	var I64 x;
+
+	x = 0;
+	return x;
+}
