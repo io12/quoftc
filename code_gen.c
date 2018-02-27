@@ -467,17 +467,54 @@ static bool is_assignment(enum bin_op op)
 	}
 }
 
+static LLVMValueRef emit_lval(LLVMBuilderRef builder, struct expr *expr)
+{
+	switch (expr->kind) {
+	case UNARY_OP_EXPR: {
+		struct expr *operand;
+
+		assert(expr->u.unary_op.op == DEREF_OP);
+		operand = expr->u.unary_op.operand;
+		return emit_expr(builder, operand);
+	}
+	case IDENT_EXPR: {
+		LLVMValueRef ptr_val;
+		char *name;
+
+		name = expr->u.ident.name;
+		ptr_val = lookup_symbol(sym_tbl, name);
+		assert(ptr_val != NULL);
+		return ptr_val;
+	}
+	case FIELD_ACCESS_EXPR:
+		internal_error(); // TODO: Stub
+	default:
+		internal_error();
+	}
+}
+
 static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 {
-	enum bin_op op = expr->u.bin_op.op;
-	struct expr *l_expr = expr->u.bin_op.l,
-	            *r_expr = expr->u.bin_op.r;
-	LLVMValueRef l = emit_expr(builder, l_expr),
-	             r = emit_expr(builder, r_expr);
+	enum bin_op op;
+	struct expr *l_expr, *r_expr;
+	LLVMValueRef l, r;
 	LLVMTypeRef l_type, r_type;
-	struct type *type = expr->type;
-	LLVMValueRef old_val = NULL, new_val = NULL;
-	bool is_const_expr = (builder == NULL);
+	struct type *type;
+	LLVMValueRef old_val, new_val;
+	bool is_const_expr;
+
+	op = expr->u.bin_op.op;
+	l_expr = expr->u.bin_op.l;
+	r_expr = expr->u.bin_op.r;
+	if (is_assignment(op)) {
+		l = emit_lval(builder, l_expr);
+	} else {
+		l = emit_expr(builder, l_expr);
+	}
+	r = emit_expr(builder, r_expr);
+	type = expr->type;
+	is_const_expr = (builder == NULL);
+	assert(is_assignment(op) ? !is_const_expr : true);
 
 	if (l_expr->type->kind == UNSIZED_INT_TYPE) {
 		r_type = get_llvm_type(r_expr->type);
@@ -486,8 +523,7 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 		l_type = get_llvm_type(l_expr->type);
 		r = LLVMBuildIntCast(builder, r, l_type, "promoted_int");
 	}
-	// TODO: l won't be a pointer type
-	if (is_assignment(op)) {
+	if (is_assignment(op) && op != ASSIGN_OP) {
 		old_val = LLVMBuildLoad(builder, l, "old_val");
 	}
 	switch (op) {
@@ -584,14 +620,14 @@ assign_store:
 
 static LLVMValueRef emit_ident_expr(LLVMBuilderRef builder, struct expr *expr)
 {
-	LLVMValueRef ref_val;
+	LLVMValueRef ptr_val;
 	char *name;
 
 	assert(expr->kind == IDENT_EXPR);
 	name = expr->u.ident.name;
-	ref_val = lookup_symbol(sym_tbl, name);
-	assert(ref_val != NULL);
-	return LLVMBuildLoad(builder, ref_val, "get_var_value");
+	ptr_val = lookup_symbol(sym_tbl, name);
+	assert(ptr_val != NULL);
+	return LLVMBuildLoad(builder, ptr_val, "var_val");
 }
 
 static void emit_compound_stmt(LLVMBuilderRef, Vec *);
@@ -689,9 +725,10 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 		internal_error(); // TODO: Stub
 	case FUNC_CALL_EXPR:
 		return emit_func_call_expr(builder, expr);
-	default:
-		internal_error();
+	case FIELD_ACCESS_EXPR:
+		internal_error(); // TODO: Stub
 	}
+	internal_error();
 }
 
 static LLVMValueRef emit_const_expr(struct expr *expr)
