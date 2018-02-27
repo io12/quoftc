@@ -17,6 +17,7 @@
 #define NEW(type) ((type *) xmalloc(sizeof(type)))
 #define NEWC(type) ((type *) xcalloc(sizeof(type)))
 
+PRINTF(2, 3) void warn(unsigned lineno, const char *fmt, ...);
 NORETURN PRINTF(2, 3) void fatal_error(unsigned, const char *, ...);
 NORETURN void internal_error(void);
 MALLOC void *xmalloc(size_t);
