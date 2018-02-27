@@ -464,10 +464,10 @@ static void lex_op(struct tok *tok)
 		lex_op_1__(tok, PERCENT, '=', PERCENT_EQ);
 		break;
 	case '<':
-		lex_op_1__(tok, LT, '=', LT_EQ);
+		lex_op_2__(tok, LT, '<', LT_LT, '=', LT_EQ);
 		break;
 	case '>':
-		lex_op_1__(tok, GT, '=', GT_EQ);
+		lex_op_2__(tok, GT, '>', GT_GT, '=', GT_EQ);
 		break;
 	case '=':
 		lex_op_1__(tok, EQ, '=', EQ_EQ);
