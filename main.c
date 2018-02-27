@@ -15,6 +15,17 @@
 
 const char *argv0;
 
+PRINTF(2, 3) void warn(unsigned lineno, const char *fmt, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, "%s:%u: warning: ", get_filename(), lineno);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+}
+
 NORETURN PRINTF(2, 3) void fatal_error(unsigned lineno, const char *fmt, ...)
 {
 	va_list ap;
