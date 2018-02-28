@@ -1,2 +1,6 @@
 #!/bin/sh
-find tests/ -type f -exec ./quoftc {} \;
+for test in tests/*.qf; do
+	if ! ./quoftc "$test"; then
+		exit 1
+	fi
+done
