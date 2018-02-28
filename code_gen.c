@@ -13,9 +13,24 @@
 #include "symbol_table.h"
 #include "code_gen.h"
 
+struct symbol_info {
+	bool is_ptr;
+	LLVMValueRef val;
+};
+
 static struct symbol_table sym_tbl;
 static LLVMBasicBlockRef cur_func_return_block;
 static LLVMValueRef cur_func_return_val_ptr;
+
+static struct symbol_info *alloc_sym_info(bool is_ptr, LLVMValueRef val)
+{
+	struct symbol_info *sym_info;
+
+	sym_info = NEW(struct symbol_info);
+	sym_info->is_ptr = is_ptr;
+	sym_info->val = val;
+	return sym_info;
+}
 
 static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 {
@@ -478,13 +493,15 @@ static LLVMValueRef emit_lval(LLVMBuilderRef builder, struct expr *expr)
 		return emit_expr(builder, operand);
 	}
 	case IDENT_EXPR: {
-		LLVMValueRef ptr_val;
+		struct symbol_info *sym_info;
 		char *name;
 
 		name = expr->u.ident.name;
-		ptr_val = lookup_symbol(sym_tbl, name);
-		assert(ptr_val != NULL);
-		return ptr_val;
+		sym_info = lookup_symbol(sym_tbl, name);
+		assert(sym_info != NULL);
+		assert(sym_info->is_ptr);
+		assert(sym_info->val != NULL);
+		return sym_info->val;
 	}
 	case FIELD_ACCESS_EXPR:
 		internal_error(); // TODO: Stub
@@ -626,14 +643,20 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 
 static LLVMValueRef emit_ident_expr(LLVMBuilderRef builder, struct expr *expr)
 {
-	LLVMValueRef ptr_val;
+	struct symbol_info *sym_info;
 	char *name;
 
 	assert(expr->kind == IDENT_EXPR);
 	name = expr->u.ident.name;
-	ptr_val = lookup_symbol(sym_tbl, name);
-	assert(ptr_val != NULL);
-	return LLVMBuildLoad(builder, ptr_val, "var_val");
+	sym_info = lookup_symbol(sym_tbl, name);
+	assert(sym_info != NULL);
+	assert(sym_info->val != NULL);
+	assert(builder != NULL);
+	if (sym_info->is_ptr) {
+		return LLVMBuildLoad(builder, sym_info->val, "var_val");
+	} else {
+		return sym_info->val;
+	}
 }
 
 static void emit_compound_stmt(LLVMBuilderRef, Vec *);
@@ -765,7 +788,7 @@ static void emit_global_data_decl(LLVMModuleRef module, struct decl *decl)
 	}
 	LLVMSetInitializer(global, init);
 	LLVMSetGlobalConstant(global, is_let);
-	insert_symbol(sym_tbl, name, global);
+	insert_symbol(sym_tbl, name, alloc_sym_info(true, global));
 }
 
 static void emit_local_data_decl(LLVMBuilderRef builder, struct decl *decl)
@@ -783,7 +806,7 @@ static void emit_local_data_decl(LLVMBuilderRef builder, struct decl *decl)
 	if (init != NULL) {
 		LLVMBuildStore(builder, emit_expr(builder, init), local_ptr);
 	}
-	insert_symbol(sym_tbl, name, local_ptr);
+	insert_symbol(sym_tbl, name, alloc_sym_info(true, local_ptr));
 }
 
 static LLVMValueRef get_cur_func(LLVMBuilderRef builder)
@@ -897,13 +920,12 @@ static void emit_compound_stmt(LLVMBuilderRef builder, Vec *stmts)
 // TODO: Add comments and maybe split this
 static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 {
-	LLVMTypeRef func_type;
-	LLVMValueRef func_val, param_val, return_val;
+	LLVMTypeRef func_type, llvm_param_type;
+	LLVMValueRef func_val, param_val, param_ptr_val, return_val;
 	LLVMBasicBlockRef entry_block, last_block;
 	LLVMBuilderRef builder;
-	struct type *return_type;
-	Vec *param_names;
-	Vec *body_stmts;
+	struct type *return_type, *param_type;
+	Vec *param_types, *param_names, *body_stmts;
 	char *func_name, *param_name;
 	size_t i;
 
@@ -914,19 +936,26 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	body_stmts = decl->u.func.body_stmts;
 	assert(decl->u.func.type->kind == FUNC_TYPE);
 	return_type = decl->u.func.type->u.func.ret;
+	param_types = decl->u.func.type->u.func.params;
 
 	func_val = LLVMAddFunction(module, func_name, func_type);
-	insert_symbol(sym_tbl, func_name, func_val);
-	enter_new_scope(sym_tbl);
-	for (i = 0; i < vec_len(param_names); i++) {
-		param_name = vec_get(param_names, i);
-		param_val = LLVMGetParam(func_val, i);
-		insert_symbol(sym_tbl, param_name, param_val);
-	}
+	insert_symbol(sym_tbl, func_name, alloc_sym_info(false, func_val));
 	cur_func_return_block = LLVMAppendBasicBlock(func_val, "return");
 	builder = LLVMCreateBuilder();
 	entry_block = LLVMAppendBasicBlock(func_val, "entry");
 	LLVMPositionBuilderAtEnd(builder, entry_block);
+	enter_new_scope(sym_tbl);
+	for (i = 0; i < vec_len(param_names); i++) {
+		param_type = vec_get(param_types, i);
+		llvm_param_type = get_llvm_type(param_type);
+		param_name = vec_get(param_names, i);
+		param_ptr_val = LLVMBuildAlloca(builder, llvm_param_type,
+				"param_ptr");
+		param_val = LLVMGetParam(func_val, i);
+		LLVMBuildStore(builder, param_val, param_ptr_val);
+		insert_symbol(sym_tbl, param_name,
+				alloc_sym_info(true, param_ptr_val));
+	}
 	if (return_type->kind != VOID_TYPE) {
 		cur_func_return_val_ptr = LLVMBuildAlloca(builder,
 				get_llvm_type(return_type), "return_val_ptr");
