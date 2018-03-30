@@ -26,6 +26,7 @@ static const uint8_t masks[MAX_UTF8_BYTES] = {
 	0x7F, 0x1F, 0x0F, 0x07, 0x03, 0x01
 };
 
+// Returns the amount of bytes read from `src`
 int str_to_code_point(uint32_t *c, const char *src)
 {
 	int nbytes, i;
