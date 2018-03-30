@@ -2,3 +2,8 @@ void empty(void)
 {
 	// nothing
 }
+
+bool passed_test(void)
+{
+	return true;
+}

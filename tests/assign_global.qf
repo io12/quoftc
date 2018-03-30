@@ -5,3 +5,8 @@ I64 assign_global_test(void)
 	x = 0;
 	return x;
 }
+
+bool passed_test(void)
+{
+	return assign_global_test() == 0;
+}

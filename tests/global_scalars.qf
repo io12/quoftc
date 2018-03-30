@@ -20,3 +20,8 @@ let I64 ci64 = 1992999;
 let F64 cf64 = 0.2;
 let bool cb = true;
 let char cc = 'c';
+
+bool passed_test(void)
+{
+	return true;
+}

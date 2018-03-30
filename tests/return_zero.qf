@@ -2,3 +2,8 @@ I32 return_zero_test(void)
 {
 	return 0;
 }
+
+bool passed_test(void)
+{
+	return return_zero_test() == 0;
+}

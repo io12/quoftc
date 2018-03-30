@@ -16,3 +16,8 @@ U64 operators_test(void)
 	x ^= 20; // 144
 	return x;
 }
+
+bool passed_test(void)
+{
+	return operators_test() == 144;
+}
