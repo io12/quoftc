@@ -1,3 +1,5 @@
+// Functions for freeing and duplicating AST nodes
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -5,6 +7,11 @@
 #include "ds.h"
 #include "quoftc.h"
 #include "ast.h"
+
+/*
+ * These functions take void pointers because they are passed to `alloc_vec()`
+ * and `dup_vec()`.
+ */
 
 static void *void_strdup(void *p)
 {

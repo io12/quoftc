@@ -1,3 +1,5 @@
+// Structs representing AST nodes and constructor macros
+
 #define ALLOC_STRUCT(struct_tag, lineno_, ...)                        \
 	((struct struct_tag *)                                        \
 		memcpy(NEW(struct struct_tag), &(struct struct_tag){  \
