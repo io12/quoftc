@@ -1016,7 +1016,7 @@ static NORETURN void llvm_error(const char *errmsg)
 	exit(EXIT_FAILURE);
 }
 
-static void compile_module(LLVMModuleRef module)
+static void compile_module(char *target_file, LLVMModuleRef module)
 {
 	char *target_triplet;
 	const char *cpu, *features;
@@ -1027,8 +1027,6 @@ static void compile_module(LLVMModuleRef module)
 #if 0
 	LLVMTargetDataRef data_layout;
 #endif
-	char filename[] = "a.out";
-
 	LLVMDumpModule(module);
 	LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
 	LLVMInitializeAllTargetInfos();
@@ -1052,8 +1050,8 @@ TODO: Add data layout to module
 	LLVMSetDataLayout(module, data_layout);
 #endif
 	LLVMSetTarget(module, target_triplet);
-	failed = LLVMTargetMachineEmitToFile(target_machine, module, filename,
-			LLVMObjectFile, &errmsg);
+	failed = LLVMTargetMachineEmitToFile(target_machine, module,
+			target_file, LLVMObjectFile, &errmsg);
 	if (failed) {
 		llvm_error(errmsg);
 	}
@@ -1061,11 +1059,11 @@ TODO: Add data layout to module
 	LLVMDisposeMessage(target_triplet);
 }
 
-void compile_ast(struct ast ast)
+void compile_ast(char *target_file, struct ast ast)
 {
 	LLVMModuleRef module;
 
 	module = emit_ast(ast);
-	compile_module(module);
+	compile_module(target_file, module);
 	LLVMDisposeModule(module);
 }

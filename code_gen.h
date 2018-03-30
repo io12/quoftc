@@ -1,1 +1,1 @@
-void compile_ast(struct ast);
+void compile_ast(char *target_file, struct ast);
