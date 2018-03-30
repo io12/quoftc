@@ -1,3 +1,8 @@
+/*
+ * This lexer uses memory mapped IO on the source file as its input. It lexes
+ * tokens for the parser as needed.
+ */
+
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>

@@ -1,3 +1,5 @@
+// UTF-8 utility functions
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

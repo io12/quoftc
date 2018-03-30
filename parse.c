@@ -1,3 +1,5 @@
+// LL(1) parser
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
