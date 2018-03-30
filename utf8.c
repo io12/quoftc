@@ -27,7 +27,7 @@ static const uint8_t masks[MAX_UTF8_BYTES] = {
 };
 
 // Returns the amount of bytes read from `src`
-int str_to_code_point(uint32_t *c, const char *src)
+int str_to_code_point(uint32_t *code_point, const char *src)
 {
 	int nbytes, i;
 	const uint8_t *s = (uint8_t *) src;
@@ -40,15 +40,15 @@ int str_to_code_point(uint32_t *c, const char *src)
 	if (nbytes > MAX_UTF8_BYTES) {
 		goto invalid;
 	}
-	*c = s[0] & masks[nbytes - 1];
+	*code_point = s[0] & masks[nbytes - 1];
 	for (i = 1; i < nbytes; i++) {
 		if (s[i] >> shift_trailing != header_trailing) {
 			goto invalid;
 		}
-		*c <<= shift_trailing;
-		*c |= s[i] & mask_trailing;
+		*code_point <<= shift_trailing;
+		*code_point |= s[i] & mask_trailing;
 	}
-	if (!is_valid_code_point(*c)) {
+	if (!is_valid_code_point(*code_point)) {
 		goto invalid;
 	}
 	return nbytes;
@@ -58,15 +58,15 @@ invalid:
 
 bool is_valid_utf8(const char *s)
 {
-	uint32_t c;
+	uint32_t code_point;
 	int nbytes;
 
 	do {
-		nbytes = str_to_code_point(&c, s);
+		nbytes = str_to_code_point(&code_point, s);
 		if (nbytes == 0) {
 			return false;
 		}
 		s += nbytes;
-	} while (c != '\0');
+	} while (code_point != '\0');
 	return true;
 }
