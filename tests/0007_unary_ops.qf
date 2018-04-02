@@ -1,0 +1,35 @@
+bool passed_test(void)
+{
+	var I32 i;
+	var U32 u;
+	var bool b;
+
+	b = true;
+	b = !b;
+	if (b) {
+		return false;
+	}
+	b = !b;
+	if (!b) {
+		return false;
+	}
+	i = 5;
+	i = -i;
+	if (i != -5) {
+		return false;
+	}
+	i = -i;
+	if (i != 5) {
+		return false;
+	}
+	u = 41315;
+	u = ~u;
+	if (u != 4294925980) {
+		return false;
+	}
+	u = ~u;
+	if (u != 41315) {
+		return false;
+	}
+	return true;
+}

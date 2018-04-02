@@ -846,7 +846,6 @@ static bool block_has_terminator(LLVMBasicBlockRef block)
 	return LLVMGetBasicBlockTerminator(block) != NULL;
 }
 
-// TODO: Handle the case when there is no else
 static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
 	struct expr *cond = stmt->u.if_.cond;
@@ -858,18 +857,26 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	func_val = get_cur_func(builder);
 	cond_val = emit_expr(builder, cond);
 	then_block = LLVMAppendBasicBlock(func_val, "then");
-	else_block = LLVMAppendBasicBlock(func_val, "else");
+	if (else_stmts != NULL) {
+		else_block = LLVMAppendBasicBlock(func_val, "else");
+	}
 	merge_block = LLVMAppendBasicBlock(func_val, "merge");
-	LLVMBuildCondBr(builder, cond_val, then_block, else_block);
+	if (else_stmts == NULL) {
+		LLVMBuildCondBr(builder, cond_val, then_block, merge_block);
+	} else {
+		LLVMBuildCondBr(builder, cond_val, then_block, else_block);
+	}
 	LLVMPositionBuilderAtEnd(builder, then_block);
 	emit_compound_stmt(builder, then_stmts);
 	if (!block_has_terminator(then_block)) {
 		LLVMBuildBr(builder, merge_block);
 	}
-	LLVMPositionBuilderAtEnd(builder, else_block);
-	emit_compound_stmt(builder, else_stmts);
-	if (!block_has_terminator(else_block)) {
-		LLVMBuildBr(builder, merge_block);
+	if (else_stmts != NULL) {
+		LLVMPositionBuilderAtEnd(builder, else_block);
+		emit_compound_stmt(builder, else_stmts);
+		if (!block_has_terminator(else_block)) {
+			LLVMBuildBr(builder, merge_block);
+		}
 	}
 	LLVMPositionBuilderAtEnd(builder, merge_block);
 }
