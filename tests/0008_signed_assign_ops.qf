@@ -1,0 +1,19 @@
+bool passed_test(void)
+{
+	var I32 x;
+
+	x = -10;
+	x += 20;
+	if (x != 10) {
+		return false;
+	}
+	x -= 333;
+	if (x != -323) {
+		return false;
+	}
+	x *= 111;
+	if (x != -35853) {
+		return false;
+	}
+	return true;
+}

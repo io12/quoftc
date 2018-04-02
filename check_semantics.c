@@ -698,11 +698,10 @@ static bool type_is_convertible(struct type *from_type, struct type *to_type)
 	internal_error();
 }
 
-static void ensure_valid_cond(struct expr *cond)
+static void ensure_bool_expr(struct expr *expr)
 {
-	if (cond->type->kind != BOOL_TYPE || is_pure_expr(cond)) {
-		fatal_error(cond->lineno, "Conditions must be impure, boolean "
-		                          "expressions");
+	if (expr->type->kind != BOOL_TYPE) {
+		fatal_error(expr->lineno, "Expected a boolean expression");
 	}
 }
 
@@ -892,7 +891,7 @@ static void type_check_if(struct expr *expr)
 	else_ = expr->u.if_.else_;
 
 	type_check(cond);
-	ensure_valid_cond(cond);
+	ensure_bool_expr(cond);
 	type_check(then);
 	type_check(else_);
 	if (!are_types_compat(then->type, else_->type)) {
@@ -1143,7 +1142,7 @@ static void check_if_stmt(struct stmt *stmt)
 	else_stmts = stmt->u.if_.else_stmts;
 
 	type_check(cond);
-	ensure_valid_cond(cond);
+	ensure_bool_expr(cond);
 	enter_new_scope(sym_tbl);
 	check_compound_stmt(then_stmts);
 	leave_scope(sym_tbl);
@@ -1165,7 +1164,7 @@ static void check_do_stmt(struct stmt *stmt)
 	enter_new_scope(sym_tbl);
 	check_compound_stmt(stmts);
 	type_check(cond);
-	ensure_valid_cond(cond);
+	ensure_bool_expr(cond);
 	leave_scope(sym_tbl);
 }
 
@@ -1178,7 +1177,7 @@ static void check_while_stmt(struct stmt *stmt)
 	stmts = stmt->u.while_.stmts;
 
 	type_check(cond);
-	ensure_valid_cond(cond);
+	ensure_bool_expr(cond);
 	enter_new_scope(sym_tbl);
 	check_compound_stmt(stmts);
 	leave_scope(sym_tbl);
@@ -1197,7 +1196,7 @@ static void check_for_stmt(struct stmt *stmt)
 	type_check(init);
 	// TODO: Ensure init has side effects
 	type_check(cond);
-	ensure_valid_cond(cond);
+	ensure_bool_expr(cond);
 	type_check(post);
 	// TODO: Ensure post has side effects
 	enter_new_scope(sym_tbl);

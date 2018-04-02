@@ -1,0 +1,15 @@
+bool passed_test(void)
+{
+	var U32 x;
+
+	x = 0;
+	x |= 3;
+	if (x != 3) {
+		return false;
+	}
+	x &= 2;
+	if (x != 2) {
+		return false;
+	}
+	return true;
+}
