@@ -9,12 +9,14 @@ I64 fibo(I64 n)
 
 bool passed_test(void)
 {
-	return fibo(0) == 1
+	return fibo(0) == 0
 		&& fibo(1) == 1
-		&& fibo(2) == 2
-		&& fibo(3) == 3
-		&& fibo(4) == 5
+		&& fibo(2) == 1
+		&& fibo(3) == 2
+		&& fibo(4) == 3
+		&& fibo(5) == 5
 		&& fibo(6) == 8
 		&& fibo(7) == 13
-		&& fibo(8) == 21;
+		&& fibo(8) == 21
+		&& fibo(9) == 34;
 }

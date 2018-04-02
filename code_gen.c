@@ -693,18 +693,48 @@ static LLVMValueRef *emit_exprs(LLVMBuilderRef builder, Vec *exprs)
 	return llvm_exprs;
 }
 
+/*
+ * Promote an unsized integer to a sized integer of a target type. If the value
+ * is not an unsized integer, emit nothing.
+ */
+static LLVMValueRef maybe_emit_int_promotion(LLVMBuilderRef builder,
+		LLVMValueRef val, struct type *target_type,
+		struct type *source_type)
+{
+	if (source_type->kind != UNSIZED_INT_TYPE) {
+		return val;
+	}
+	assert(is_int_type(target_type));
+	return LLVMBuildIntCast(builder, val, get_llvm_type(target_type),
+			"promoted_int");
+}
+
 static LLVMValueRef emit_func_call_expr(LLVMBuilderRef builder,
 		struct expr *expr)
 {
-	LLVMValueRef call_val, func_val, *args;
-	unsigned nargs;
+	LLVMValueRef call_val, func_val, *arg_vals;
+	struct expr *arg, *func;
+	struct type *param_type;
+	Vec *args, *params;
+	unsigned nargs, i;
 
 	assert(expr->kind == FUNC_CALL_EXPR);
-	func_val = emit_expr(builder, expr->u.func_call.func);
-	args = emit_exprs(builder, expr->u.func_call.args);
-	nargs = vec_len(expr->u.func_call.args);
-	call_val = LLVMBuildCall(builder, func_val, args, nargs, "call_ret");
-	free(args);
+	args = expr->u.func_call.args;
+	func = expr->u.func_call.func;
+	assert(func->type->kind == FUNC_TYPE);
+	params = func->type->u.func.params;
+	nargs = vec_len(args);
+	arg_vals = emit_exprs(builder, args);
+	for (i = 0; i < nargs; i++) {
+		arg = vec_get(args, i);
+		param_type = vec_get(params, i);
+		arg_vals[i] = maybe_emit_int_promotion(builder, arg_vals[i],
+				param_type, arg->type);
+	}
+	func_val = emit_expr(builder, func);
+	call_val = LLVMBuildCall(builder, func_val, arg_vals, nargs,
+			"call_ret");
+	free(arg_vals);
 	return call_val;
 }
 
