@@ -1,0 +1,13 @@
+bool passed_test(void)
+{
+	var I32 i, j;
+
+	j = 0;
+	for (i = 0; i < 16; i++) {
+		j--;
+	}
+	if (i != 16 || j != -16) {
+		return false;
+	}
+	return true;
+}

@@ -1,0 +1,13 @@
+bool passed_test(void)
+{
+	var I32 x;
+
+	x = 0;
+	do {
+		x++;
+	} while (x < 16);
+	do {
+		x++;
+	} while (x < 32);
+	return x == 32;
+}

@@ -1,0 +1,15 @@
+bool passed_test(void)
+{
+	var I32 x;
+
+	x = 0;
+	x--;
+	x++;
+	x--;
+	x--;
+	x++;
+	x--;
+	x++;
+	x++;
+	return x == 0;
+}

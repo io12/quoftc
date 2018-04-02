@@ -1,0 +1,10 @@
+bool passed_test(void)
+{
+	var I32 x;
+
+	x = 16;
+	while (x != 0) {
+		x = x - 1;
+	}
+	return x == 0;
+}

@@ -1,0 +1,15 @@
+bool passed_test(void)
+{
+	if (false) {
+		return false;
+	} else if (false) {
+		return false;
+	} else {
+		if (true) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
