@@ -2,4 +2,4 @@ quoftc
 tags
 a.out
 *.o
-test/run_tests
+tests/run_tests
