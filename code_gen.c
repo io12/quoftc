@@ -512,19 +512,35 @@ static LLVMValueRef emit_lval(LLVMBuilderRef builder, struct expr *expr)
 	}
 }
 
+/*
+ * Promote an unsized integer to a sized integer of a target type. If the value
+ * is not an unsized integer, emit nothing.
+ */
+static LLVMValueRef maybe_emit_int_promotion(LLVMBuilderRef builder,
+		LLVMValueRef val, struct type *target_type,
+		struct type *source_type)
+{
+	if (source_type->kind != UNSIZED_INT_TYPE) {
+		return val;
+	}
+	assert(is_int_type(target_type));
+	return LLVMBuildIntCast(builder, val, get_llvm_type(target_type),
+			"promoted_int");
+}
+
 static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 {
-	enum bin_op op;
+	LLVMValueRef l, r, old_val, new_val;
 	struct expr *l_expr, *r_expr;
-	LLVMValueRef l, r;
-	LLVMTypeRef l_type, r_type;
-	struct type *type;
-	LLVMValueRef old_val, new_val;
+	struct type *type, *l_type, *r_type;
+	enum bin_op op;
 	bool is_const_expr;
 
 	op = expr->u.bin_op.op;
 	l_expr = expr->u.bin_op.l;
 	r_expr = expr->u.bin_op.r;
+	l_type = l_expr->type;
+	r_type = r_expr->type;
 	if (is_assignment(op)) {
 		l = emit_lval(builder, l_expr);
 	} else {
@@ -535,13 +551,8 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 	is_const_expr = (builder == NULL);
 	assert(is_assignment(op) ? !is_const_expr : true);
 
-	if (l_expr->type->kind == UNSIZED_INT_TYPE) {
-		r_type = get_llvm_type(r_expr->type);
-		l = LLVMBuildIntCast(builder, l, r_type, "promoted_int");
-	} else if (r_expr->type->kind == UNSIZED_INT_TYPE) {
-		l_type = get_llvm_type(l_expr->type);
-		r = LLVMBuildIntCast(builder, r, l_type, "promoted_int");
-	}
+	l = maybe_emit_int_promotion(builder, l, r_type, l_type);
+	r = maybe_emit_int_promotion(builder, r, l_type, r_type);
 	switch (op) {
 	case ADD_OP:
 		return emit_add(builder, l, r, type);
@@ -691,22 +702,6 @@ static LLVMValueRef *emit_exprs(LLVMBuilderRef builder, Vec *exprs)
 		llvm_exprs[i] = emit_expr(builder, vec_get(exprs, i));
 	}
 	return llvm_exprs;
-}
-
-/*
- * Promote an unsized integer to a sized integer of a target type. If the value
- * is not an unsized integer, emit nothing.
- */
-static LLVMValueRef maybe_emit_int_promotion(LLVMBuilderRef builder,
-		LLVMValueRef val, struct type *target_type,
-		struct type *source_type)
-{
-	if (source_type->kind != UNSIZED_INT_TYPE) {
-		return val;
-	}
-	assert(is_int_type(target_type));
-	return LLVMBuildIntCast(builder, val, get_llvm_type(target_type),
-			"promoted_int");
 }
 
 static LLVMValueRef emit_func_call_expr(LLVMBuilderRef builder,
