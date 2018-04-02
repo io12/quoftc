@@ -1,4 +1,5 @@
 #!/bin/sh
+set -ue
 gcc -c tests/run_test.c -o tests/run_test.o
 for test in tests/*.qf; do
 	if ! ./quoftc "$test"; then
