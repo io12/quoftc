@@ -1,4 +1,4 @@
-U64 operators_test(void)
+bool passed_test(void)
 {
 	var U64 x;
 
@@ -14,10 +14,5 @@ U64 operators_test(void)
 	x |= 255; // 255
 	x &= 132; // 132
 	x ^= 20; // 144
-	return x;
-}
-
-bool passed_test(void)
-{
-	return operators_test() == 144;
+	return x == 144;
 }

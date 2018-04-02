@@ -1,0 +1,9 @@
+I32 get_zero(void)
+{
+	return 0;
+}
+
+bool passed_test(void)
+{
+	return get_zero() == 0;
+}

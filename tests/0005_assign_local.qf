@@ -1,4 +1,4 @@
-I64 assign_local_test(void)
+I64 get_zero(void)
 {
 	var I64 x;
 
@@ -8,5 +8,5 @@ I64 assign_local_test(void)
 
 bool passed_test(void)
 {
-	return assign_local_test() == 0;
+	return get_zero() == 0;
 }
