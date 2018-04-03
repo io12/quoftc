@@ -1,3 +1,8 @@
+/*
+ * This file verifies the correctness of the parsed AST and adds type
+ * information to each expr node.
+ */
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
