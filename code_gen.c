@@ -910,17 +910,23 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 
 static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
-	Vec *stmts = stmt->u.do_.stmts;
-	struct expr *cond = stmt->u.do_.cond;
-	LLVMValueRef cond_val;
 	LLVMBasicBlockRef do_block, cont_block;
+	LLVMValueRef cond_val;
+	struct expr *cond;
+	Vec *stmts;
 
-	cond_val = emit_expr(builder, cond);
+	assert(stmt->kind == DO_STMT);
+	cond = stmt->u.do_.cond;
+	stmts = stmt->u.do_.stmts;
 	do_block = append_basic_block(builder, "do.start");
 	cont_block = append_basic_block(builder, "do.end");
+	maybe_emit_branch(builder, do_block);
 	LLVMPositionBuilderAtEnd(builder, do_block);
+	enter_new_scope(sym_tbl);
 	emit_compound_stmt(builder, stmts);
+	cond_val = emit_expr(builder, cond);
 	maybe_emit_cond_branch(builder, cond_val, do_block, cont_block);
+	leave_scope(sym_tbl);
 	LLVMPositionBuilderAtEnd(builder, cont_block);
 }
 
