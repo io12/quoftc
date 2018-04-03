@@ -841,20 +841,41 @@ static LLVMValueRef get_cur_func(LLVMBuilderRef builder)
 	return LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 }
 
+static LLVMBasicBlockRef append_basic_block(LLVMBuilderRef builder,
+		const char *name)
+{
+	return LLVMAppendBasicBlock(get_cur_func(builder), name);
+}
+
 static bool block_has_terminator(LLVMBasicBlockRef block)
 {
 	return LLVMGetBasicBlockTerminator(block) != NULL;
+}
+
+static bool cur_block_has_terminator(LLVMBuilderRef builder)
+{
+	LLVMBasicBlockRef cur_block;
+
+	cur_block = LLVMGetInsertBlock(builder);
+	return block_has_terminator(cur_block);
 }
 
 // Emits a branch unless it would be unreachable
 static void maybe_emit_branch(LLVMBuilderRef builder,
 		LLVMBasicBlockRef target_block)
 {
-	LLVMBasicBlockRef cur_block;
-
-	cur_block = LLVMGetInsertBlock(builder);
-	if (cur_block != NULL && !block_has_terminator(cur_block)) {
+	if (!cur_block_has_terminator(builder)) {
 		LLVMBuildBr(builder, target_block);
+	}
+}
+
+// Emits a conditional branch unless it would be unreachable
+static void maybe_emit_cond_branch(LLVMBuilderRef builder,
+		LLVMValueRef cond_val, LLVMBasicBlockRef then_block,
+		LLVMBasicBlockRef else_block)
+{
+	if (!cur_block_has_terminator(builder)) {
+		LLVMBuildCondBr(builder, cond_val, then_block, else_block);
 	}
 }
 
@@ -863,21 +884,18 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	struct expr *cond = stmt->u.if_.cond;
 	Vec *then_stmts = stmt->u.if_.then_stmts,
 	    *else_stmts = stmt->u.if_.else_stmts;
-	LLVMValueRef func_val, cond_val;
+	LLVMValueRef cond_val;
 	LLVMBasicBlockRef then_block, else_block, merge_block;
 
-	func_val = get_cur_func(builder);
 	cond_val = emit_expr(builder, cond);
-	then_block = LLVMAppendBasicBlock(func_val, "then");
-	if (else_stmts != NULL) {
-		else_block = LLVMAppendBasicBlock(func_val, "else");
-	}
-	merge_block = LLVMAppendBasicBlock(func_val, "merge");
+	then_block = append_basic_block(builder, "then");
+	merge_block = append_basic_block(builder, "if.end");
 	if (else_stmts == NULL) {
-		LLVMBuildCondBr(builder, cond_val, then_block, merge_block);
+		else_block = merge_block;
 	} else {
-		LLVMBuildCondBr(builder, cond_val, then_block, else_block);
+		else_block = append_basic_block(builder, "else");
 	}
+	maybe_emit_cond_branch(builder, cond_val, then_block, else_block);
 	LLVMPositionBuilderAtEnd(builder, then_block);
 	emit_compound_stmt(builder, then_stmts);
 	maybe_emit_branch(builder, merge_block);
@@ -893,17 +911,36 @@ static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
 	Vec *stmts = stmt->u.do_.stmts;
 	struct expr *cond = stmt->u.do_.cond;
-	LLVMValueRef func_val, cond_val;
-	LLVMBasicBlockRef do_block, after_do_block;
+	LLVMValueRef cond_val;
+	LLVMBasicBlockRef do_block, cont_block;
 
-	func_val = get_cur_func(builder);
 	cond_val = emit_expr(builder, cond);
-	do_block = LLVMAppendBasicBlock(func_val, "do");
-	after_do_block = LLVMAppendBasicBlock(func_val, "after_do");
+	do_block = append_basic_block(builder, "do.start");
+	cont_block = append_basic_block(builder, "do.end");
 	LLVMPositionBuilderAtEnd(builder, do_block);
 	emit_compound_stmt(builder, stmts);
-	LLVMBuildCondBr(builder, cond_val, do_block, after_do_block);
-	LLVMPositionBuilderAtEnd(builder, after_do_block);
+	maybe_emit_cond_branch(builder, cond_val, do_block, cont_block);
+	LLVMPositionBuilderAtEnd(builder, cont_block);
+}
+
+static void emit_while_stmt(LLVMBuilderRef builder, struct stmt *stmt)
+{
+	LLVMBasicBlockRef while_block, cont_block;
+	LLVMValueRef cond_val;
+	struct expr *cond;
+	Vec *stmts;
+
+	assert(stmt->kind == WHILE_STMT);
+	cond = stmt->u.while_.cond;
+	cond_val = emit_expr(builder, cond);
+	stmts = stmt->u.while_.stmts;
+	while_block = append_basic_block(builder, "while.start");
+	cont_block = append_basic_block(builder, "while.end");
+	(void) while_block;
+	(void) cont_block;
+	(void) cond_val;
+	(void) stmts;
+	internal_error(); // TODO: Stub
 }
 
 static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
@@ -916,11 +953,13 @@ static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 		 * The value in `cur_func_return_val_ptr` will be returned in a
 		 * block at the end of the function.  LLVM complains if the
 		 * LLVMBuildRet is done here.
+		 *
+		 * TODO: Check this again
 		 */
 		LLVMBuildStore(builder, emit_expr(builder, expr),
 				cur_func_return_val_ptr);
 	}
-	LLVMBuildBr(builder, cur_func_return_block);
+	maybe_emit_branch(builder, cur_func_return_block);
 }
 
 static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
@@ -939,7 +978,7 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 		emit_do_stmt(builder, stmt);
 		break;
 	case WHILE_STMT:
-		// TODO: emit_while_stmt(builder, stmt);
+		emit_while_stmt(builder, stmt);
 		break;
 	case FOR_STMT:
 		// TODO: emit_for_stmt(builder, stmt);
