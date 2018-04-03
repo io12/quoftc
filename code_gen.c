@@ -1,4 +1,5 @@
 // Compile an AST with LLVM
+// TODO: Fix scoping
 
 #include <assert.h>
 #include <stdbool.h>
@@ -925,22 +926,27 @@ static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 
 static void emit_while_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
-	LLVMBasicBlockRef while_block, cont_block;
+	LLVMBasicBlockRef cond_block, while_block, cont_block;
 	LLVMValueRef cond_val;
 	struct expr *cond;
 	Vec *stmts;
 
 	assert(stmt->kind == WHILE_STMT);
 	cond = stmt->u.while_.cond;
-	cond_val = emit_expr(builder, cond);
 	stmts = stmt->u.while_.stmts;
+	cond_block = append_basic_block(builder, "while.cond");
 	while_block = append_basic_block(builder, "while.start");
 	cont_block = append_basic_block(builder, "while.end");
-	(void) while_block;
-	(void) cont_block;
-	(void) cond_val;
-	(void) stmts;
-	internal_error(); // TODO: Stub
+	maybe_emit_branch(builder, cond_block);
+	LLVMPositionBuilderAtEnd(builder, cond_block);
+	cond_val = emit_expr(builder, cond);
+	maybe_emit_cond_branch(builder, cond_val, while_block, cont_block);
+	LLVMPositionBuilderAtEnd(builder, while_block);
+	enter_new_scope(sym_tbl);
+	emit_compound_stmt(builder, stmts);
+	leave_scope(sym_tbl);
+	maybe_emit_branch(builder, cond_block);
+	LLVMPositionBuilderAtEnd(builder, cont_block);
 }
 
 static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
