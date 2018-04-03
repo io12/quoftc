@@ -149,11 +149,39 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 
 static LLVMValueRef emit_expr(LLVMBuilderRef, struct expr *);
 
+static LLVMValueRef emit_lval(LLVMBuilderRef builder, struct expr *expr)
+{
+	switch (expr->kind) {
+	case UNARY_OP_EXPR: {
+		struct expr *operand;
+
+		assert(expr->u.unary_op.op == DEREF_OP);
+		operand = expr->u.unary_op.operand;
+		return emit_expr(builder, operand);
+	}
+	case IDENT_EXPR: {
+		struct symbol_info *sym_info;
+		char *name;
+
+		name = expr->u.ident.name;
+		sym_info = lookup_symbol(sym_tbl, name);
+		assert(sym_info != NULL);
+		assert(sym_info->is_ptr);
+		assert(sym_info->val != NULL);
+		return sym_info->val;
+	}
+	case FIELD_ACCESS_EXPR:
+		internal_error(); // TODO: Stub
+	default:
+		internal_error();
+	}
+}
+
 static LLVMValueRef emit_inc_or_dec_expr(LLVMBuilderRef builder,
 		struct expr *expr)
 {
 	enum unary_op op = expr->u.unary_op.op;
-	LLVMValueRef ptr_val = emit_expr(builder, expr->u.unary_op.operand);
+	LLVMValueRef ptr_val = emit_lval(builder, expr->u.unary_op.operand);
 	LLVMTypeRef type = get_llvm_type(expr->type);
 	LLVMValueRef old_val, one_val, new_val;
 	bool is_signed, is_inc, is_prefix;
@@ -482,34 +510,6 @@ static bool is_assignment(enum bin_op op)
 		return true;
 	default:
 		return false;
-	}
-}
-
-static LLVMValueRef emit_lval(LLVMBuilderRef builder, struct expr *expr)
-{
-	switch (expr->kind) {
-	case UNARY_OP_EXPR: {
-		struct expr *operand;
-
-		assert(expr->u.unary_op.op == DEREF_OP);
-		operand = expr->u.unary_op.operand;
-		return emit_expr(builder, operand);
-	}
-	case IDENT_EXPR: {
-		struct symbol_info *sym_info;
-		char *name;
-
-		name = expr->u.ident.name;
-		sym_info = lookup_symbol(sym_tbl, name);
-		assert(sym_info != NULL);
-		assert(sym_info->is_ptr);
-		assert(sym_info->val != NULL);
-		return sym_info->val;
-	}
-	case FIELD_ACCESS_EXPR:
-		internal_error(); // TODO: Stub
-	default:
-		internal_error();
 	}
 }
 
