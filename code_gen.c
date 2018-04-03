@@ -955,6 +955,42 @@ static void emit_while_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	LLVMPositionBuilderAtEnd(builder, cont_block);
 }
 
+static void emit_for_stmt(LLVMBuilderRef builder, struct stmt *stmt)
+{
+	LLVMBasicBlockRef init_block, cond_block, post_block, for_block,
+			  cont_block;
+	LLVMValueRef cond_val;
+	struct expr *init, *cond, *post;
+	Vec *stmts;
+
+	assert(stmt->kind == FOR_STMT);
+	init = stmt->u.for_.init;
+	cond = stmt->u.for_.cond;
+	post = stmt->u.for_.post;
+	stmts = stmt->u.for_.stmts;
+	init_block = append_basic_block(builder, "for.init");
+	cond_block = append_basic_block(builder, "for.cond");
+	post_block = append_basic_block(builder, "for.post");
+	for_block = append_basic_block(builder, "for.start");
+	cont_block = append_basic_block(builder, "for.end");
+	maybe_emit_branch(builder, init_block);
+	LLVMPositionBuilderAtEnd(builder, init_block);
+	emit_expr(builder, init);
+	maybe_emit_branch(builder, cond_block);
+	LLVMPositionBuilderAtEnd(builder, cond_block);
+	cond_val = emit_expr(builder, cond);
+	maybe_emit_cond_branch(builder, cond_val, for_block, cont_block);
+	LLVMPositionBuilderAtEnd(builder, for_block);
+	enter_new_scope(sym_tbl);
+	emit_compound_stmt(builder, stmts);
+	leave_scope(sym_tbl);
+	maybe_emit_branch(builder, post_block);
+	LLVMPositionBuilderAtEnd(builder, post_block);
+	emit_expr(builder, post);
+	maybe_emit_branch(builder, cond_block);
+	LLVMPositionBuilderAtEnd(builder, cont_block);
+}
+
 static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
 	struct expr *expr;
@@ -993,7 +1029,7 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 		emit_while_stmt(builder, stmt);
 		break;
 	case FOR_STMT:
-		// TODO: emit_for_stmt(builder, stmt);
+		emit_for_stmt(builder, stmt);
 		break;
 	case RETURN_STMT:
 		emit_return_stmt(builder, stmt);
