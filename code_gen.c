@@ -846,6 +846,18 @@ static bool block_has_terminator(LLVMBasicBlockRef block)
 	return LLVMGetBasicBlockTerminator(block) != NULL;
 }
 
+// Emits a branch unless it would be unreachable
+static void maybe_emit_branch(LLVMBuilderRef builder,
+		LLVMBasicBlockRef target_block)
+{
+	LLVMBasicBlockRef cur_block;
+
+	cur_block = LLVMGetInsertBlock(builder);
+	if (cur_block != NULL && !block_has_terminator(cur_block)) {
+		LLVMBuildBr(builder, target_block);
+	}
+}
+
 static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
 	struct expr *cond = stmt->u.if_.cond;
@@ -868,15 +880,11 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	}
 	LLVMPositionBuilderAtEnd(builder, then_block);
 	emit_compound_stmt(builder, then_stmts);
-	if (!block_has_terminator(then_block)) {
-		LLVMBuildBr(builder, merge_block);
-	}
+	maybe_emit_branch(builder, merge_block);
 	if (else_stmts != NULL) {
 		LLVMPositionBuilderAtEnd(builder, else_block);
 		emit_compound_stmt(builder, else_stmts);
-		if (!block_has_terminator(else_block)) {
-			LLVMBuildBr(builder, merge_block);
-		}
+		maybe_emit_branch(builder, merge_block);
 	}
 	LLVMPositionBuilderAtEnd(builder, merge_block);
 }
@@ -996,9 +1004,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 	}
 	emit_compound_stmt(builder, body_stmts);
 	last_block = LLVMGetLastBasicBlock(func_val);
-	if (!block_has_terminator(last_block)) {
-		LLVMBuildBr(builder, cur_func_return_block);
-	}
+	maybe_emit_branch(builder, cur_func_return_block);
 	LLVMMoveBasicBlockAfter(cur_func_return_block, last_block);
 	LLVMPositionBuilderAtEnd(builder, cur_func_return_block);
 	if (return_type->kind == VOID_TYPE) {
