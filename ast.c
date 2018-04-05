@@ -9,8 +9,8 @@
 #include "ast.h"
 
 /*
- * These functions take void pointers because they are passed to `alloc_vec()`
- * and `dup_vec()`.
+ * These functions take and return void pointers because they are passed to
+ * `alloc_vec()` and `dup_vec()`.
  */
 
 static void *void_strdup(void *p)
@@ -18,68 +18,72 @@ static void *void_strdup(void *p)
 	return xstrdup(p);
 }
 
+static AliasType *dup_alias_type(AliasType *alias_type)
+{
+	return ALLOC_ALIAS_TYPE(xstrdup(alias_type->name));
+}
+
+static ParamType *dup_param_type(ParamType *param_type)
+{
+	return ALLOC_ALIAS_TYPE(xstrdup(param_type->name), dup_vec(param_type->params));
+}
+
+static ArrayType *dup_array_type(ArrayType *array_type)
+{
+	return ALLOC_ARRAY_TYPE(dup_type(array_type->item_type), array_type->params);
+}
+
 void *dup_type(void *p)
 {
-	struct type *src = p;
+	Type *type = p;
 
-	switch(src->kind) {
+	switch(type->header.kind) {
 	case UNSIZED_INT_TYPE:
-		return ALLOC_UNSIZED_INT_TYPE(src->lineno);
+		return ALLOC_UNSIZED_INT_TYPE(type->lineno);
 	case U8_TYPE:
-		return ALLOC_U8_TYPE(src->lineno);
+		return ALLOC_U8_TYPE(type->lineno);
 	case U16_TYPE:
-		return ALLOC_U16_TYPE(src->lineno);
+		return ALLOC_U16_TYPE(type->lineno);
 	case U32_TYPE:
-		return ALLOC_U32_TYPE(src->lineno);
+		return ALLOC_U32_TYPE(type->lineno);
 	case U64_TYPE:
-		return ALLOC_U64_TYPE(src->lineno);
+		return ALLOC_U64_TYPE(type->lineno);
 	case I8_TYPE:
-		return ALLOC_I8_TYPE(src->lineno);
+		return ALLOC_I8_TYPE(type->lineno);
 	case I16_TYPE:
-		return ALLOC_I16_TYPE(src->lineno);
+		return ALLOC_I16_TYPE(type->lineno);
 	case I32_TYPE:
-		return ALLOC_I32_TYPE(src->lineno);
+		return ALLOC_I32_TYPE(type->lineno);
 	case I64_TYPE:
-		return ALLOC_I64_TYPE(src->lineno);
+		return ALLOC_I64_TYPE(type->lineno);
 	case F32_TYPE:
-		return ALLOC_F32_TYPE(src->lineno);
+		return ALLOC_F32_TYPE(type->lineno);
 	case F64_TYPE:
-		return ALLOC_F64_TYPE(src->lineno);
+		return ALLOC_F64_TYPE(type->lineno);
 	case BOOL_TYPE:
-		return ALLOC_BOOL_TYPE(src->lineno);
+		return ALLOC_BOOL_TYPE(type->lineno);
 	case VOID_TYPE:
-		return ALLOC_VOID_TYPE(src->lineno);
+		return ALLOC_VOID_TYPE(type->lineno);
 	case CHAR_TYPE:
-		return ALLOC_CHAR_TYPE(src->lineno);
+		return ALLOC_CHAR_TYPE(type->lineno);
 	case ALIAS_TYPE:
-		return ALLOC_ALIAS_TYPE(src->lineno,
-				xstrdup(src->u.alias.name));
+		return dup_alias_type((AliasType *) type);
 	case PARAM_TYPE:
-		return ALLOC_PARAM_TYPE(src->lineno,
-				xstrdup(src->u.param.name),
-				dup_vec(src->u.param.params, dup_type));
+		return dup_param_type((ParamType *) type);
 	case ARRAY_TYPE:
-		return ALLOC_ARRAY_TYPE(src->lineno, dup_type(src->u.array.l),
-				src->u.array.len);
+		return dup_array_type((ArrayType *) type);
 	case POINTER_TYPE:
-		return ALLOC_POINTER_TYPE(src->lineno,
-				dup_type(src->u.pointer.l));
+		return dup_pointer_type((PointerType *) type);
 	case TUPLE_TYPE:
-		return ALLOC_TUPLE_TYPE(src->lineno,
-				dup_vec(src->u.tuple.types, dup_type));
+		return dup_tuple_type((TupleType *) type);
 	case STRUCT_TYPE:
-		return ALLOC_STRUCT_TYPE(src->lineno,
-				dup_vec(src->u.struct_.types, dup_type),
-				dup_vec(src->u.struct_.names, void_strdup));
+		return dup_struct_type((StructType *) type);
 	case FUNC_TYPE:
-		return ALLOC_FUNC_TYPE(src->lineno, dup_type(src->u.func.ret),
-				dup_vec(src->u.func.params, dup_type));
+		return dup_func_type((FuncType *) type);
 	case CONST_TYPE:
-		return ALLOC_CONST_TYPE(src->lineno,
-				dup_type(src->u.const_.type));
+		return dup_const_type((ConstType *) type);
 	case VOLATILE_TYPE:
-		return ALLOC_VOLATILE_TYPE(src->lineno,
-				dup_type(src->u.volatile_.type));
+		return dup_volatile_type((VolatileType *) type);
 	}
 	internal_error();
 }
