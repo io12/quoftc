@@ -78,7 +78,7 @@ static bool is_pure_unary_op_expr(UnaryOpExpr *expr)
 	case POST_DEC_OP:
 		return false;
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static bool is_pure_bin_op_expr(BinOpExpr *expr)
@@ -116,7 +116,7 @@ static bool is_pure_bin_op_expr(BinOpExpr *expr)
 	case BIT_SHIFT_R_ASSIGN_OP:
 		return false;
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static bool are_exprs_pure(Vec *exprs)
@@ -184,7 +184,7 @@ static bool is_pure_expr(Expr *expr)
 	case FIELD_ACCESS_EXPR:
 		UNIMPLEMENTED();
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static bool unary_op_expr_is_lvalue(UnaryOpExpr *expr)
@@ -232,7 +232,7 @@ static bool expr_is_lvalue(Expr *expr)
 	case FIELD_ACCESS_EXPR:
 		return false;
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 bool type_is_unsigned_int(Type *type)
@@ -282,6 +282,15 @@ bool type_is_float(Type *type)
 static bool type_is_num(Type *type)
 {
 	return type_is_int(type) || type_is_float(type);
+}
+
+static void type_check_string_lit_expr(StringLitExpr *expr)
+{
+	Type *char_type;
+	
+	char_type = (Type *) ALLOC_CHAR_TYPE(NO_LINENO);
+	expr->h.type = (Type *) ALLOC_ARRAY_TYPE(NO_LINENO, char_type,
+			expr->len);
 }
 
 static void type_check(Expr *);
@@ -512,9 +521,9 @@ static bool types_are_compat(Type *type1, Type *type2)
 	case CONST_TYPE:
 	case VOLATILE_TYPE:
 		// NOTREACHED
-		internal_error();
+		INTERNAL_ERROR();
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static Type *dup_stricter_type(Type *, Type *);
@@ -635,7 +644,7 @@ static Type *dup_stricter_type(Type *type1, Type *type2)
 		UNIMPLEMENTED();
 	}
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static bool type_is_convertible(Type *, Type *);
@@ -664,7 +673,7 @@ static bool type_is_convertible(Type *from_type, Type *to_type)
 	switch (to_type->h.kind) {
 	case UNSIZED_INT_TYPE:
 		// Only `from_type` should ever be an `UNSIZED_INT_TYPE`
-		internal_error();
+		INTERNAL_ERROR();
 	case U8_TYPE:
 	case U16_TYPE:
 	case U32_TYPE:
@@ -673,14 +682,14 @@ static bool type_is_convertible(Type *from_type, Type *to_type)
 	case I16_TYPE:
 	case I32_TYPE:
 	case I64_TYPE:
-		return from_type->kind == UNSIZED_INT_TYPE ||
-				from_type->kind == to_type->kind;
+		return from_type->h.kind == UNSIZED_INT_TYPE
+			|| from_type->kind == to_type->kind;
 	case F32_TYPE:
 	case F64_TYPE:
 	case BOOL_TYPE:
 	case VOID_TYPE:
 	case CHAR_TYPE:
-		return from_type->kind == to_type->kind;
+		return from_type->h.kind == to_type->h.kind;
 	case ALIAS_TYPE:
 	case PARAM_TYPE:
 		UNIMPLEMENTED();
@@ -776,7 +785,7 @@ static bool type_is_convertible(Type *from_type, Type *to_type)
 		UNIMPLEMENTED();
 	}
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static void ensure_bool_expr(Expr *expr)
@@ -1070,92 +1079,89 @@ static void type_check_tuple(TupleExpr *expr)
 
 static void type_check_func_call(FuncCallExpr *expr)
 {
-	Type *param_type, *return_type;
-	Expr *func, *arg;
-	Vec *args, *param_types;
-	size_t i;
+	FuncType *func_type;
+	Type *param_type;
+	Expr *arg;
+	size_t i, len;
 
-	assert(expr->kind == FUNC_CALL_EXPR);
-	func = expr->u.func_call.func;
-	args = expr->u.func_call.args;
-	type_check(func);
-	type_check_exprs(args);
-	if (func->type->kind != FUNC_TYPE) {
-		fatal_error(expr->lineno,
+	type_check(expr->func);
+	type_check_exprs(expr->args);
+	if (expr->func->h.type->h.kind != FUNC_TYPE) {
+		fatal_error(expr->h.lineno,
 				"Expression is called but is not a function");
 	}
-	param_types = func->type->u.func.params;
-	for (i = 0; i < vec_len(args); i++) {
-		arg = vec_get(args, i);
-		param_type = vec_get(param_types, i);
+	func_type = (FuncType *) expr->func->h.type;
+	if (vec_len(expr->args) != vec_len(func_type->param_types)) {
+		fatal_error(expr->h.lineno,
+				"Function called with incorrect amount of "
+				"arguments");
+	}
+	for (i = 0; i < vec_len(expr->args); i++) {
+		arg = vec_get(expr->args, i);
+		param_type = vec_get(func_type->param_types, i);
 		// TODO: are_types_compat() may be the wrong check (const)
-		if (!are_types_compat(arg->type, param_type)) {
-			fatal_error(arg->lineno, "Type of passed argument is "
-			                         "an unexpected type");
+		if (!are_types_compat(arg->h.type, param_type)) {
+			fatal_error(arg->h.lineno,
+					"Type of passed argument is an "
+					"unexpected type");
 		}
 	}
-	return_type = func->type->u.func.ret;
-	expr->type = dup_type(return_type);
+	expr->type = dup_type(func_type->return_type);
 }
 
 static void type_check_field_access_expr(Expr *expr)
 {
-	(void) expr;
-	internal_error(); // TODO: Stub
+	UNIMPLEMENTED();
 }
 
 static void type_check(Expr *expr)
 {
-	assert(expr->type == NULL);
-	switch (expr->kind) {
+	assert(expr->h.type == NULL); // The type should not already be checked
+	switch (expr->h.kind) {
 	case BOOL_LIT_EXPR:
-		expr->type = ALLOC_BOOL_TYPE(NO_LINENO);
+		expr->h.type = (Type *) ALLOC_BOOL_TYPE(NO_LINENO);
 		break;
 	case INT_LIT_EXPR:
-		expr->type = ALLOC_UNSIZED_INT_TYPE(NO_LINENO);
+		expr->h.type = (Type *) ALLOC_UNSIZED_INT_TYPE(NO_LINENO);
 		break;
 	case FLOAT_LIT_EXPR:
 		// TODO: Fix this
-		expr->type = ALLOC_F64_TYPE(NO_LINENO);
+		expr->h.type = (Type *) ALLOC_F64_TYPE(NO_LINENO);
 		break;
 	case CHAR_LIT_EXPR:
-		expr->type = ALLOC_CHAR_TYPE(NO_LINENO);
+		expr->h.type = (Type *) ALLOC_CHAR_TYPE(NO_LINENO);
 		break;
-	case STRING_LIT_EXPR: {
-		unsigned len = expr->u.string_lit.len;
-
-		expr->type = ALLOC_ARRAY_TYPE(NO_LINENO,
-				ALLOC_CHAR_TYPE(NO_LINENO), len);
+	case STRING_LIT_EXPR:
+		type_check_string_lit_expr(expr);
 		break;
-	}
 	case UNARY_OP_EXPR:
-		type_check_unary_op(expr);
+		type_check_unary_op_expr(expr);
 		break;
 	case BIN_OP_EXPR:
-		type_check_bin_op(expr);
+		type_check_bin_op_expr(expr);
 		break;
 	case LAMBDA_EXPR:
-		type_check_lambda(expr);
+		type_check_lambda_expr(expr);
 		break;
 	case ARRAY_LIT_EXPR:
-		type_check_array_lit(expr);
+		type_check_array_lit_expr(expr);
 		break;
 	case IDENT_EXPR:
-		type_check_ident(expr);
+		type_check_ident_expr(expr);
 		break;
 	case BLOCK_EXPR:
-		type_check_block(expr);
+		type_check_block_expr(expr);
 		break;
 	case IF_EXPR:
-		type_check_if(expr);
+		type_check_if_expr(expr);
 		break;
 	case SWITCH_EXPR:
-		internal_error(); // TODO: Stub
+		UNIMPLEMENTED();
 	case TUPLE_EXPR:
-		type_check_tuple(expr);
+		type_check_tuple_expr(expr);
 		break;
 	case FUNC_CALL_EXPR:
-		type_check_func_call(expr);
+		type_check_func_call_expr(expr);
 		break;
 	case FIELD_ACCESS_EXPR:
 		type_check_field_access_expr(expr);
@@ -1167,7 +1173,7 @@ static void ensure_declarable_type(Type *type)
 {
 	switch (type->kind) {
 	case UNSIZED_INT_TYPE:
-		internal_error(); // The parser shouldn't set this
+		INTERNAL_ERROR(); // The parser shouldn't set this
 	case U8_TYPE:
 	case U16_TYPE:
 	case U32_TYPE:
@@ -1185,7 +1191,7 @@ static void ensure_declarable_type(Type *type)
 		fatal_error(type->lineno, "Void is not a declarable type");
 	case ALIAS_TYPE:
 	case PARAM_TYPE:
-		internal_error(); // TODO: Stub
+		INTERNAL_ERROR(); // TODO: Stub
 	case ARRAY_TYPE:
 		ensure_declarable_type(type->u.array.l);
 		break;
@@ -1206,7 +1212,7 @@ static void ensure_declarable_type(Type *type)
 	case FUNC_TYPE:
 	case CONST_TYPE:
 	case VOLATILE_TYPE:
-		internal_error(); // TODO: Stub
+		INTERNAL_ERROR(); // TODO: Stub
 	}
 }
 
@@ -1278,7 +1284,7 @@ static void check_typedef_decl(Decl *decl)
 		// TODO: Handle type parameters
 	}
 	ensure_declarable_type(type);
-	internal_error(); // TODO: Stub
+	UNIMPLEMENTED();
 }
 
 static void check_if_stmt(Stmt *stmt)

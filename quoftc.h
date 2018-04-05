@@ -12,8 +12,14 @@
 	#define UNLIKELY(x) (x)
 #endif
 
-#define UNIMPLEMENTED() \
-	no_lineno_error("Unimplemented: %s:%s:%d", __FILE__, __func__, __LINE__)
+#define UNIMPLEMENTED()                             \
+	no_lineno_error("Unimplemented: %s:%s:%d",  \
+			__FILE__, __func__, __LINE__)
+
+#define INTERNAL_ERROR()                             \
+	no_lineno_error("Internal error: %s:%s:%d",  \
+			__FILE__, __func__, __LINE__)
+
 #define IN_RANGE(x, min, max) ((x) >= min && (x) <= max)
 #define EITHER_EQ(x, y, z) ((x) == (z) || (y) == (z))
 #define NEW(type) ((type *) xmalloc(sizeof(type)))
@@ -26,7 +32,6 @@
 PRINTF(2, 3) void warn(unsigned lineno, const char *fmt, ...);
 NORETURN PRINTF(2, 3) void fatal_error(unsigned, const char *, ...);
 NORETURN PRINTF(1, 2) void no_lineno_error(const char *, ...);
-NORETURN void internal_error(void);
 MALLOC void *xmalloc(size_t);
 MALLOC void *xcalloc(size_t);
 void *xrealloc(void *, size_t);

@@ -53,11 +53,6 @@ NORETURN PRINTF(1, 2) void no_lineno_error(const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
-NORETURN void internal_error(void)
-{
-	no_lineno_error("Internal error");
-}
-
 static void *ptr_sanitize(void *p)
 {
 	if (p == NULL) {
