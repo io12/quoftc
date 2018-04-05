@@ -33,6 +33,13 @@ enum type_kind {
 	VOLATILE_TYPE
 };
 
+/*
+ * The `lineno` field in `TypeHeader` can be `NO_LINENO` if the `Type` node
+ * does not represent a part of the source file's syntax.
+ */
+
+#define NO_LINENO UINT_MAX
+
 typedef struct {
 	enum type_kind kind;
 	unsigned lineno;
