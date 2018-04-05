@@ -147,7 +147,7 @@ void *dup_type(void *p)
 	case VOLATILE_TYPE:
 		return dup_volatile_type((VolatileType *) type);
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 void free_type(void *p)

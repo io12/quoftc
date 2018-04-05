@@ -86,5 +86,5 @@ uint64_t eval_const_expr(struct expr *expr)
 		return eval_bin_op_const_expr(expr);
 	}
 	// NOTREACHED
-	internal_error();
+	INTERNAL_ERROR();
 }

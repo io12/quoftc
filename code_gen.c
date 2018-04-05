@@ -144,7 +144,7 @@ static LLVMTypeRef get_llvm_type(struct type *type)
 	case VOLATILE_TYPE: // TODO: Volatile code gen
 		return get_llvm_type(type->u.volatile_.type);
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static LLVMValueRef emit_expr(LLVMBuilderRef, struct expr *);
@@ -171,9 +171,9 @@ static LLVMValueRef emit_lval(LLVMBuilderRef builder, struct expr *expr)
 		return sym_info->val;
 	}
 	case FIELD_ACCESS_EXPR:
-		internal_error(); // TODO: Stub
+		INTERNAL_ERROR(); // TODO: Stub
 	default:
-		internal_error();
+		INTERNAL_ERROR();
 	}
 }
 
@@ -246,7 +246,7 @@ static LLVMValueRef emit_unary_op_expr(LLVMBuilderRef builder,
 		}
 	}
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static LLVMValueRef emit_add(LLVMBuilderRef builder, LLVMValueRef l,
@@ -652,7 +652,7 @@ static LLVMValueRef emit_bin_op_expr(LLVMBuilderRef builder, struct expr *expr)
 		new_val = LLVMBuildLShr(builder, old_val, r, "lshr");
 		return LLVMBuildStore(builder, new_val, l);
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static LLVMValueRef emit_ident_expr(LLVMBuilderRef builder, struct expr *expr)
@@ -771,7 +771,7 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 		return emit_bin_op_expr(builder, expr);
 	case LAMBDA_EXPR:
 	case ARRAY_LIT_EXPR:
-		internal_error(); // TODO: Stub
+		INTERNAL_ERROR(); // TODO: Stub
 	case IDENT_EXPR:
 		return emit_ident_expr(builder, expr);
 	case BLOCK_EXPR:
@@ -779,13 +779,13 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	case IF_EXPR:
 	case SWITCH_EXPR:
 	case TUPLE_EXPR:
-		internal_error(); // TODO: Stub
+		INTERNAL_ERROR(); // TODO: Stub
 	case FUNC_CALL_EXPR:
 		return emit_func_call_expr(builder, expr);
 	case FIELD_ACCESS_EXPR:
-		internal_error(); // TODO: Stub
+		INTERNAL_ERROR(); // TODO: Stub
 	}
-	internal_error();
+	INTERNAL_ERROR();
 }
 
 static LLVMValueRef emit_const_expr(struct expr *expr)
@@ -1112,7 +1112,7 @@ static void emit_global_decl(LLVMModuleRef module, struct decl *decl)
 		emit_global_data_decl(module, decl);
 		break;
 	case TYPEDEF_DECL:
-		internal_error(); // TODO: Stub
+		INTERNAL_ERROR(); // TODO: Stub
 	case FUNC_DECL:
 		emit_func_decl(module, decl);
 		break;

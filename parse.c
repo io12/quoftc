@@ -685,7 +685,7 @@ static enum bin_op tok_to_bin_op(enum tok_kind tok_kind)
 	case GT_GT_EQ:
 		return BIT_SHIFT_R_ASSIGN_OP;
 	default:
-		internal_error();
+		INTERNAL_ERROR();
 	}
 }
 

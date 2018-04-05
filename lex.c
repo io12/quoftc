@@ -297,7 +297,7 @@ static IsValidDigitFunc *get_is_valid_digit_func(int base)
 	case 16:
 		return is_hex_digit;
 	default:
-		internal_error();
+		INTERNAL_ERROR();
 	}
 }
 
@@ -522,7 +522,7 @@ static void lex_op(struct tok *tok)
 		lex_op_0__(tok, CLOSE_BRACE);
 		break;
 	default:
-		internal_error();
+		INTERNAL_ERROR();
 	}
 }
 
