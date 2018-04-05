@@ -32,32 +32,32 @@ static Vec *dup_types(Vec *types)
 
 static AliasType *dup_alias_type(AliasType *alias_type)
 {
-	return ALLOC_ALIAS_TYPE(alias_type->header.lineno,
+	return ALLOC_ALIAS_TYPE(alias_type->h.lineno,
 			xstrdup(alias_type->name));
 }
 
 static ParamType *dup_param_type(ParamType *param_type)
 {
-	return ALLOC_PARAM_TYPE(param_type->header.lineno,
+	return ALLOC_PARAM_TYPE(param_type->h.lineno,
 			xstrdup(param_type->name),
 			dup_types(param_type->params));
 }
 
 static ArrayType *dup_array_type(ArrayType *array_type)
 {
-	return ALLOC_ARRAY_TYPE(array_type->header.lineno,
+	return ALLOC_ARRAY_TYPE(array_type->h.lineno,
 			dup_type(array_type->item_type), array_type->len);
 }
 
 static PointerType *dup_pointer_type(PointerType *pointer_type)
 {
-	return ALLOC_POINTER_TYPE(pointer_type->header.lineno,
+	return ALLOC_POINTER_TYPE(pointer_type->h.lineno,
 			dup_type(pointer_type->pointee_type));
 }
 
 static TupleType *dup_tuple_type(TupleType *tuple_type)
 {
-	return ALLOC_TUPLE_TYPE(tuple_type->header.lineno,
+	return ALLOC_TUPLE_TYPE(tuple_type->h.lineno,
 			dup_types(tuple_type->member_types));
 }
 
@@ -71,27 +71,27 @@ static void *dup_struct_member_type(void *p)
 
 static StructType *dup_struct_type(StructType *struct_type)
 {
-	return ALLOC_STRUCT_TYPE(struct_type->header.lineno,
+	return ALLOC_STRUCT_TYPE(struct_type->h.lineno,
 			dup_vec(struct_type->member_types,
 				dup_struct_member_type));
 }
 
 static FuncType *dup_func_type(FuncType *func_type)
 {
-	return ALLOC_FUNC_TYPE(func_type->header.lineno,
+	return ALLOC_FUNC_TYPE(func_type->h.lineno,
 			dup_type(func_type->return_type),
 			dup_types(func_type->param_types));
 }
 
 static ConstType *dup_const_type(ConstType *const_type)
 {
-	return ALLOC_CONST_TYPE(const_type->header.lineno,
+	return ALLOC_CONST_TYPE(const_type->h.lineno,
 			dup_type(const_type->subtype));
 }
 
 static VolatileType *dup_volatile_type(VolatileType *volatile_type)
 {
-	return ALLOC_VOLATILE_TYPE(volatile_type->header.lineno,
+	return ALLOC_VOLATILE_TYPE(volatile_type->h.lineno,
 			dup_type(volatile_type->subtype));
 }
 
@@ -99,35 +99,35 @@ void *dup_type(void *p)
 {
 	Type *type = p;
 
-	switch(type->header.kind) {
+	switch(type->h.kind) {
 	case UNSIZED_INT_TYPE:
-		return ALLOC_UNSIZED_INT_TYPE(type->header.lineno);
+		return ALLOC_UNSIZED_INT_TYPE(type->h.lineno);
 	case U8_TYPE:
-		return ALLOC_U8_TYPE(type->header.lineno);
+		return ALLOC_U8_TYPE(type->h.lineno);
 	case U16_TYPE:
-		return ALLOC_U16_TYPE(type->header.lineno);
+		return ALLOC_U16_TYPE(type->h.lineno);
 	case U32_TYPE:
-		return ALLOC_U32_TYPE(type->header.lineno);
+		return ALLOC_U32_TYPE(type->h.lineno);
 	case U64_TYPE:
-		return ALLOC_U64_TYPE(type->header.lineno);
+		return ALLOC_U64_TYPE(type->h.lineno);
 	case I8_TYPE:
-		return ALLOC_I8_TYPE(type->header.lineno);
+		return ALLOC_I8_TYPE(type->h.lineno);
 	case I16_TYPE:
-		return ALLOC_I16_TYPE(type->header.lineno);
+		return ALLOC_I16_TYPE(type->h.lineno);
 	case I32_TYPE:
-		return ALLOC_I32_TYPE(type->header.lineno);
+		return ALLOC_I32_TYPE(type->h.lineno);
 	case I64_TYPE:
-		return ALLOC_I64_TYPE(type->header.lineno);
+		return ALLOC_I64_TYPE(type->h.lineno);
 	case F32_TYPE:
-		return ALLOC_F32_TYPE(type->header.lineno);
+		return ALLOC_F32_TYPE(type->h.lineno);
 	case F64_TYPE:
-		return ALLOC_F64_TYPE(type->header.lineno);
+		return ALLOC_F64_TYPE(type->h.lineno);
 	case BOOL_TYPE:
-		return ALLOC_BOOL_TYPE(type->header.lineno);
+		return ALLOC_BOOL_TYPE(type->h.lineno);
 	case VOID_TYPE:
-		return ALLOC_VOID_TYPE(type->header.lineno);
+		return ALLOC_VOID_TYPE(type->h.lineno);
 	case CHAR_TYPE:
-		return ALLOC_CHAR_TYPE(type->header.lineno);
+		return ALLOC_CHAR_TYPE(type->h.lineno);
 	case ALIAS_TYPE:
 		return dup_alias_type((AliasType *) type);
 	case PARAM_TYPE:
@@ -157,7 +157,7 @@ void free_type(void *p)
 	if (type == NULL) {
 		return;
 	}
-	switch (type->header.kind) {
+	switch (type->h.kind) {
 	case UNSIZED_INT_TYPE:
 	case U8_TYPE:
 	case U16_TYPE:
@@ -231,7 +231,7 @@ void free_expr(void *p)
 	if (expr == NULL) {
 		return;
 	}
-	switch (expr->header.kind) {
+	switch (expr->h.kind) {
 	case BOOL_LIT_EXPR:
 	case INT_LIT_EXPR:
 	case FLOAT_LIT_EXPR:
@@ -305,7 +305,7 @@ void free_expr(void *p)
 		break;
 	}
 	}
-	free_type(expr->header.type); // TODO: Is this safe?
+	free_type(expr->h.type); // TODO: Is this safe?
 	free(expr);
 }
 
@@ -316,7 +316,7 @@ void free_switch_pattern(void *p)
 	if (sp == NULL) {
 		return;
 	}
-	switch (sp->header.kind) {
+	switch (sp->h.kind) {
 	case UNDERSCORE_SWITCH_PATTERN:
 		break;
 	case OR_SWITCH_PATTERN: {
@@ -365,7 +365,7 @@ void free_decl(void *p)
 	if (decl == NULL) {
 		return;
 	}
-	switch (decl->header.kind) {
+	switch (decl->h.kind) {
 	case DATA_DECL: {
 		DataDecl *data_decl = (DataDecl *) decl;
 		free_type(data_decl->type);
@@ -399,7 +399,7 @@ void free_stmt(void *p)
 	if (stmt == NULL) {
 		return;
 	}
-	switch (stmt->header.kind) {
+	switch (stmt->h.kind) {
 	case DECL_STMT: {
 		DeclStmt *decl_stmt = (DeclStmt *) stmt;
 		free_decl(decl_stmt->decl);

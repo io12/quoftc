@@ -39,7 +39,7 @@ typedef struct {
 } TypeHeader;
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 } Type;
 
 #define ALLOC_UNSIZED_INT_TYPE(...) \
@@ -72,7 +72,7 @@ typedef struct {
 	ALLOC_STRUCT(Type, CHAR_TYPE, __VA_ARGS__)
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 	char *name;
 } AliasType;
 
@@ -80,7 +80,7 @@ typedef struct {
 	ALLOC_STRUCT(AliasType, ALIAS_TYPE, __VA_ARGS__)
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 	char *name;
 	Vec *params;
 } ParamType;
@@ -89,7 +89,7 @@ typedef struct {
 	ALLOC_STRUCT(ParamType, PARAM_TYPE, __VA_ARGS__)
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 	Type *item_type;
 	unsigned len; // Zero if unspecified
 } ArrayType;
@@ -98,7 +98,7 @@ typedef struct {
 	ALLOC_STRUCT(ArrayType, ARRAY_TYPE, __VA_ARGS__)
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 	Type *pointee_type;
 } PointerType;
 
@@ -106,7 +106,7 @@ typedef struct {
 	ALLOC_STRUCT(PointerType, POINTER_TYPE, __VA_ARGS__)
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 	Vec *member_types;
 } TupleType;
 
@@ -122,7 +122,7 @@ typedef struct {
 	ALLOC_STRUCT(StructMemberType, __VA_ARGS__)
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 	Vec *member_types;
 } StructType;
 
@@ -130,7 +130,7 @@ typedef struct {
 	ALLOC_STRUCT(StructType, STRUCT_TYPE, __VA_ARGS__)
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 	Type *return_type;
 	Vec *param_types;
 } FuncType;
@@ -139,7 +139,7 @@ typedef struct {
 	ALLOC_STRUCT(FuncType, FUNC_TYPE, __VA_ARGS__)
 
 typedef struct {
-	TypeHeader header;
+	TypeHeader h;
 	Type *subtype;
 } ConstType, VolatileType;
 
@@ -177,11 +177,11 @@ typedef struct {
 } ExprHeader;
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 } Expr;
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	bool val;
 } BoolLitExpr;
 
@@ -189,7 +189,7 @@ typedef struct {
 	ALLOC_STRUCT(BoolLitExpr, BOOL_LIT_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	uint64_t val;
 } IntLitExpr;
 
@@ -197,7 +197,7 @@ typedef struct {
 	ALLOC_STRUCT(IntLitExpr, INT_LIT_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	double val;
 } FloatLitExpr;
 
@@ -205,7 +205,7 @@ typedef struct {
 	ALLOC_STRUCT(FloatLitExpr, FLOAT_LIT_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	uint32_t val;
 } CharLitExpr;
 
@@ -213,7 +213,7 @@ typedef struct {
 	ALLOC_STRUCT(CharLitExpr, CHAR_LIT_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	char *val;
 	unsigned len;
 } StringLitExpr;
@@ -234,7 +234,7 @@ enum unary_op {
 };
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	enum unary_op op;
 	Expr *operand;
 } UnaryOpExpr;
@@ -275,7 +275,7 @@ enum bin_op {
 };
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	enum bin_op op;
 	Expr *l, *r;
 } BinOpExpr;
@@ -284,7 +284,7 @@ typedef struct {
 	ALLOC_STRUCT(BinOpExpr, BIN_OP_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	Vec *param_names;
 	Expr *body;
 } LambdaExpr;
@@ -293,7 +293,7 @@ typedef struct {
 	ALLOC_STRUCT(LambdaExpr, LAMBDA_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	Vec *subexprs;
 } ArrayLitExpr;
 
@@ -301,7 +301,7 @@ typedef struct {
 	ALLOC_STRUCT(ArrayLitExpr, ARRAY_LIT_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	char *name;
 } IdentExpr;
 
@@ -309,7 +309,7 @@ typedef struct {
 	ALLOC_STRUCT(IdentExpr, IDENT_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	Vec *stmts;
 } BlockExpr;
 
@@ -317,7 +317,7 @@ typedef struct {
 	ALLOC_STRUCT(BlockExpr, BLOCK_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	Expr *cond, *then, *else_;
 } IfExpr;
 
@@ -325,7 +325,7 @@ typedef struct {
 	ALLOC_STRUCT(IfExpr, IF_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	Expr *ctrl;
 	Vec *cases;
 } SwitchExpr;
@@ -333,16 +333,17 @@ typedef struct {
 #define ALLOC_SWITCH_EXPR(...) \
 	ALLOC_STRUCT(SwitchExpr, SWITCH_EXPR, __VA_ARGS__)
 
+// TODO: Merge this with ArrayLitExpr?
 typedef struct {
-	ExprHeader header;
-	Vec *items;
+	ExprHeader h;
+	Vec *subexprs;
 } TupleExpr;
 
 #define ALLOC_TUPLE_EXPR(...) \
 	ALLOC_STRUCT(TupleExpr, TUPLE_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	Expr *func;
 	Vec *args;
 } FuncCallExpr;
@@ -351,7 +352,7 @@ typedef struct {
 	ALLOC_STRUCT(FuncCallExpr, FUNC_CALL_EXPR, __VA_ARGS__)
 
 typedef struct {
-	ExprHeader header;
+	ExprHeader h;
 	Expr *parent;
 	char *field;
 } FieldAccessExpr;
@@ -375,14 +376,14 @@ typedef struct {
 } SwitchPatternHeader;
 
 typedef struct {
-	SwitchPatternHeader header;
+	SwitchPatternHeader h;
 } SwitchPattern;
 
 #define UNDERSCORE_SWITCH_PATTERN(...) \
 	ALLOC_STRUCT(SwitchPattern, UNDERSCORE_SWITCH_PATTERN, __VA_ARGS__)
 
 typedef struct {
-	SwitchPatternHeader header;
+	SwitchPatternHeader h;
 	Vec *subpatterns;
 } OrSwitchPattern, ArraySwitchPattern, TupleSwitchPattern;
 
@@ -394,7 +395,7 @@ typedef struct {
 	ALLOC_STRUCT(TupleSwitchPattern, TUPLE_SWITCH_PATTERN, __VA_ARGS__)
 
 typedef struct {
-	SwitchPatternHeader header;
+	SwitchPatternHeader h;
 	Expr *expr;
 } ExprSwitchPattern;
 
@@ -425,11 +426,11 @@ typedef struct {
 } DeclHeader;
 
 typedef struct {
-	DeclHeader header;
+	DeclHeader h;
 } Decl;
 
 typedef struct {
-	DeclHeader header;
+	DeclHeader h;
 	bool is_let;
 	struct type *type;
 	char *name;
@@ -440,7 +441,7 @@ typedef struct {
 	ALLOC_STRUCT(DataDecl, DATA_DECL, __VA_ARGS__)
 
 typedef struct {
-	DeclHeader header;
+	DeclHeader h;
 	char *name;
 	Vec *params;
 	struct type *type;
@@ -450,7 +451,7 @@ typedef struct {
 	ALLOC_STRUCT(TypedefDecl, TYPEDEF_DECL, __VA_ARGS__)
 
 typedef struct {
-	DeclHeader header;
+	DeclHeader h;
 	struct type *type;
 	char *name;
 	Vec *param_names;
@@ -477,11 +478,11 @@ typedef struct {
 } StmtHeader;
 
 typedef struct {
-	StmtHeader header;
+	StmtHeader h;
 } Stmt;
 
 typedef struct {
-	StmtHeader header;
+	StmtHeader h;
 	struct decl *decl;
 } DeclStmt;
 
@@ -489,7 +490,7 @@ typedef struct {
 	ALLOC_STRUCT(DeclStmt, DECL_STMT, __VA_ARGS__)
 
 typedef struct {
-	StmtHeader header;
+	StmtHeader h;
 	Expr *expr;
 } ExprStmt;
 
@@ -497,7 +498,7 @@ typedef struct {
 	ALLOC_STRUCT(ExprStmt, EXPR_STMT, __VA_ARGS__)
 
 typedef struct {
-	StmtHeader header;
+	StmtHeader h;
 	Expr *cond;
 	Vec *then_stmts, *else_stmts;
 } IfStmt;
@@ -506,7 +507,7 @@ typedef struct {
 	ALLOC_STRUCT(IfStmt, IF_STMT, __VA_ARGS__)
 
 typedef struct {
-	StmtHeader header;
+	StmtHeader h;
 	Vec *stmts;
 	Expr *cond;
 } DoStmt;
@@ -515,7 +516,7 @@ typedef struct {
 	ALLOC_STRUCT(DoStmt, DO_STMT, __VA_ARGS__)
 
 typedef struct {
-	StmtHeader header;
+	StmtHeader h;
 	Expr *cond;
 	Vec *stmts;
 } WhileStmt;
@@ -524,7 +525,7 @@ typedef struct {
 	ALLOC_STRUCT(WhileStmt, WHILE_STMT, __VA_ARGS__)
 
 typedef struct {
-	StmtHeader header;
+	StmtHeader h;
 	Expr *init, *cond, *post;
 	Vec *stmts;
 } ForStmt;
@@ -533,7 +534,7 @@ typedef struct {
 	ALLOC_STRUCT(ForStmt, FOR_STMT, __VA_ARGS__)
 
 typedef struct {
-	StmtHeader header;
+	StmtHeader h;
 	Expr *expr; // NULL if returning void
 } ReturnStmt;
 
