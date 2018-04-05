@@ -19,6 +19,7 @@ PRINTF(2, 3) void warn(unsigned lineno, const char *fmt, ...)
 {
 	va_list ap;
 
+	assert(lineno != NO_LINENO);
 	fprintf(stderr, "%s:%u: warning: ", get_filename(), lineno);
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
@@ -30,6 +31,7 @@ NORETURN PRINTF(2, 3) void fatal_error(unsigned lineno, const char *fmt, ...)
 {
 	va_list ap;
 
+	assert(lineno != NO_LINENO);
 	fprintf(stderr, "%s:%u: error: ", get_filename(), lineno);
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
