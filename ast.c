@@ -1,4 +1,8 @@
 // Functions for freeing and duplicating AST nodes
+/*
+ * TODO: Change vectors to not store function pointers, which would allow more
+ * of these functions to be `static`
+ */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -13,24 +17,82 @@
  * `alloc_vec()` and `dup_vec()`.
  */
 
+#if 0
+// TODO: Unneeded?
 static void *void_strdup(void *p)
 {
 	return xstrdup(p);
 }
+#endif
+
+static Vec *dup_types(Vec *types)
+{
+	return dup_vec(types, dup_type);
+}
 
 static AliasType *dup_alias_type(AliasType *alias_type)
 {
-	return ALLOC_ALIAS_TYPE(xstrdup(alias_type->name));
+	return ALLOC_ALIAS_TYPE(alias_type->header.lineno,
+			xstrdup(alias_type->name));
 }
 
 static ParamType *dup_param_type(ParamType *param_type)
 {
-	return ALLOC_ALIAS_TYPE(xstrdup(param_type->name), dup_vec(param_type->params));
+	return ALLOC_PARAM_TYPE(param_type->header.lineno,
+			xstrdup(param_type->name),
+			dup_types(param_type->params));
 }
 
 static ArrayType *dup_array_type(ArrayType *array_type)
 {
-	return ALLOC_ARRAY_TYPE(dup_type(array_type->item_type), array_type->params);
+	return ALLOC_ARRAY_TYPE(array_type->header.lineno,
+			dup_type(array_type->item_type), array_type->len);
+}
+
+static PointerType *dup_pointer_type(PointerType *pointer_type)
+{
+	return ALLOC_POINTER_TYPE(pointer_type->header.lineno,
+			dup_type(pointer_type->pointee_type));
+}
+
+static TupleType *dup_tuple_type(TupleType *tuple_type)
+{
+	return ALLOC_TUPLE_TYPE(tuple_type->header.lineno,
+			dup_types(tuple_type->member_types));
+}
+
+static void *dup_struct_member_type(void *p)
+{
+	StructMemberType *struct_member_type = p;
+
+	return ALLOC_STRUCT_MEMBER_TYPE(dup_type(struct_member_type->type),
+			xstrdup(struct_member_type->name));
+}
+
+static StructType *dup_struct_type(StructType *struct_type)
+{
+	return ALLOC_STRUCT_TYPE(struct_type->header.lineno,
+			dup_vec(struct_type->member_types,
+				dup_struct_member_type));
+}
+
+static FuncType *dup_func_type(FuncType *func_type)
+{
+	return ALLOC_FUNC_TYPE(func_type->header.lineno,
+			dup_type(func_type->return_type),
+			dup_types(func_type->param_types));
+}
+
+static ConstType *dup_const_type(ConstType *const_type)
+{
+	return ALLOC_CONST_TYPE(const_type->header.lineno,
+			dup_type(const_type->subtype));
+}
+
+static VolatileType *dup_volatile_type(VolatileType *volatile_type)
+{
+	return ALLOC_VOLATILE_TYPE(volatile_type->header.lineno,
+			dup_type(volatile_type->subtype));
 }
 
 void *dup_type(void *p)
@@ -39,33 +101,33 @@ void *dup_type(void *p)
 
 	switch(type->header.kind) {
 	case UNSIZED_INT_TYPE:
-		return ALLOC_UNSIZED_INT_TYPE(type->lineno);
+		return ALLOC_UNSIZED_INT_TYPE(type->header.lineno);
 	case U8_TYPE:
-		return ALLOC_U8_TYPE(type->lineno);
+		return ALLOC_U8_TYPE(type->header.lineno);
 	case U16_TYPE:
-		return ALLOC_U16_TYPE(type->lineno);
+		return ALLOC_U16_TYPE(type->header.lineno);
 	case U32_TYPE:
-		return ALLOC_U32_TYPE(type->lineno);
+		return ALLOC_U32_TYPE(type->header.lineno);
 	case U64_TYPE:
-		return ALLOC_U64_TYPE(type->lineno);
+		return ALLOC_U64_TYPE(type->header.lineno);
 	case I8_TYPE:
-		return ALLOC_I8_TYPE(type->lineno);
+		return ALLOC_I8_TYPE(type->header.lineno);
 	case I16_TYPE:
-		return ALLOC_I16_TYPE(type->lineno);
+		return ALLOC_I16_TYPE(type->header.lineno);
 	case I32_TYPE:
-		return ALLOC_I32_TYPE(type->lineno);
+		return ALLOC_I32_TYPE(type->header.lineno);
 	case I64_TYPE:
-		return ALLOC_I64_TYPE(type->lineno);
+		return ALLOC_I64_TYPE(type->header.lineno);
 	case F32_TYPE:
-		return ALLOC_F32_TYPE(type->lineno);
+		return ALLOC_F32_TYPE(type->header.lineno);
 	case F64_TYPE:
-		return ALLOC_F64_TYPE(type->lineno);
+		return ALLOC_F64_TYPE(type->header.lineno);
 	case BOOL_TYPE:
-		return ALLOC_BOOL_TYPE(type->lineno);
+		return ALLOC_BOOL_TYPE(type->header.lineno);
 	case VOID_TYPE:
-		return ALLOC_VOID_TYPE(type->lineno);
+		return ALLOC_VOID_TYPE(type->header.lineno);
 	case CHAR_TYPE:
-		return ALLOC_CHAR_TYPE(type->lineno);
+		return ALLOC_CHAR_TYPE(type->header.lineno);
 	case ALIAS_TYPE:
 		return dup_alias_type((AliasType *) type);
 	case PARAM_TYPE:
@@ -90,12 +152,12 @@ void *dup_type(void *p)
 
 void free_type(void *p)
 {
-	struct type *type = p;
+	Type *type = p;
 
 	if (type == NULL) {
 		return;
 	}
-	switch (type->kind) {
+	switch (type->header.kind) {
 	case UNSIZED_INT_TYPE:
 	case U8_TYPE:
 	case U16_TYPE:
@@ -111,130 +173,182 @@ void free_type(void *p)
 	case VOID_TYPE:
 	case CHAR_TYPE:
 		break;
-	case ALIAS_TYPE:
-		free(type->u.alias.name);
+	case ALIAS_TYPE: {
+		AliasType *alias_type = (AliasType *) type;
+		free(alias_type->name);
 		break;
-	case PARAM_TYPE:
-		free(type->u.param.name);
-		free_vec(type->u.param.params);
+	}
+	case PARAM_TYPE: {
+		ParamType *param_type = (ParamType *) type;
+		free(param_type->name);
+		free_vec(param_type->params);
 		break;
-	case ARRAY_TYPE:
-		free_type(type->u.array.l);
+	}
+	case ARRAY_TYPE: {
+		ArrayType *array_type = (ArrayType *) type;
+		free_type(array_type->item_type);
 		break;
-	case POINTER_TYPE:
-		free_type(type->u.pointer.l);
+	}
+	case POINTER_TYPE: {
+		PointerType *pointer_type = (PointerType *) type;
+		free_type(pointer_type->pointee_type);
 		break;
-	case TUPLE_TYPE:
-		free_vec(type->u.tuple.types);
+	}
+	case TUPLE_TYPE: {
+		TupleType *tuple_type = (TupleType *) type;
+		free_vec(tuple_type->member_types);
 		break;
-	case STRUCT_TYPE:
-		free_vec(type->u.struct_.types);
-		free_vec(type->u.struct_.names);
+	}
+	case STRUCT_TYPE: {
+		StructType *struct_type = (StructType *) type;
+		free_vec(struct_type->member_types);
 		break;
-	case FUNC_TYPE:
-		free_type(type->u.func.ret);
-		free_vec(type->u.func.params);
+	}
+	case FUNC_TYPE: {
+		FuncType *func_type = (FuncType *) type;
+		free_type(func_type->return_type);
+		free_vec(func_type->param_types);
 		break;
-	case CONST_TYPE:
-		free_type(type->u.const_.type);
+	}
+	case CONST_TYPE: {
+		ConstType *const_type = (ConstType *) type;
+		free_type(const_type->subtype);
 		break;
-	case VOLATILE_TYPE:
-		free_type(type->u.volatile_.type);
+	}
+	case VOLATILE_TYPE: {
+		VolatileType *volatile_type = (VolatileType *) type;
+		free_type(volatile_type->subtype);
 		break;
+	}
 	}
 	free(type);
 }
 
 void free_expr(void *p)
 {
-	struct expr *expr = p;
+	Expr *expr = p;
 
 	if (expr == NULL) {
 		return;
 	}
-	switch (expr->kind) {
+	switch (expr->header.kind) {
 	case BOOL_LIT_EXPR:
 	case INT_LIT_EXPR:
 	case FLOAT_LIT_EXPR:
 	case CHAR_LIT_EXPR:
 		break;
-	case STRING_LIT_EXPR:
-		free(expr->u.string_lit.val);
-		break;
-	case UNARY_OP_EXPR:
-		free_expr(expr->u.unary_op.operand);
-		break;
-	case BIN_OP_EXPR:
-		free_expr(expr->u.bin_op.l);
-		free_expr(expr->u.bin_op.r);
-		break;
-	case LAMBDA_EXPR:
-		free_vec(expr->u.lambda.params);
-		free_expr(expr->u.lambda.body);
-		break;
-	case ARRAY_LIT_EXPR:
-		free_vec(expr->u.array_lit.val);
-		break;
-	case IDENT_EXPR:
-		free(expr->u.ident.name);
-		break;
-	case BLOCK_EXPR:
-		free_vec(expr->u.block.stmts);
-		break;
-	case IF_EXPR:
-		free_expr(expr->u.if_.cond);
-		free_expr(expr->u.if_.then);
-		free_expr(expr->u.if_.else_);
-		break;
-	case SWITCH_EXPR:
-		free_expr(expr->u.switch_.ctrl);
-		free_vec(expr->u.switch_.cases);
-		break;
-	case TUPLE_EXPR:
-		free_vec(expr->u.tuple.items);
-		break;
-	case FUNC_CALL_EXPR:
-		free_expr(expr->u.func_call.func);
-		free_vec(expr->u.func_call.args);
-		break;
-	case FIELD_ACCESS_EXPR:
-		free_expr(expr->u.field_access.expr);
-		free(expr->u.field_access.field);
+	case STRING_LIT_EXPR: {
+		StringLitExpr *string_lit_expr = (StringLitExpr *) expr;
+		free(string_lit_expr->val);
 		break;
 	}
-	free_type(expr->type); // TODO: Is this safe?
+	case UNARY_OP_EXPR: {
+		UnaryOpExpr *unary_op_expr = (UnaryOpExpr *) expr;
+		free_expr(unary_op_expr->operand);
+		break;
+	}
+	case BIN_OP_EXPR: {
+		BinOpExpr *bin_op_expr = (BinOpExpr *) expr;
+		free_expr(bin_op_expr->l);
+		free_expr(bin_op_expr->r);
+		break;
+	}
+	case LAMBDA_EXPR: {
+		LambdaExpr *lambda_expr = (LambdaExpr *) expr;
+		free_vec(lambda_expr->param_names);
+		free_expr(lambda_expr->body);
+		break;
+	}
+	case ARRAY_LIT_EXPR: {
+		ArrayLitExpr *array_lit_expr = (ArrayLitExpr *) expr;
+		free_vec(array_lit_expr->subexprs);
+		break;
+	}
+	case IDENT_EXPR: {
+		IdentExpr *ident_expr = (IdentExpr *) expr;
+		free(ident_expr->name);
+		break;
+	}
+	case BLOCK_EXPR: {
+		BlockExpr *block_expr = (BlockExpr *) expr;
+		free_vec(block_expr->stmts);
+		break;
+	}
+	case IF_EXPR: {
+		IfExpr *if_expr = (IfExpr *) expr;
+		free_expr(if_expr->cond);
+		free_expr(if_expr->then);
+		free_expr(if_expr->else_);
+		break;
+	}
+	case SWITCH_EXPR: {
+		SwitchExpr *switch_expr = (SwitchExpr *) expr;
+		free_expr(switch_expr->ctrl);
+		free_vec(switch_expr->cases);
+		break;
+	}
+	case TUPLE_EXPR: {
+		TupleExpr *tuple_expr = (TupleExpr *) expr;
+		free_vec(tuple_expr->items);
+		break;
+	}
+	case FUNC_CALL_EXPR: {
+		FuncCallExpr *func_call_expr = (FuncCallExpr *) expr;
+		free_expr(func_call_expr->func);
+		free_vec(func_call_expr->args);
+		break;
+	}
+	case FIELD_ACCESS_EXPR: {
+		FieldAccessExpr *field_access_expr = (FieldAccessExpr *) expr;
+		free_expr(field_access_expr->parent);
+		free(field_access_expr->field);
+		break;
+	}
+	}
+	free_type(expr->header.type); // TODO: Is this safe?
 	free(expr);
 }
 
 void free_switch_pattern(void *p)
 {
-	struct switch_pattern *sp = p;
+	SwitchPattern *sp = p;
 
 	if (sp == NULL) {
 		return;
 	}
-	switch (sp->kind) {
+	switch (sp->header.kind) {
 	case UNDERSCORE_SWITCH_PATTERN:
 		break;
-	case OR_SWITCH_PATTERN:
-		free_vec(sp->u.or.patterns);
+	case OR_SWITCH_PATTERN: {
+		OrSwitchPattern *or_switch_pattern = (OrSwitchPattern *) sp;
+		free_vec(or_switch_pattern->subpatterns);
 		break;
-	case ARRAY_SWITCH_PATTERN:
-		free_vec(sp->u.array.patterns);
+	}
+	case ARRAY_SWITCH_PATTERN: {
+		ArraySwitchPattern *array_switch_pattern =
+			(ArraySwitchPattern *) sp;
+		free_vec(array_switch_pattern->subpatterns);
 		break;
-	case TUPLE_SWITCH_PATTERN:
-		free_vec(sp->u.tuple.patterns);
+	}
+	case TUPLE_SWITCH_PATTERN: {
+		TupleSwitchPattern *tuple_switch_pattern =
+			(TupleSwitchPattern *) sp;
+		free_vec(tuple_switch_pattern->subpatterns);
 		break;
-	case EXPR_SWITCH_PATTERN:
-		free_expr(sp->u.expr.expr);
+	}
+	case EXPR_SWITCH_PATTERN: {
+		ExprSwitchPattern *expr_switch_pattern =
+			(ExprSwitchPattern *) sp;
+		free_expr(expr_switch_pattern->expr);
 		break;
+	}
 	}
 	free(sp);
 }
 
 void free_switch_case(void *p)
 {
-	struct switch_case *sc = p;
+	SwitchCase *sc = p;
 
 	if (sc == NULL) {
 		return;
@@ -246,73 +360,93 @@ void free_switch_case(void *p)
 
 void free_decl(void *p)
 {
-	struct decl *decl = p;
+	Decl *decl = p;
 
 	if (decl == NULL) {
 		return;
 	}
-	switch (decl->kind) {
-	case DATA_DECL:
-		free_type(decl->u.data.type);
-		free(decl->u.data.name);
-		free_expr(decl->u.data.init);
+	switch (decl->header.kind) {
+	case DATA_DECL: {
+		DataDecl *data_decl = (DataDecl *) decl;
+		free_type(data_decl->type);
+		free(data_decl->name);
+		free_expr(data_decl->init);
 		break;
-	case TYPEDEF_DECL:
-		free(decl->u.typedef_.name);
-		free_vec(decl->u.typedef_.params);
-		free_type(decl->u.typedef_.type);
+	}
+	case TYPEDEF_DECL: {
+		TypedefDecl *typedef_decl = (TypedefDecl *) decl;
+		free(typedef_decl->name);
+		free_vec(typedef_decl->params);
+		free_type(typedef_decl->type);
 		break;
-	case FUNC_DECL:
-		free_type(decl->u.func.type);
-		free(decl->u.func.name);
-		free_vec(decl->u.func.param_names);
-		free_vec(decl->u.func.body_stmts);
+	}
+	case FUNC_DECL: {
+		FuncDecl *func_decl = (FuncDecl *) decl;
+		free_type(func_decl->type);
+		free(func_decl->name);
+		free_vec(func_decl->param_names);
+		free_vec(func_decl->body_stmts);
 		break;
+	}
 	}
 	free(decl);
 }
 
 void free_stmt(void *p)
 {
-	struct stmt *stmt = p;
+	Stmt *stmt = p;
 
 	if (stmt == NULL) {
 		return;
 	}
-	switch (stmt->kind) {
-	case DECL_STMT:
-		free_decl(stmt->u.decl.decl);
+	switch (stmt->header.kind) {
+	case DECL_STMT: {
+		DeclStmt *decl_stmt = (DeclStmt *) stmt;
+		free_decl(decl_stmt->decl);
 		break;
-	case EXPR_STMT:
-		free_expr(stmt->u.expr.expr);
+	}
+	case EXPR_STMT: {
+		ExprStmt *expr_stmt = (ExprStmt *) stmt;
+		free_expr(expr_stmt->expr);
 		break;
-	case IF_STMT:
-		free_expr(stmt->u.if_.cond);
-		free_vec(stmt->u.if_.then_stmts);
-		free_vec(stmt->u.if_.else_stmts);
+	}
+	case IF_STMT: {
+		IfStmt *if_stmt = (IfStmt *) stmt;
+		free_expr(if_stmt->cond);
+		free_vec(if_stmt->then_stmts);
+		free_vec(if_stmt->else_stmts);
 		break;
-	case DO_STMT:
-		free_vec(stmt->u.do_.stmts);
-		free_expr(stmt->u.do_.cond);
+	}
+	case DO_STMT: {
+		DoStmt *do_stmt = (DoStmt *) stmt;
+		free_vec(do_stmt->stmts);
+		free_expr(do_stmt->cond);
 		break;
-	case WHILE_STMT:
-		free_vec(stmt->u.while_.stmts);
-		free_expr(stmt->u.while_.cond);
+	}
+	case WHILE_STMT: {
+		WhileStmt *while_stmt = (WhileStmt *) stmt;
+		free_expr(while_stmt->cond);
+		free_vec(while_stmt->stmts);
 		break;
-	case FOR_STMT:
-		free_expr(stmt->u.for_.init);
-		free_expr(stmt->u.for_.cond);
-		free_expr(stmt->u.for_.post);
-		free_vec(stmt->u.for_.stmts);
+	}
+	case FOR_STMT: {
+		ForStmt *for_stmt = (ForStmt *) stmt;
+		free_expr(for_stmt->init);
+		free_expr(for_stmt->cond);
+		free_expr(for_stmt->post);
+		free_vec(for_stmt->stmts);
 		break;
-	case RETURN_STMT:
-		free_expr(stmt->u.return_.expr);
+	}
+	case RETURN_STMT: {
+		ReturnStmt *return_stmt = (ReturnStmt *) stmt;
+		free_expr(return_stmt->expr);
 		break;
+	}
 	}
 	free(stmt);
 }
 
-void free_ast(struct ast ast)
+void free_ast(Ast ast)
 {
 	free_vec(ast.decls);
 }

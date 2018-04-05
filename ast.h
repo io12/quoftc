@@ -4,7 +4,7 @@
 #define ALLOC_STRUCT(type, ...)             \
 	((type *)                           \
 	 	memcpy(NEW(type), &(type){  \
-			__VA_ARGS__,        \
+			__VA_ARGS__         \
 		}, sizeof(type)))
 
 enum type_kind {
@@ -76,7 +76,7 @@ typedef struct {
 	char *name;
 } AliasType;
 
-#define ALIAS_TYPE(...) \
+#define ALLOC_ALIAS_TYPE(...) \
 	ALLOC_STRUCT(AliasType, ALIAS_TYPE, __VA_ARGS__)
 
 typedef struct {
@@ -85,7 +85,7 @@ typedef struct {
 	Vec *params;
 } ParamType;
 
-#define PARAM_TYPE(...) \
+#define ALLOC_PARAM_TYPE(...) \
 	ALLOC_STRUCT(ParamType, PARAM_TYPE, __VA_ARGS__)
 
 typedef struct {
@@ -94,7 +94,7 @@ typedef struct {
 	unsigned len; // Zero if unspecified
 } ArrayType;
 
-#define ARRAY_TYPE(...) \
+#define ALLOC_ARRAY_TYPE(...) \
 	ALLOC_STRUCT(ArrayType, ARRAY_TYPE, __VA_ARGS__)
 
 typedef struct {
@@ -102,7 +102,7 @@ typedef struct {
 	Type *pointee_type;
 } PointerType;
 
-#define POINTER_TYPE(...) \
+#define ALLOC_POINTER_TYPE(...) \
 	ALLOC_STRUCT(PointerType, POINTER_TYPE, __VA_ARGS__)
 
 typedef struct {
@@ -110,7 +110,7 @@ typedef struct {
 	Vec *member_types;
 } TupleType;
 
-#define TUPLE_TYPE(...) \
+#define ALLOC_TUPLE_TYPE(...) \
 	ALLOC_STRUCT(TupleType, TUPLE_TYPE, __VA_ARGS__)
 
 typedef struct {
@@ -118,7 +118,7 @@ typedef struct {
 	char *name;
 } StructMemberType;
 
-#define STRUCT_MEMBER_TYPE(...) \
+#define ALLOC_STRUCT_MEMBER_TYPE(...) \
 	ALLOC_STRUCT(StructMemberType, __VA_ARGS__)
 
 typedef struct {
@@ -126,7 +126,7 @@ typedef struct {
 	Vec *member_types;
 } StructType;
 
-#define STRUCT_TYPE(...) \
+#define ALLOC_STRUCT_TYPE(...) \
 	ALLOC_STRUCT(StructType, STRUCT_TYPE, __VA_ARGS__)
 
 typedef struct {
@@ -135,23 +135,17 @@ typedef struct {
 	Vec *param_types;
 } FuncType;
 
-#define FUNC_TYPE(...) \
+#define ALLOC_FUNC_TYPE(...) \
 	ALLOC_STRUCT(FuncType, FUNC_TYPE, __VA_ARGS__)
 
 typedef struct {
 	TypeHeader header;
 	Type *subtype;
-} ConstType;
+} ConstType, VolatileType;
 
-#define CONST_TYPE(...) \
+#define ALLOC_CONST_TYPE(...) \
 	ALLOC_STRUCT(ConstType, CONST_TYPE, __VA_ARGS__)
-
-typedef struct {
-	TypeHeader header;
-	Type *subtype;
-} VolatileType;
-
-#define VOLATILE_TYPE(...) \
+#define ALLOC_VOLATILE_TYPE(...) \
 	ALLOC_STRUCT(VolatileType, VOLATILE_TYPE, __VA_ARGS__)
 
 void *dup_type(void *);
@@ -181,6 +175,10 @@ typedef struct {
 	enum expr_kind kind;
 	unsigned lineno;
 } ExprHeader;
+
+typedef struct {
+	ExprHeader header;
+} Expr;
 
 typedef struct {
 	ExprHeader header;
@@ -287,7 +285,7 @@ typedef struct {
 
 typedef struct {
 	ExprHeader header;
-	Vec *param_types;
+	Vec *param_names;
 	Expr *body;
 } LambdaExpr;
 
@@ -354,7 +352,7 @@ typedef struct {
 
 typedef struct {
 	ExprHeader header;
-	Expr *expr;
+	Expr *parent;
 	char *field;
 } FieldAccessExpr;
 
@@ -363,42 +361,53 @@ typedef struct {
 
 void free_expr(void *);
 
-// TODO: Change this
+enum switch_pattern_kind {
+	UNDERSCORE_SWITCH_PATTERN,
+	OR_SWITCH_PATTERN,
+	ARRAY_SWITCH_PATTERN,
+	TUPLE_SWITCH_PATTERN,
+	EXPR_SWITCH_PATTERN
+};
+
 typedef struct {
+	enum switch_pattern_kind kind;
 	unsigned lineno;
-	enum {
-		UNDERSCORE_SWITCH_PATTERN, OR_SWITCH_PATTERN,
-		ARRAY_SWITCH_PATTERN, TUPLE_SWITCH_PATTERN, EXPR_SWITCH_PATTERN
-	} kind;
-	union {
-		struct {
-			Vec *patterns;
-		} or, array, tuple;
-		struct {
-			Expr *expr;
-		} expr;
-	} u;
+} SwitchPatternHeader;
+
+typedef struct {
+	SwitchPatternHeader header;
 } SwitchPattern;
 
-#define ALLOC_UNDERSCORE_SWITCH_PATTERN(lineno) \
-	ALLOC_UNION_KIND_ONLY(switch_pattern, UNDERSCORE_SWITCH_PATTERN, lineno)
+#define UNDERSCORE_SWITCH_PATTERN(...) \
+	ALLOC_STRUCT(SwitchPattern, UNDERSCORE_SWITCH_PATTERN, __VA_ARGS__)
+
+typedef struct {
+	SwitchPatternHeader header;
+	Vec *subpatterns;
+} OrSwitchPattern, ArraySwitchPattern, TupleSwitchPattern;
+
 #define ALLOC_OR_SWITCH_PATTERN(...) \
-	ALLOC_UNION(switch_pattern, OR_SWITCH_PATTERN, or, __VA_ARGS__)
+	ALLOC_STRUCT(OrSwitchPattern, OR_SWITCH_PATTERN, __VA_ARGS__)
 #define ALLOC_ARRAY_SWITCH_PATTERN(...) \
-	ALLOC_UNION(switch_pattern, ARRAY_SWITCH_PATTERN, array, __VA_ARGS__)
+	ALLOC_STRUCT(ArraySwitchPattern, ARRAY_SWITCH_PATTERN, __VA_ARGS__)
 #define ALLOC_TUPLE_SWITCH_PATTERN(...) \
-	ALLOC_UNION(switch_pattern, TUPLE_SWITCH_PATTERN, tuple, __VA_ARGS__)
+	ALLOC_STRUCT(TupleSwitchPattern, TUPLE_SWITCH_PATTERN, __VA_ARGS__)
+
+typedef struct {
+	SwitchPatternHeader header;
+	Expr *expr;
+} ExprSwitchPattern;
+
 #define ALLOC_EXPR_SWITCH_PATTERN(...) \
-	ALLOC_UNION(switch_pattern, EXPR_SWITCH_PATTERN, expr, __VA_ARGS__)
+	ALLOC_STRUCT(ExprSwitchPattern, EXPR_SWITCH_PATTERN, __VA_ARGS__)
 
 void free_switch_pattern(void *);
 
-typedef struct switch_case SwitchCase;
-struct switch_case {
+typedef struct {
 	unsigned lineno;
 	struct switch_pattern *l;
 	Expr *r;
-};
+} SwitchCase;
 
 #define ALLOC_SWITCH_CASE(...) \
 	ALLOC_STRUCT(switch_case, __VA_ARGS__)
@@ -440,7 +449,7 @@ typedef struct {
 #define ALLOC_TYPEDEF_DECL(...) \
 	ALLOC_STRUCT(TypedefDecl, TYPEDEF_DECL, __VA_ARGS__)
 
-struct {
+typedef struct {
 	DeclHeader header;
 	struct type *type;
 	char *name;
