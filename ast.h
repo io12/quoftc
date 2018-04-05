@@ -38,7 +38,7 @@ enum type_kind {
  * does not represent a part of the source file's syntax.
  */
 
-#define NO_LINENO UINT_MAX
+#define NO_LINENO (MAX_LINENO + 1)
 
 typedef struct {
 	enum type_kind kind;
@@ -229,15 +229,15 @@ typedef struct {
 	ALLOC_STRUCT(StringLitExpr, STRING_LIT_EXPR, __VA_ARGS__)
 
 enum unary_op {
-	NEG_OP,
+	NUM_NEG_OP,
 	PRE_INC_OP,
 	POST_INC_OP,
 	PRE_DEC_OP,
 	POST_DEC_OP,
 	DEREF_OP,
 	REF_OP,
-	BIT_NOT_OP,
-	LOG_NOT_OP
+	BIT_NEG_OP,
+	LOG_NEG_OP
 };
 
 typedef struct {

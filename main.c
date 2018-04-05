@@ -40,17 +40,28 @@ NORETURN PRINTF(2, 3) void fatal_error(unsigned lineno, const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
+// TODO: Merge this with `fatal_error()`?
+NORETURN PRINTF(1, 2) void no_lineno_error(const char *fmt, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, "%s: error: ", argv0);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	exit(EXIT_FAILURE);
+}
+
 NORETURN void internal_error(void)
 {
-	fprintf(stderr, "%s: Internal error\n", argv0);
-	exit(EXIT_FAILURE);
+	no_lineno_error("Internal error");
 }
 
 static void *ptr_sanitize(void *p)
 {
 	if (p == NULL) {
-		fprintf(stderr, "%s: error: %s\n", argv0, strerror(errno));
-		exit(EXIT_FAILURE);
+		no_lineno_error(strerror(errno));
 	}
 	return p;
 }

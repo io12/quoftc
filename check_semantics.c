@@ -65,13 +65,13 @@ static bool is_pure_expr(Expr *);
 
 static bool is_pure_unary_op_expr(UnaryOpExpr *expr)
 {
-	switch (unary_op_expr->op) {
-	case NEG_OP:
+	switch (expr->op) {
+	case NUM_NEG_OP:
 	case DEREF_OP:
 	case REF_OP:
-	case BIT_NOT_OP:
-	case LOG_NOT_OP:
-		return is_pure_expr(unary_op_expr->operand);
+	case BIT_NEG_OP:
+	case LOG_NEG_OP:
+		return is_pure_expr(expr->operand);
 	case PRE_INC_OP:
 	case POST_INC_OP:
 	case PRE_DEC_OP:
@@ -155,7 +155,7 @@ static bool is_pure_tuple_expr(TupleExpr *expr)
 
 static bool is_pure_expr(Expr *expr)
 {
-	switch (expr->kind) {
+	switch (expr->h.kind) {
 	case BOOL_LIT_EXPR:
 	case INT_LIT_EXPR:
 	case FLOAT_LIT_EXPR:
@@ -288,65 +288,84 @@ static void type_check(Expr *);
 
 static void type_check_num_neg_expr(UnaryOpExpr *expr)
 {
-	if (!type_is_num(expr->operand->h.type)) {
-		compat_error(expr->lineno);
+	Expr *operand = expr->operand;
+
+	type_check(operand);
+	if (!type_is_num(operand->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	if (type_is_unsigned_int(expr->operand->h.type)) {
-		compat_error(expr->lineno);
+	if (type_is_unsigned_int(operand->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->h.type = dup_type(expr->operand->h.type);
+	expr->h.type = dup_type(operand->h.type);
 }
 
 static void type_check_inc_or_dec_expr(UnaryOpExpr *expr)
 {
-	if (!is_lvalue(operand)) {
-		lvalue_error(expr->lineno);
+	Expr *operand = expr->operand;
+
+	type_check(operand);
+	if (!expr_is_lvalue(operand)) {
+		lvalue_error(expr->h.lineno);
 	}
-	if (!is_num_type(operand->type)) {
-		compat_error(expr->lineno);
+	if (!type_is_num(operand->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = dup_type(operand->type);
+	expr->h.type = dup_type(operand->h.type);
 }
 
 static void type_check_deref_expr(UnaryOpExpr *expr)
 {
+	PointerType *pointer_type;
+	Expr *operand = expr->operand;
+
 	type_check(operand);
-	if (operand->type->kind != POINTER_TYPE) {
-		compat_error(expr->lineno);
+	if (operand->h.type->h.kind != POINTER_TYPE) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = dup_type(operand->type->u.pointer.l);
+	pointer_type = (PointerType *) operand->h.type;
+	expr->h.type = dup_type(pointer_type->pointee_type);
 }
 
 static void type_check_ref_expr(UnaryOpExpr *expr)
 {
-	if (!is_lvalue(operand)) {
-		lvalue_error(expr->lineno);
+	Expr *operand = expr->operand;
+
+	type_check(operand);
+	if (!expr_is_lvalue(operand)) {
+		lvalue_error(expr->h.lineno);
 	}
-	expr->type = ALLOC_POINTER_TYPE(NO_LINENO, operand->type);
+	expr->h.type = (Type *) ALLOC_POINTER_TYPE(NO_LINENO,
+			dup_type(operand->h.type));
 }
 
 static void type_check_bit_neg_expr(UnaryOpExpr *expr)
 {
-	if (!is_unsigned_int_type(operand->type)) {
-		compat_error(expr->lineno);
+	Expr *operand = expr->operand;
+
+	type_check(operand);
+	if (!type_is_unsigned_int(operand->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = dup_type(operand->type);
+	expr->h.type = dup_type(operand->h.type);
 }
 
 static void type_check_log_neg_expr(UnaryOpExpr *expr)
 {
-	if (operand->type->kind != BOOL_TYPE) {
-		compat_error(expr->lineno);
+	Expr *operand = expr->operand;
+
+	type_check(operand);
+	if (operand->h.type->h.kind != BOOL_TYPE) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = ALLOC_BOOL_TYPE(NO_LINENO);
+	expr->h.type = (Type *) ALLOC_BOOL_TYPE(NO_LINENO);
 }
 
 static void type_check_unary_op_expr(UnaryOpExpr *expr)
 {
-	type_check(expr->operand);
 	switch (expr->op) {
 	case NUM_NEG_OP:
-		type_check_neg_expr(expr);
+		type_check_num_neg_expr(expr);
 		break;
 	case PRE_INC_OP:
 	case POST_INC_OP:
@@ -389,7 +408,7 @@ static bool types_are_compat(Type *, Type *);
 
 static bool type_vecs_are_compat(Vec *types1, Vec *types2)
 {
-	Vec *type1, *type2;
+	Type *type1, *type2;
 	size_t len, i;
 
 	if (vec_len(types1) != vec_len(types2)) {
@@ -419,14 +438,14 @@ static bool param_types_are_compat(ParamType *type1, ParamType *type2)
 
 static bool array_types_are_compat(ArrayType *type1, ArrayType *type2)
 {
-	return types_are_compat(type1->subtype, type2->subtype)
+	return types_are_compat(type1->item_type, type2->item_type)
 		&& (EITHER_EQ(type1->len, type2->len, 0)
 				|| type1->len == type2->len);
 }
 
 static bool pointer_types_are_compat(PointerType *type1, PointerType *type2)
 {
-	return types_are_compat(type1->subtype, type2->subtype);
+	return types_are_compat(type1->pointee_type, type2->pointee_type);
 }
 
 static bool tuple_types_are_compat(TupleType *type1, TupleType *type2)
@@ -447,7 +466,7 @@ static bool types_are_compat(Type *type1, Type *type2)
 	type2 = remove_const_and_volatile(type2);
 	switch (type1->h.kind) {
 	case UNSIZED_INT_TYPE:
-		return is_int_type(type2);
+		return type_is_int(type2);
 	case U8_TYPE:
 	case U16_TYPE:
 	case U32_TYPE:
@@ -498,12 +517,15 @@ static bool types_are_compat(Type *type1, Type *type2)
 	internal_error();
 }
 
+static Type *dup_stricter_type(Type *, Type *);
+
 static ArrayType *dup_stricter_array_type(ArrayType *type1, ArrayType *type2)
 {
 	Type *stricter_subtype;
 	unsigned len;
 
-	stricter_subtype = dup_stricter_type(type1->subtype, type2->subtype);
+	stricter_subtype =
+		dup_stricter_type(type1->item_type, type2->item_type);
 	if (type1->len == 0) {
 		len = type2->len;
 	} else {
@@ -517,7 +539,8 @@ static PointerType *dup_stricter_pointer_type(PointerType *type1,
 {
 	Type *stricter_subtype;
 
-	stricter_subtype = dup_stricter_type(type1->subtype, type2->subtype);
+	stricter_subtype =
+		dup_stricter_type(type1->pointee_type, type2->pointee_type);
 	return ALLOC_POINTER_TYPE(NO_LINENO, stricter_subtype);
 }
 
@@ -546,7 +569,7 @@ static Type *dup_stricter_type(Type *type1, Type *type2)
 		compat_error(type1->h.lineno);
 	}
 
-	switch (type1->kind) {
+	switch (type1->h.kind) {
 	case UNSIZED_INT_TYPE:
 		return dup_type(type2);
 	case U8_TYPE:
@@ -638,7 +661,7 @@ static bool types_are_convertible(Vec *from_types, Vec *to_types)
 
 static bool type_is_convertible(Type *from_type, Type *to_type)
 {
-	switch (to_type->kind) {
+	switch (to_type->h.kind) {
 	case UNSIZED_INT_TYPE:
 		// Only `from_type` should ever be an `UNSIZED_INT_TYPE`
 		internal_error();
@@ -758,7 +781,7 @@ static bool type_is_convertible(Type *from_type, Type *to_type)
 
 static void ensure_bool_expr(Expr *expr)
 {
-	if (expr->type->kind != BOOL_TYPE) {
+	if (expr->h.type->h.kind != BOOL_TYPE) {
 		fatal_error(expr->lineno, "Expected a boolean expression");
 	}
 }
@@ -770,13 +793,13 @@ static void type_check_bin_math_expr(BinOpExpr *expr)
 
 	type_check(l);
 	type_check(r);
-	if (!is_num_type(l->type)) {
-		compat_error(expr->lineno);
+	if (!type_is_num(l->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	if (!are_types_compat(l->type, r->type)) {
-		compat_error(expr->lineno);
+	if (!are_types_compat(l->h.type, r->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = dup_stricter_type(l->type, r->type);
+	expr->h.type = dup_stricter_type(l->h.type, r->h.type);
 }
 
 static void type_check_relational_expr(BinOpExpr *expr)
@@ -786,13 +809,13 @@ static void type_check_relational_expr(BinOpExpr *expr)
 
 	type_check(l);
 	type_check(r);
-	if (!is_num_type(l->type)) {
-		compat_error(expr->lineno);
+	if (!type_is_num(l->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	if (!are_types_compat(l->type, r->type)) {
-		compat_error(expr->lineno);
+	if (!are_types_compat(l->h.type, r->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = ALLOC_BOOL_TYPE(NO_LINENO);
+	expr->h.type = ALLOC_BOOL_TYPE(NO_LINENO);
 }
 
 static void type_check_equality_expr(BinOpExpr *expr)
@@ -802,10 +825,10 @@ static void type_check_equality_expr(BinOpExpr *expr)
 
 	type_check(l);
 	type_check(r);
-	if (!are_types_compat(l->type, r->type)) {
-		compat_error(expr->lineno);
+	if (!are_types_compat(l->h.type, r->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = ALLOC_BOOL_TYPE(NO_LINENO);
+	expr->h.type = ALLOC_BOOL_TYPE(NO_LINENO);
 }
 
 static void type_check_bin_bitwise_expr(BinOpExpr *expr)
@@ -815,10 +838,10 @@ static void type_check_bin_bitwise_expr(BinOpExpr *expr)
 
 	type_check(l);
 	type_check(r);
-	if (!is_unsigned_int_type(l->type)) {
-		compat_error(expr->lineno);
+	if (!type_is_unsigned_int(l->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = dup_stricter_type(l->type, r->type);
+	expr->h.type = dup_stricter_type(l->h.type, r->h.type);
 }
 
 static void type_check_bin_logical_expr(BinOpExpr *expr)
@@ -828,24 +851,24 @@ static void type_check_bin_logical_expr(BinOpExpr *expr)
 
 	type_check(l);
 	type_check(r);
-	if (l->type->kind != BOOL_TYPE) {
-		compat_error(expr->lineno);
+	if (l->h.type->h.kind != BOOL_TYPE) {
+		compat_error(expr->h.lineno);
 	}
-	if (!are_types_compat(l->type, r->type)) {
-		compat_error(expr->lineno);
+	if (!are_types_compat(l->h.type, r->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = ALLOC_BOOL_TYPE(NO_LINENO);
+	expr->h.type = ALLOC_BOOL_TYPE(NO_LINENO);
 }
 
 static void type_check_assign_expr_common(BinOpExpr *expr)
 {
-	if (!is_lvalue(l)) {
-		lvalue_error(expr->lineno);
+	if (!expr_is_lvalue(l)) {
+		lvalue_error(expr->h.lineno);
 	}
-	if (!are_types_compat(l->type, r->type)) {
-		compat_error(expr->lineno);
+	if (!are_types_compat(l->h.type, r->h.type)) {
+		compat_error(expr->h.lineno);
 	}
-	expr->type = ALLOC_VOID_TYPE(NO_LINENO);
+	expr->h.type = ALLOC_VOID_TYPE(NO_LINENO);
 }
 
 static void type_check_assign_expr(BinOpExpr *expr)
@@ -862,8 +885,8 @@ static void type_check_math_assign_expr(BinOpExpr *expr)
 {
 	type_check(l);
 	type_check(r);
-	if (!is_num_type(l->type)) {
-		compat_error(expr->lineno);
+	if (!type_is_num(l->h.type)) {
+		compat_error(expr->h.lineno);
 	}
 	type_check_assign_expr_common(expr);
 }
@@ -872,8 +895,8 @@ static void type_check_bitwise_assign_expr(BinOpExpr *expr)
 {
 	type_check(l);
 	type_check(r);
-	if (!is_unsigned_int_type(l->type)) {
-		compat_error(expr->lineno);
+	if (!type_is_unsigned_int(l->h.type)) {
+		compat_error(expr->h.lineno);
 	}
 	type_check_assign_expr_common(expr);
 }
@@ -969,10 +992,10 @@ static void type_check_array_lit(ArrayLitExpr *expr)
 	first_subexpr = vec_get(expr->subexprs, 0);
 	strictest_type = dup_type(first_subexpr->type);
 	for (i = 1; i < len; i++) {
-		subexpr = vec_get(items, i);
+		subexpr = vec_get(expr->subexprs, i);
 		tmp = strictest_type;
 		strictest_type =
-			dup_stricter_type(strictest_type, subexpr->type);
+			dup_stricter_type(strictest_type, subexpr->h.type);
 		free(tmp);
 	}
 	expr->type = ALLOC_ARRAY_TYPE(NO_LINENO, strictest_type, len);
@@ -1023,32 +1046,29 @@ static void type_check_if(Expr *expr)
 	ensure_bool_expr(cond);
 	type_check(then);
 	type_check(else_);
-	if (!are_types_compat(then->type, else_->type)) {
+	if (!are_types_compat(then->h.type, else_->h.type)) {
 		fatal_error(then->lineno, "Types of `then` and `else` "
 		                          "expressions are not compatible");
 	}
-	expr->type = dup_stricter_type(then->type, else_->type);
+	expr->h.type = dup_stricter_type(then->h.type, else_->h.type);
 }
 
-static void type_check_tuple(Expr *expr)
+static void type_check_tuple(TupleExpr *expr)
 {
-	Expr *item;
-	Vec *items, *types;
+	Expr *subexpr;
+	Vec *subexpr_types;
 	size_t i;
 
-	assert(expr->kind == TUPLE_EXPR);
-	items = expr->u.tuple.items;
-
-	types = alloc_vec(free_type);
-	for (i = 0; i < vec_len(items); i++) {
-		item = vec_get(items, i);
-		type_check(item);
-		vec_push(types, item->type);
+	subexpr_types = alloc_vec(free_type);
+	for (i = 0; i < vec_len(expr->subexprs); i++) {
+		subexpr = vec_get(expr->subexprs, i);
+		type_check(subexpr);
+		vec_push(subexpr_types, subexpr->h.type);
 	}
-	expr->type = ALLOC_TUPLE_TYPE(NO_LINENO, types);
+	expr->h.type = (Type *) ALLOC_TUPLE_TYPE(NO_LINENO, subexpr_types);
 }
 
-static void type_check_func_call(Expr *expr)
+static void type_check_func_call(FuncCallExpr *expr)
 {
 	Type *param_type, *return_type;
 	Expr *func, *arg;

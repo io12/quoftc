@@ -289,7 +289,7 @@ void free_expr(void *p)
 	}
 	case TUPLE_EXPR: {
 		TupleExpr *tuple_expr = (TupleExpr *) expr;
-		free_vec(tuple_expr->items);
+		free_vec(tuple_expr->subexprs);
 		break;
 	}
 	case FUNC_CALL_EXPR: {
