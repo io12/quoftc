@@ -224,6 +224,15 @@ void free_type(void *p)
 	free(type);
 }
 
+static void free_stmt_block(StmtBlock *block)
+{
+	if (block == NULL) {
+		return;
+	}
+	free_vec(block->stmts);
+	free(block);
+}
+
 void free_expr(void *p)
 {
 	Expr *expr = p;
@@ -271,7 +280,7 @@ void free_expr(void *p)
 	}
 	case BLOCK_EXPR: {
 		BlockExpr *block_expr = (BlockExpr *) expr;
-		free_vec(block_expr->stmts);
+		free_stmt_block(block_expr->block);
 		break;
 	}
 	case IF_EXPR: {
@@ -385,7 +394,7 @@ void free_decl(void *p)
 		free_type(func_decl->type);
 		free(func_decl->name);
 		free_vec(func_decl->param_names);
-		free_vec(func_decl->body_stmts);
+		free_stmt_block(func_decl->body);
 		break;
 	}
 	}
@@ -413,20 +422,20 @@ void free_stmt(void *p)
 	case IF_STMT: {
 		IfStmt *if_stmt = (IfStmt *) stmt;
 		free_expr(if_stmt->cond);
-		free_vec(if_stmt->then_stmts);
-		free_vec(if_stmt->else_stmts);
+		free_stmt_block(if_stmt->then_block);
+		free_stmt_block(if_stmt->else_block);
 		break;
 	}
 	case DO_STMT: {
 		DoStmt *do_stmt = (DoStmt *) stmt;
-		free_vec(do_stmt->stmts);
+		free_stmt_block(do_stmt->block);
 		free_expr(do_stmt->cond);
 		break;
 	}
 	case WHILE_STMT: {
 		WhileStmt *while_stmt = (WhileStmt *) stmt;
+		free_stmt_block(while_stmt->block);
 		free_expr(while_stmt->cond);
-		free_vec(while_stmt->stmts);
 		break;
 	}
 	case FOR_STMT: {
@@ -434,7 +443,7 @@ void free_stmt(void *p)
 		free_expr(for_stmt->init);
 		free_expr(for_stmt->cond);
 		free_expr(for_stmt->post);
-		free_vec(for_stmt->stmts);
+		free_stmt_block(for_stmt->block);
 		break;
 	}
 	case RETURN_STMT: {

@@ -158,6 +158,13 @@ typedef struct {
 void *dup_type(void *);
 void free_type(void *);
 
+typedef struct {
+	Vec *stmts;
+} StmtBlock;
+
+#define ALLOC_STMT_BLOCK(...) \
+	ALLOC_STRUCT(StmtBlock, __VA_ARGS__)
+
 enum expr_kind {
 	BOOL_LIT_EXPR,
 	INT_LIT_EXPR,
@@ -317,7 +324,7 @@ typedef struct {
 
 typedef struct {
 	ExprHeader h;
-	Vec *stmts;
+	StmtBlock *block;
 } BlockExpr;
 
 #define ALLOC_BLOCK_EXPR(...) \
@@ -459,10 +466,10 @@ typedef struct {
 
 typedef struct {
 	DeclHeader h;
-	struct type *type;
+	FuncType *type;
 	char *name;
 	Vec *param_names;
-	Vec *body_stmts;
+	StmtBlock *body;
 } FuncDecl;
 
 #define ALLOC_FUNC_DECL(...) \
@@ -507,7 +514,7 @@ typedef struct {
 typedef struct {
 	StmtHeader h;
 	Expr *cond;
-	Vec *then_stmts, *else_stmts;
+	StmtBlock *then_block, *else_block;
 } IfStmt;
 
 #define ALLOC_IF_STMT(...) \
@@ -515,26 +522,19 @@ typedef struct {
 
 typedef struct {
 	StmtHeader h;
-	Vec *stmts;
+	StmtBlock *block;
 	Expr *cond;
-} DoStmt;
+} DoStmt, WhileStmt;
 
 #define ALLOC_DO_STMT(...) \
 	ALLOC_STRUCT(DoStmt, DO_STMT, __VA_ARGS__)
-
-typedef struct {
-	StmtHeader h;
-	Expr *cond;
-	Vec *stmts;
-} WhileStmt;
-
 #define ALLOC_WHILE_STMT(...) \
 	ALLOC_STRUCT(WhileStmt, WHILE_STMT, __VA_ARGS__)
 
 typedef struct {
 	StmtHeader h;
 	Expr *init, *cond, *post;
-	Vec *stmts;
+	StmtBlock *block;
 } ForStmt;
 
 #define ALLOC_FOR_STMT(...) \

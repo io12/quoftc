@@ -26,7 +26,7 @@ struct symbol_info {
 };
 
 static struct symbol_table sym_tbl;
-static Type *cur_func_type;
+static FuncType *cur_func_type;
 
 static struct symbol_info *alloc_val_sym_info(bool is_let, Type *type)
 {
@@ -293,13 +293,13 @@ static void type_check_string_lit_expr(StringLitExpr *expr)
 			expr->len);
 }
 
-static void type_check(Expr *);
+static void type_check_expr(Expr *);
 
 static void type_check_num_neg_expr(UnaryOpExpr *expr)
 {
 	Expr *operand = expr->operand;
 
-	type_check(operand);
+	type_check_expr(operand);
 	if (!type_is_num(operand->h.type)) {
 		compat_error(expr->h.lineno);
 	}
@@ -313,7 +313,7 @@ static void type_check_inc_or_dec_expr(UnaryOpExpr *expr)
 {
 	Expr *operand = expr->operand;
 
-	type_check(operand);
+	type_check_expr(operand);
 	if (!expr_is_lvalue(operand)) {
 		lvalue_error(expr->h.lineno);
 	}
@@ -328,7 +328,7 @@ static void type_check_deref_expr(UnaryOpExpr *expr)
 	PointerType *pointer_type;
 	Expr *operand = expr->operand;
 
-	type_check(operand);
+	type_check_expr(operand);
 	if (operand->h.type->h.kind != POINTER_TYPE) {
 		compat_error(expr->h.lineno);
 	}
@@ -340,7 +340,7 @@ static void type_check_ref_expr(UnaryOpExpr *expr)
 {
 	Expr *operand = expr->operand;
 
-	type_check(operand);
+	type_check_expr(operand);
 	if (!expr_is_lvalue(operand)) {
 		lvalue_error(expr->h.lineno);
 	}
@@ -352,7 +352,7 @@ static void type_check_bit_neg_expr(UnaryOpExpr *expr)
 {
 	Expr *operand = expr->operand;
 
-	type_check(operand);
+	type_check_expr(operand);
 	if (!type_is_unsigned_int(operand->h.type)) {
 		compat_error(expr->h.lineno);
 	}
@@ -363,7 +363,7 @@ static void type_check_log_neg_expr(UnaryOpExpr *expr)
 {
 	Expr *operand = expr->operand;
 
-	type_check(operand);
+	type_check_expr(operand);
 	if (operand->h.type->h.kind != BOOL_TYPE) {
 		compat_error(expr->h.lineno);
 	}
@@ -683,7 +683,7 @@ static bool type_is_convertible(Type *from_type, Type *to_type)
 	case I32_TYPE:
 	case I64_TYPE:
 		return from_type->h.kind == UNSIZED_INT_TYPE
-			|| from_type->kind == to_type->kind;
+			|| from_type->h.kind == to_type->h.kind;
 	case F32_TYPE:
 	case F64_TYPE:
 	case BOOL_TYPE:
@@ -791,7 +791,7 @@ static bool type_is_convertible(Type *from_type, Type *to_type)
 static void ensure_bool_expr(Expr *expr)
 {
 	if (expr->h.type->h.kind != BOOL_TYPE) {
-		fatal_error(expr->lineno, "Expected a boolean expression");
+		fatal_error(expr->h.lineno, "Expected a boolean expression");
 	}
 }
 
@@ -800,12 +800,12 @@ static void type_check_bin_math_expr(BinOpExpr *expr)
 	Expr *l = expr->l;
 	Expr *r = expr->r;
 
-	type_check(l);
-	type_check(r);
+	type_check_expr(l);
+	type_check_expr(r);
 	if (!type_is_num(l->h.type)) {
 		compat_error(expr->h.lineno);
 	}
-	if (!are_types_compat(l->h.type, r->h.type)) {
+	if (!types_are_compat(l->h.type, r->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	expr->h.type = dup_stricter_type(l->h.type, r->h.type);
@@ -816,12 +816,12 @@ static void type_check_relational_expr(BinOpExpr *expr)
 	Expr *l = expr->l;
 	Expr *r = expr->r;
 
-	type_check(l);
-	type_check(r);
+	type_check_expr(l);
+	type_check_expr(r);
 	if (!type_is_num(l->h.type)) {
 		compat_error(expr->h.lineno);
 	}
-	if (!are_types_compat(l->h.type, r->h.type)) {
+	if (!types_are_compat(l->h.type, r->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	expr->h.type = ALLOC_BOOL_TYPE(NO_LINENO);
@@ -832,9 +832,9 @@ static void type_check_equality_expr(BinOpExpr *expr)
 	Expr *l = expr->l;
 	Expr *r = expr->r;
 
-	type_check(l);
-	type_check(r);
-	if (!are_types_compat(l->h.type, r->h.type)) {
+	type_check_expr(l);
+	type_check_expr(r);
+	if (!types_are_compat(l->h.type, r->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	expr->h.type = ALLOC_BOOL_TYPE(NO_LINENO);
@@ -845,8 +845,8 @@ static void type_check_bin_bitwise_expr(BinOpExpr *expr)
 	Expr *l = expr->l;
 	Expr *r = expr->r;
 
-	type_check(l);
-	type_check(r);
+	type_check_expr(l);
+	type_check_expr(r);
 	if (!type_is_unsigned_int(l->h.type)) {
 		compat_error(expr->h.lineno);
 	}
@@ -858,12 +858,12 @@ static void type_check_bin_logical_expr(BinOpExpr *expr)
 	Expr *l = expr->l;
 	Expr *r = expr->r;
 
-	type_check(l);
-	type_check(r);
+	type_check_expr(l);
+	type_check_expr(r);
 	if (l->h.type->h.kind != BOOL_TYPE) {
 		compat_error(expr->h.lineno);
 	}
-	if (!are_types_compat(l->h.type, r->h.type)) {
+	if (!types_are_compat(l->h.type, r->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	expr->h.type = ALLOC_BOOL_TYPE(NO_LINENO);
@@ -871,10 +871,13 @@ static void type_check_bin_logical_expr(BinOpExpr *expr)
 
 static void type_check_assign_expr_common(BinOpExpr *expr)
 {
+	Expr *l = expr->l;
+	Expr *r = expr->r;
+
 	if (!expr_is_lvalue(l)) {
 		lvalue_error(expr->h.lineno);
 	}
-	if (!are_types_compat(l->h.type, r->h.type)) {
+	if (!types_are_compat(l->h.type, r->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	expr->h.type = ALLOC_VOID_TYPE(NO_LINENO);
@@ -885,15 +888,18 @@ static void type_check_assign_expr(BinOpExpr *expr)
 	Expr *l = expr->l;
 	Expr *r = expr->r;
 
-	type_check(l);
-	type_check(r);
+	type_check_expr(l);
+	type_check_expr(r);
 	type_check_assign_expr_common(expr);
 }
 
 static void type_check_math_assign_expr(BinOpExpr *expr)
 {
-	type_check(l);
-	type_check(r);
+	Expr *l = expr->l;
+	Expr *r = expr->r;
+
+	type_check_expr(l);
+	type_check_expr(r);
 	if (!type_is_num(l->h.type)) {
 		compat_error(expr->h.lineno);
 	}
@@ -902,8 +908,11 @@ static void type_check_math_assign_expr(BinOpExpr *expr)
 
 static void type_check_bitwise_assign_expr(BinOpExpr *expr)
 {
-	type_check(l);
-	type_check(r);
+	Expr *l = expr->l;
+	Expr *r = expr->r;
+
+	type_check_expr(l);
+	type_check_expr(r);
 	if (!type_is_unsigned_int(l->h.type)) {
 		compat_error(expr->h.lineno);
 	}
@@ -961,7 +970,7 @@ static void type_check_bin_op_expr(BinOpExpr *expr)
 	}
 }
 
-static void type_check_lambda(LambdaExpr *expr)
+static void type_check_lambda_expr(LambdaExpr *expr)
 {
 #if 0
 	// TODO: This is broken
@@ -976,7 +985,7 @@ static void type_check_lambda(LambdaExpr *expr)
 	}
 	// TODO: Finish checking
 	leave_scope(sym_tbl);
-	expr->type = dup_type(type);
+	expr->h.type = dup_type(type);
 #endif
 	UNIMPLEMENTED();
 }
@@ -986,11 +995,11 @@ static void type_check_exprs(Vec *exprs)
 	size_t i;
 
 	for (i = 0; i < vec_len(exprs); i++) {
-		type_check(vec_get(exprs, i));
+		type_check_expr(vec_get(exprs, i));
 	}
 }
 
-static void type_check_array_lit(ArrayLitExpr *expr)
+static void type_check_array_lit_expr(ArrayLitExpr *expr)
 {
 	Expr *subexpr, *first_subexpr;
 	Type *strictest_type, *tmp;
@@ -999,7 +1008,7 @@ static void type_check_array_lit(ArrayLitExpr *expr)
 	type_check_exprs(expr->subexprs);
 	len = vec_len(expr->subexprs);
 	first_subexpr = vec_get(expr->subexprs, 0);
-	strictest_type = dup_type(first_subexpr->type);
+	strictest_type = dup_type(first_subexpr->h.type);
 	for (i = 1; i < len; i++) {
 		subexpr = vec_get(expr->subexprs, i);
 		tmp = strictest_type;
@@ -1007,10 +1016,11 @@ static void type_check_array_lit(ArrayLitExpr *expr)
 			dup_stricter_type(strictest_type, subexpr->h.type);
 		free(tmp);
 	}
-	expr->type = ALLOC_ARRAY_TYPE(NO_LINENO, strictest_type, len);
+	expr->h.type =
+		(Type *) ALLOC_ARRAY_TYPE(NO_LINENO, strictest_type, len);
 }
 
-static void type_check_ident(IdentExpr *expr)
+static void type_check_ident_expr(IdentExpr *expr)
 {
 	struct symbol_info *sym_info;
 
@@ -1025,44 +1035,36 @@ static void type_check_ident(IdentExpr *expr)
 				"Name `%s` is the name of a type, not a value",
 				expr->name);
 	}
-	expr->type = dup_type(sym_info->u.value.type);
+	expr->h.type = dup_type(sym_info->u.value.type);
 }
 
-static void check_compound_stmt(Vec *);
+static void check_stmt_block(StmtBlock *);
 
-static void type_check_block(Expr *expr)
+static void type_check_block_expr(BlockExpr *expr)
 {
-	Vec *stmts;
-
-	stmts = expr->u.block.stmts;
-
-	enter_new_scope(sym_tbl);
-	check_compound_stmt(stmts);
-	leave_scope(sym_tbl);
-	expr->type = ALLOC_VOID_TYPE(NO_LINENO);
+	check_stmt_block(expr->block);
+	expr->h.type = (Type *) ALLOC_VOID_TYPE(NO_LINENO);
 }
 
-static void type_check_if(Expr *expr)
+static void type_check_if_expr(IfExpr *expr)
 {
-	Expr *cond, *then, *else_;
+	Type *then_type, *else_type;
 
-	assert(expr->kind == IF_EXPR);
-	cond = expr->u.if_.cond;
-	then = expr->u.if_.then;
-	else_ = expr->u.if_.else_;
-
-	type_check(cond);
-	ensure_bool_expr(cond);
-	type_check(then);
-	type_check(else_);
-	if (!are_types_compat(then->h.type, else_->h.type)) {
-		fatal_error(then->lineno, "Types of `then` and `else` "
-		                          "expressions are not compatible");
+	type_check_expr(expr->cond);
+	ensure_bool_expr(expr->cond);
+	type_check_expr(expr->then);
+	type_check_expr(expr->else_);
+	then_type = expr->then->h.type;
+	else_type = expr->else_->h.type;
+	if (!types_are_compat(then_type, else_type)) {
+		fatal_error(expr->then->h.lineno,
+				"Types of `then` and `else` expressions are "
+				"not compatible");
 	}
-	expr->h.type = dup_stricter_type(then->h.type, else_->h.type);
+	expr->h.type = dup_stricter_type(then_type, else_type);
 }
 
-static void type_check_tuple(TupleExpr *expr)
+static void type_check_tuple_expr(TupleExpr *expr)
 {
 	Expr *subexpr;
 	Vec *subexpr_types;
@@ -1071,20 +1073,20 @@ static void type_check_tuple(TupleExpr *expr)
 	subexpr_types = alloc_vec(free_type);
 	for (i = 0; i < vec_len(expr->subexprs); i++) {
 		subexpr = vec_get(expr->subexprs, i);
-		type_check(subexpr);
+		type_check_expr(subexpr);
 		vec_push(subexpr_types, subexpr->h.type);
 	}
 	expr->h.type = (Type *) ALLOC_TUPLE_TYPE(NO_LINENO, subexpr_types);
 }
 
-static void type_check_func_call(FuncCallExpr *expr)
+static void type_check_func_call_expr(FuncCallExpr *expr)
 {
 	FuncType *func_type;
 	Type *param_type;
 	Expr *arg;
-	size_t i, len;
+	size_t i;
 
-	type_check(expr->func);
+	type_check_expr(expr->func);
 	type_check_exprs(expr->args);
 	if (expr->func->h.type->h.kind != FUNC_TYPE) {
 		fatal_error(expr->h.lineno,
@@ -1099,22 +1101,22 @@ static void type_check_func_call(FuncCallExpr *expr)
 	for (i = 0; i < vec_len(expr->args); i++) {
 		arg = vec_get(expr->args, i);
 		param_type = vec_get(func_type->param_types, i);
-		// TODO: are_types_compat() may be the wrong check (const)
-		if (!are_types_compat(arg->h.type, param_type)) {
+		// TODO: types_are_compat() may be the wrong check (const)
+		if (!types_are_compat(arg->h.type, param_type)) {
 			fatal_error(arg->h.lineno,
 					"Type of passed argument is an "
 					"unexpected type");
 		}
 	}
-	expr->type = dup_type(func_type->return_type);
+	expr->h.type = dup_type(func_type->return_type);
 }
 
-static void type_check_field_access_expr(Expr *expr)
+static void type_check_field_access_expr(FieldAccessExpr *expr)
 {
 	UNIMPLEMENTED();
 }
 
-static void type_check(Expr *expr)
+static void type_check_expr(Expr *expr)
 {
 	assert(expr->h.type == NULL); // The type should not already be checked
 	switch (expr->h.kind) {
@@ -1132,46 +1134,46 @@ static void type_check(Expr *expr)
 		expr->h.type = (Type *) ALLOC_CHAR_TYPE(NO_LINENO);
 		break;
 	case STRING_LIT_EXPR:
-		type_check_string_lit_expr(expr);
+		type_check_string_lit_expr((StringLitExpr *) expr);
 		break;
 	case UNARY_OP_EXPR:
-		type_check_unary_op_expr(expr);
+		type_check_unary_op_expr((UnaryOpExpr *) expr);
 		break;
 	case BIN_OP_EXPR:
-		type_check_bin_op_expr(expr);
+		type_check_bin_op_expr((BinOpExpr *) expr);
 		break;
 	case LAMBDA_EXPR:
-		type_check_lambda_expr(expr);
+		type_check_lambda_expr((LambdaExpr *) expr);
 		break;
 	case ARRAY_LIT_EXPR:
-		type_check_array_lit_expr(expr);
+		type_check_array_lit_expr((ArrayLitExpr *) expr);
 		break;
 	case IDENT_EXPR:
-		type_check_ident_expr(expr);
+		type_check_ident_expr((IdentExpr *) expr);
 		break;
 	case BLOCK_EXPR:
-		type_check_block_expr(expr);
+		type_check_block_expr((BlockExpr *) expr);
 		break;
 	case IF_EXPR:
-		type_check_if_expr(expr);
+		type_check_if_expr((IfExpr *) expr);
 		break;
 	case SWITCH_EXPR:
 		UNIMPLEMENTED();
 	case TUPLE_EXPR:
-		type_check_tuple_expr(expr);
+		type_check_tuple_expr((TupleExpr *) expr);
 		break;
 	case FUNC_CALL_EXPR:
-		type_check_func_call_expr(expr);
+		type_check_func_call_expr((FuncCallExpr *) expr);
 		break;
 	case FIELD_ACCESS_EXPR:
-		type_check_field_access_expr(expr);
+		type_check_field_access_expr((FieldAccessExpr *) expr);
 		break;
 	}
 }
 
 static void ensure_declarable_type(Type *type)
 {
-	switch (type->kind) {
+	switch (type->h.kind) {
 	case UNSIZED_INT_TYPE:
 		INTERNAL_ERROR(); // The parser shouldn't set this
 	case U8_TYPE:
@@ -1191,7 +1193,7 @@ static void ensure_declarable_type(Type *type)
 		fatal_error(type->lineno, "Void is not a declarable type");
 	case ALIAS_TYPE:
 	case PARAM_TYPE:
-		INTERNAL_ERROR(); // TODO: Stub
+		UNIMPLEMENTED();
 	case ARRAY_TYPE:
 		ensure_declarable_type(type->u.array.l);
 		break;
@@ -1212,7 +1214,7 @@ static void ensure_declarable_type(Type *type)
 	case FUNC_TYPE:
 	case CONST_TYPE:
 	case VOLATILE_TYPE:
-		INTERNAL_ERROR(); // TODO: Stub
+		UNIMPLEMENTED();
 	}
 }
 
@@ -1256,12 +1258,12 @@ static void check_data_decl(Decl *decl)
 		                    "initializer", name);
 	}
 	if (init != NULL) {
-		type_check(init);
+		type_check_expr(init);
 		/*
-		 * TODO: are_types_compat() is problematic here; type must
+		 * TODO: types_are_compat() is problematic here; type must
 		 * always be stricter than init->type.
 		 */
-		if (!are_types_compat(type, init->type)) {
+		if (!types_are_compat(type, init->type)) {
 			compat_error(lineno);
 		}
 	}
@@ -1270,6 +1272,7 @@ static void check_data_decl(Decl *decl)
 
 static void check_typedef_decl(Decl *decl)
 {
+#if 0
 	Type *type;
 	Vec *params;
 	char *name;
@@ -1284,103 +1287,65 @@ static void check_typedef_decl(Decl *decl)
 		// TODO: Handle type parameters
 	}
 	ensure_declarable_type(type);
+#endif
 	UNIMPLEMENTED();
 }
 
-static void check_if_stmt(Stmt *stmt)
+static void check_if_stmt(IfStmt *stmt)
 {
-	Expr *cond;
-	Vec *then_stmts, *else_stmts;
-
-	cond = stmt->u.if_.cond;
-	then_stmts = stmt->u.if_.then_stmts;
-	else_stmts = stmt->u.if_.else_stmts;
-
-	type_check(cond);
-	ensure_bool_expr(cond);
-	enter_new_scope(sym_tbl);
-	check_compound_stmt(then_stmts);
-	leave_scope(sym_tbl);
-	if (else_stmts != NULL) {
-		enter_new_scope(sym_tbl);
-		check_compound_stmt(else_stmts);
-		leave_scope(sym_tbl);
+	type_check_expr(stmt->cond);
+	ensure_bool_expr(stmt->cond);
+	check_stmt_block(stmt->then_block);
+	if (stmt->else_stmts != NULL) {
+		check_stmt_block(stmt->else_block);
 	}
 }
 
-static void check_do_stmt(Stmt *stmt)
+static void check_do_stmt(DoStmt *stmt)
 {
-	Vec *stmts;
-	Expr *cond;
-
-	stmts = stmt->u.do_.stmts;
-	cond = stmt->u.do_.cond;
-
 	enter_new_scope(sym_tbl);
-	check_compound_stmt(stmts);
-	type_check(cond);
-	ensure_bool_expr(cond);
+	check_stmts(stmt->block->stmts);
+	type_check_expr(stmt->cond);
+	ensure_bool_expr(stmt->cond);
 	leave_scope(sym_tbl);
 }
 
-static void check_while_stmt(Stmt *stmt)
+static void check_while_stmt(WhileStmt *stmt)
 {
-	Expr *cond;
-	Vec *stmts;
-
-	cond = stmt->u.while_.cond;
-	stmts = stmt->u.while_.stmts;
-
-	type_check(cond);
-	ensure_bool_expr(cond);
-	enter_new_scope(sym_tbl);
-	check_compound_stmt(stmts);
-	leave_scope(sym_tbl);
+	type_check_expr(stmt->cond);
+	ensure_bool_expr(stmt->cond);
+	check_stmt_block(stmt->block);
 }
 
-static void check_for_stmt(Stmt *stmt)
+// TODO: Ensure `init` and `post` have side effects
+static void check_for_stmt(ForStmt *stmt)
 {
-	Expr *init, *cond, *post;
-	Vec *stmts;
-
-	init = stmt->u.for_.init;
-	cond = stmt->u.for_.cond;
-	post = stmt->u.for_.post;
-	stmts = stmt->u.for_.stmts;
-
-	type_check(init);
-	// TODO: Ensure init has side effects
-	type_check(cond);
-	ensure_bool_expr(cond);
-	type_check(post);
-	// TODO: Ensure post has side effects
-	enter_new_scope(sym_tbl);
-	check_compound_stmt(stmts);
-	leave_scope(sym_tbl);
+	type_check_expr(stmt->init);
+	type_check_expr(stmt->cond);
+	ensure_bool_expr(stmt->cond);
+	type_check_expr(stmt->post);
+	type_check_stmt_block(stmt->block);
 }
 
-static void check_return_stmt(Stmt *stmt)
+static void check_return_stmt(ReturnStmt *stmt)
 {
 	Type *return_type;
 	Expr *expr;
 
-	assert(stmt->kind == RETURN_STMT);
-	expr = stmt->u.return_.expr;
-	assert(cur_func_type->kind == FUNC_TYPE);
-	return_type = cur_func_type->u.func.ret;
-	if (expr == NULL) {
-		if (return_type->kind != VOID_TYPE) {
-			fatal_error(stmt->lineno,
+	return_type = cur_func_type->return_type;
+	if (stmt->expr == NULL) {
+		if (return_type->h.kind != VOID_TYPE) {
+			fatal_error(stmt->h.lineno,
 					"Returning void in a non-void fuction");
 		}
 	} else {
-		type_check(expr);
+		type_check_expr(stmt->expr);
 		/*
-		 * TODO: are_types_compat() does not recognize that return_type
-		 * must be at least as strict as expr->type.
+		 * TODO: types_are_compat() does not recognize that return_type
+		 * must be at least as strict as expr->h.type.
 		 */
-		if (!are_types_compat(return_type, expr->type)) {
-			fatal_error(stmt->lineno,
+		if (!types_are_compat(return_type, expr->h.type)) {
+			fatal_error(stmt->h.lineno,
 					"Type of value returned is not "
 					"compatible with the function's return "
 					"type");
@@ -1392,32 +1357,32 @@ static void check_decl(Decl *);
 
 static void check_stmt(Stmt *stmt)
 {
-	switch (stmt->kind) {
+	switch (stmt->h.kind) {
 	case DECL_STMT:
-		check_decl(stmt->u.decl.decl);
+		check_decl_stmt((DeclStmt *) stmt);
 		break;
 	case EXPR_STMT:
-		type_check(stmt->u.expr.expr);
+		check_expr_stmt((ExprStmt *) stmt);
 		break;
 	case IF_STMT:
-		check_if_stmt(stmt);
+		check_if_stmt((IfStmt *) stmt);
 		break;
 	case DO_STMT:
-		check_do_stmt(stmt);
+		check_do_stmt((DoStmt *) stmt);
 		break;
 	case WHILE_STMT:
-		check_while_stmt(stmt);
+		check_while_stmt((WhileStmt *) stmt);
 		break;
 	case FOR_STMT:
-		check_for_stmt(stmt);
+		check_for_stmt((ForStmt *) stmt);
 		break;
 	case RETURN_STMT:
-		check_return_stmt(stmt);
+		check_return_stmt((ReturnStmt *) stmt);
 		break;
 	}
 }
 
-static void check_compound_stmt(Vec *stmts)
+static void check_stmts(Vec *stmts)
 {
 	size_t i;
 
@@ -1426,66 +1391,73 @@ static void check_compound_stmt(Vec *stmts)
 	}
 }
 
-static void check_func_decl(Decl *decl)
+/*
+ * This function checks a scoped statement block. Functions that need more
+ * control over scoping can call `check_stmts()` directly.
+ */
+static void check_stmt_block(StmtBlock *block)
 {
-	Type *func_type, *param_type;
-	char *func_name, *param_name;
+	enter_new_scope(sym_tbl);
+	check_stmts(block->stmts);
+	leave_scope(sym_tbl);
+}
+
+static void check_func_decl(FuncDecl *func)
+{
+	Type *param_type;
+	char *param_name;
 	Vec *param_types, *param_names;
 	Vec *body_stmts;
 	size_t i, nparams;
 
-	assert(decl->kind == FUNC_DECL);
-	func_type = decl->u.func.type;
-	func_name = decl->u.func.name;
-	param_names = decl->u.func.param_names;
-	body_stmts = decl->u.func.body_stmts;
-	assert(func_type->kind == FUNC_TYPE);
-	param_types = func_type->u.func.params;
-
-	ensure_not_declared(func_name, decl->lineno);
+	ensure_not_declared(func->name, func->h.lineno);
 	if (!is_global_scope(sym_tbl)) {
-		fatal_error(decl->lineno, "Function defined with local scope");
+		fatal_error(decl->h.lineno,
+				"Function defined with local scope");
 	}
-	insert_symbol(sym_tbl, func_name, alloc_val_sym_info(true, func_type));
-	cur_func_type = func_type;
-	enter_new_scope(sym_tbl);
+	insert_symbol(sym_tbl, func->name,
+			alloc_val_sym_info(true, func->type));
+	cur_func_type = func->type;
+	param_types = func->type->param_types;
+	param_names = func->param_names;
+	assert(vec_len(param_names) == vec_len(param_types));
 	nparams = vec_len(param_types);
+	enter_new_scope(sym_tbl);
 	for (i = 0; i < nparams; i++) {
 		param_type = vec_get(param_types, i);
 		param_name = vec_get(param_names, i);
 		insert_symbol(sym_tbl, param_name,
 				alloc_val_sym_info(true, param_type));
 	}
-	check_compound_stmt(body_stmts);
+	check_stmts(func->body->stmts);
 	leave_scope(sym_tbl);
 }
 
 // TODO: Add a maximum nest level
 static void check_decl(Decl *decl)
 {
-	switch (decl->kind) {
+	switch (decl->h.kind) {
 	case DATA_DECL:
-		check_data_decl(decl);
+		check_data_decl((DataDecl *) decl);
 		break;
 	case TYPEDEF_DECL:
-		check_typedef_decl(decl);
+		check_typedef_decl((TypedefDecl *) decl);
 		break;
 	case FUNC_DECL:
-		check_func_decl(decl);
+		check_func_decl((FuncDecl *) decl);
 		break;
 	}
 }
 
-void check_ast(Ast ast)
 // TODO: Scan all top level decls first to remove the need for prototypes
+void check_ast(Ast ast)
 {
-	Vec *decls = ast.decls;
 	size_t i;
 
 	sym_tbl = alloc_symbol_table();
 	enter_new_scope(sym_tbl); // Global scope
-	for (i = 0; i < vec_len(decls); i++) {
-		check_decl(vec_get(decls, i));
+	for (i = 0; i < vec_len(ast.decls); i++) {
+		check_decl(vec_get(ast.decls, i));
 	}
 	free_symbol_table(sym_tbl);
 }
