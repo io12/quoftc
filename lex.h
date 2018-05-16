@@ -1,6 +1,9 @@
 enum tok_kind {
-#include <tokens.inc>
+#define TOK(tok_enum, tok_str) tok_enum,
+#include "tokens.inc"
+#undef TOK
 };
+
 struct tok {
 	enum tok_kind kind;
 	unsigned lineno;
