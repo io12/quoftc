@@ -647,6 +647,7 @@ static Type *dup_stricter_type(Type *type1, Type *type2)
 	INTERNAL_ERROR();
 }
 
+#if 0
 static bool type_is_convertible(Type *, Type *);
 
 static bool types_are_convertible(Vec *from_types, Vec *to_types)
@@ -787,6 +788,7 @@ static bool type_is_convertible(Type *from_type, Type *to_type)
 	}
 	INTERNAL_ERROR();
 }
+#endif
 
 static void ensure_bool_expr(Expr *expr)
 {
@@ -1190,21 +1192,21 @@ static void ensure_declarable_type(Type *type)
 	case CHAR_TYPE:
 		break;
 	case VOID_TYPE:
-		fatal_error(type->lineno, "Void is not a declarable type");
+		fatal_error(type->h.lineno, "Void is not a declarable type");
 	case ALIAS_TYPE:
 	case PARAM_TYPE:
 		UNIMPLEMENTED();
 	case ARRAY_TYPE:
-		ensure_declarable_type(type->u.array.l);
+		ensure_declarable_type(((ArrayType *) type)->item_type);
 		break;
 	case POINTER_TYPE:
-		ensure_declarable_type(type->u.pointer.l);
+		ensure_declarable_type(((PointerType *) type)->pointee_type);
 		break;
 	case TUPLE_TYPE: {
 		Vec *types;
 		size_t i;
 
-		types = type->u.tuple.types;
+		types = ((TupleType *) type)->member_types;
 		for (i = 0; i < vec_len(types); i++) {
 			ensure_declarable_type(vec_get(types, i));
 		}
@@ -1226,51 +1228,41 @@ static void ensure_not_declared(char *name, unsigned lineno)
 	}
 }
 
-static void check_data_decl(Decl *decl)
+static void check_data_decl(DataDecl *decl)
 {
-	unsigned lineno;
-	bool is_let;
-	Type *type;
-	char *name;
-	Expr *init;
-
-	lineno = decl->lineno;
-	is_let = decl->u.data.is_let;
-	type = decl->u.data.type;
-	name = decl->u.data.name;
-	init = decl->u.data.init;
-
-	ensure_declarable_type(type);
-	ensure_not_declared(name, decl->lineno);
+	ensure_declarable_type(decl->type);
+	ensure_not_declared(decl->name, decl->h.lineno);
 	if (is_global_scope(sym_tbl)) {
-		if (init == NULL) {
-			fatal_error(lineno, "Top level declaration of `%s` "
-			                    "lacks an initializer", name);
+		if (decl->init == NULL) {
+			fatal_error(decl->h.lineno, "Top level declaration of "
+					"`%s` lacks an initializer",
+					decl->name);
 		}
-		if (!is_pure_expr(init)) {
-			fatal_error(lineno, "Top level declaration of "
+		if (!is_pure_expr(decl->init)) {
+			fatal_error(decl->h.lineno, "Top level declaration of "
 			                    "`%s` is assigned to an impure "
-			                    "expression", name);
+			                    "expression", decl->name);
 		}
 	}
-	if (is_let && init == NULL) {
-		fatal_error(lineno, "Constant declaration of `%s` lacks an "
-		                    "initializer", name);
+	if (decl->is_let && decl->init == NULL) {
+		fatal_error(decl->h.lineno, "Constant declaration of `%s` "
+				"lacks an initializer", decl->name);
 	}
-	if (init != NULL) {
-		type_check_expr(init);
+	if (decl->init != NULL) {
+		type_check_expr(decl->init);
 		/*
-		 * TODO: types_are_compat() is problematic here; type must
-		 * always be stricter than init->type.
+		 * TODO: types_are_compat() is problematic here; decl->type must
+		 * always be stricter than decl->init->h.type.
 		 */
-		if (!types_are_compat(type, init->type)) {
-			compat_error(lineno);
+		if (!types_are_compat(decl->type, decl->init->h.type)) {
+			compat_error(decl->h.lineno);
 		}
 	}
-	insert_symbol(sym_tbl, name, alloc_val_sym_info(is_let, type));
+	insert_symbol(sym_tbl, decl->name,
+			alloc_val_sym_info(decl->is_let, decl->type));
 }
 
-static void check_typedef_decl(Decl *decl)
+static void check_typedef_decl(TypedefDecl *decl)
 {
 #if 0
 	Type *type;
@@ -1291,15 +1283,27 @@ static void check_typedef_decl(Decl *decl)
 	UNIMPLEMENTED();
 }
 
+static void check_decl_stmt(DeclStmt *stmt)
+{
+	UNIMPLEMENTED();
+}
+
+static void check_expr_stmt(ExprStmt *stmt)
+{
+	UNIMPLEMENTED();
+}
+
 static void check_if_stmt(IfStmt *stmt)
 {
 	type_check_expr(stmt->cond);
 	ensure_bool_expr(stmt->cond);
 	check_stmt_block(stmt->then_block);
-	if (stmt->else_stmts != NULL) {
+	if (stmt->else_block != NULL) {
 		check_stmt_block(stmt->else_block);
 	}
 }
+
+static void check_stmts(Vec *stmts);
 
 static void check_do_stmt(DoStmt *stmt)
 {
@@ -1324,27 +1328,27 @@ static void check_for_stmt(ForStmt *stmt)
 	type_check_expr(stmt->cond);
 	ensure_bool_expr(stmt->cond);
 	type_check_expr(stmt->post);
-	type_check_stmt_block(stmt->block);
+	check_stmt_block(stmt->block);
 }
 
 static void check_return_stmt(ReturnStmt *stmt)
 {
-	Type *return_type;
-	Expr *expr;
+	Type *func_return_type;
 
-	return_type = cur_func_type->return_type;
+	func_return_type = cur_func_type->return_type;
 	if (stmt->expr == NULL) {
-		if (return_type->h.kind != VOID_TYPE) {
+		if (func_return_type->h.kind != VOID_TYPE) {
 			fatal_error(stmt->h.lineno,
 					"Returning void in a non-void fuction");
 		}
 	} else {
 		type_check_expr(stmt->expr);
 		/*
-		 * TODO: types_are_compat() does not recognize that return_type
-		 * must be at least as strict as expr->h.type.
+		 * TODO: types_are_compat() does not recognize that
+		 * func_return_type must be at least as strict as
+		 * stmt->expr->h.type.
 		 */
-		if (!types_are_compat(return_type, expr->h.type)) {
+		if (!types_are_compat(func_return_type, stmt->expr->h.type)) {
 			fatal_error(stmt->h.lineno,
 					"Type of value returned is not "
 					"compatible with the function's return "
@@ -1407,16 +1411,15 @@ static void check_func_decl(FuncDecl *func)
 	Type *param_type;
 	char *param_name;
 	Vec *param_types, *param_names;
-	Vec *body_stmts;
 	size_t i, nparams;
 
 	ensure_not_declared(func->name, func->h.lineno);
 	if (!is_global_scope(sym_tbl)) {
-		fatal_error(decl->h.lineno,
+		fatal_error(func->h.lineno,
 				"Function defined with local scope");
 	}
 	insert_symbol(sym_tbl, func->name,
-			alloc_val_sym_info(true, func->type));
+			alloc_val_sym_info(true, (Type *) func->type));
 	cur_func_type = func->type;
 	param_types = func->type->param_types;
 	param_names = func->param_names;

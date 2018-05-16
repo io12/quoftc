@@ -437,6 +437,7 @@ enum decl_kind {
 
 typedef struct {
 	enum decl_kind kind;
+	unsigned lineno;
 } DeclHeader;
 
 typedef struct {
@@ -446,7 +447,7 @@ typedef struct {
 typedef struct {
 	DeclHeader h;
 	bool is_let;
-	struct type *type;
+	Type *type;
 	char *name;
 	Expr *init;
 } DataDecl;
@@ -458,7 +459,7 @@ typedef struct {
 	DeclHeader h;
 	char *name;
 	Vec *params;
-	struct type *type;
+	Type *type;
 } TypedefDecl;
 
 #define ALLOC_TYPEDEF_DECL(...) \
@@ -489,6 +490,7 @@ enum stmt_kind {
 
 typedef struct {
 	enum stmt_kind kind;
+	unsigned lineno;
 } StmtHeader;
 
 typedef struct {
