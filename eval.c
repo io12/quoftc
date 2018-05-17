@@ -20,7 +20,7 @@ static uint64_t eval_unary_op_const_expr(struct expr *expr)
 	struct expr *operand = expr->u.unary_op.operand;
 
 	switch (op) {
-	case BIT_NOT_OP:
+	case BIT_NEG_OP:
 		return ~eval_const_expr(operand);
 	default:
 		eval_error(expr);

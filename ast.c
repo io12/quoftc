@@ -58,22 +58,21 @@ static PointerType *dup_pointer_type(PointerType *pointer_type)
 static TupleType *dup_tuple_type(TupleType *tuple_type)
 {
 	return ALLOC_TUPLE_TYPE(tuple_type->h.lineno,
-			dup_types(tuple_type->member_types));
+			dup_types(tuple_type->members));
 }
 
-static void *dup_struct_member_type(void *p)
+static void *dup_struct_member(void *p)
 {
-	StructMemberType *struct_member_type = p;
+	StructMember *struct_member = p;
 
-	return ALLOC_STRUCT_MEMBER_TYPE(dup_type(struct_member_type->type),
-			xstrdup(struct_member_type->name));
+	return ALLOC_STRUCT_MEMBER(dup_type(struct_member->type),
+			xstrdup(struct_member->name));
 }
 
 static StructType *dup_struct_type(StructType *struct_type)
 {
 	return ALLOC_STRUCT_TYPE(struct_type->h.lineno,
-			dup_vec(struct_type->member_types,
-				dup_struct_member_type));
+			dup_vec(struct_type->members, dup_struct_member));
 }
 
 static FuncType *dup_func_type(FuncType *func_type)
@@ -196,12 +195,12 @@ void free_type(void *p)
 	}
 	case TUPLE_TYPE: {
 		TupleType *tuple_type = (TupleType *) type;
-		free_vec(tuple_type->member_types);
+		free_vec(tuple_type->members);
 		break;
 	}
 	case STRUCT_TYPE: {
 		StructType *struct_type = (StructType *) type;
-		free_vec(struct_type->member_types);
+		free_vec(struct_type->members);
 		break;
 	}
 	case FUNC_TYPE: {

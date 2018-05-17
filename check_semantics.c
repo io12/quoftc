@@ -235,7 +235,7 @@ static bool expr_is_lvalue(Expr *expr)
 	INTERNAL_ERROR();
 }
 
-bool type_is_unsigned_int(Type *type)
+bool is_unsigned_int_type(Type *type)
 {
 	switch (type->h.kind) {
 	case U8_TYPE:
@@ -264,11 +264,11 @@ bool type_is_signed_int(Type *type)
 static bool type_is_int(Type *type)
 {
 	return type->h.kind == UNSIZED_INT_TYPE
-		|| type_is_unsigned_int(type)
+		|| is_unsigned_int_type(type)
 		|| type_is_signed_int(type);
 }
 
-bool type_is_float(Type *type)
+bool is_float_type(Type *type)
 {
 	switch (type->h.kind) {
 	case F32_TYPE:
@@ -281,7 +281,7 @@ bool type_is_float(Type *type)
 
 static bool type_is_num(Type *type)
 {
-	return type_is_int(type) || type_is_float(type);
+	return type_is_int(type) || is_float_type(type);
 }
 
 static void type_check_string_lit_expr(StringLitExpr *expr)
@@ -303,7 +303,7 @@ static void type_check_num_neg_expr(UnaryOpExpr *expr)
 	if (!type_is_num(operand->h.type)) {
 		compat_error(expr->h.lineno);
 	}
-	if (type_is_unsigned_int(operand->h.type)) {
+	if (is_unsigned_int_type(operand->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	expr->h.type = dup_type(operand->h.type);
@@ -353,7 +353,7 @@ static void type_check_bit_neg_expr(UnaryOpExpr *expr)
 	Expr *operand = expr->operand;
 
 	type_check_expr(operand);
-	if (!type_is_unsigned_int(operand->h.type)) {
+	if (!is_unsigned_int_type(operand->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	expr->h.type = dup_type(operand->h.type);
@@ -459,7 +459,7 @@ static bool pointer_types_are_compat(PointerType *type1, PointerType *type2)
 
 static bool tuple_types_are_compat(TupleType *type1, TupleType *type2)
 {
-	return type_vecs_are_compat(type1->member_types, type2->member_types);
+	return type_vecs_are_compat(type1->members, type2->members);
 }
 
 static bool func_types_are_compat(FuncType *type1, FuncType *type2)
@@ -560,10 +560,10 @@ static TupleType *dup_stricter_tuple_type(TupleType *type1, TupleType *type2)
 	size_t i, len;
 
 	strictest_types = alloc_vec(free_type);
-	len = vec_len(type1->member_types);
+	len = vec_len(type1->members);
 	for (i = 0; i < len; i++) {
-		member_type_1 = vec_get(type1->member_types, i);
-		member_type_2 = vec_get(type2->member_types, i);
+		member_type_1 = vec_get(type1->members, i);
+		member_type_2 = vec_get(type2->members, i);
 		stricter_member_type =
 			dup_stricter_type(member_type_1, member_type_2);
 		vec_push(strictest_types, stricter_member_type);
@@ -849,7 +849,7 @@ static void type_check_bin_bitwise_expr(BinOpExpr *expr)
 
 	type_check_expr(l);
 	type_check_expr(r);
-	if (!type_is_unsigned_int(l->h.type)) {
+	if (!is_unsigned_int_type(l->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	expr->h.type = dup_stricter_type(l->h.type, r->h.type);
@@ -915,7 +915,7 @@ static void type_check_bitwise_assign_expr(BinOpExpr *expr)
 
 	type_check_expr(l);
 	type_check_expr(r);
-	if (!type_is_unsigned_int(l->h.type)) {
+	if (!is_unsigned_int_type(l->h.type)) {
 		compat_error(expr->h.lineno);
 	}
 	type_check_assign_expr_common(expr);
@@ -1206,7 +1206,7 @@ static void ensure_declarable_type(Type *type)
 		Vec *types;
 		size_t i;
 
-		types = ((TupleType *) type)->member_types;
+		types = ((TupleType *) type)->members;
 		for (i = 0; i < vec_len(types); i++) {
 			ensure_declarable_type(vec_get(types, i));
 		}

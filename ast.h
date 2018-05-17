@@ -114,7 +114,7 @@ typedef struct {
 
 typedef struct {
 	TypeHeader h;
-	Vec *member_types;
+	Vec *members;
 } TupleType;
 
 #define ALLOC_TUPLE_TYPE(...) \
@@ -123,14 +123,14 @@ typedef struct {
 typedef struct {
 	Type *type;
 	char *name;
-} StructMemberType;
+} StructMember;
 
-#define ALLOC_STRUCT_MEMBER_TYPE(...) \
-	ALLOC_STRUCT(StructMemberType, __VA_ARGS__)
+#define ALLOC_STRUCT_MEMBER(...) \
+	ALLOC_STRUCT(StructMember, __VA_ARGS__)
 
 typedef struct {
 	TypeHeader h;
-	Vec *member_types;
+	Vec *members;
 } StructType;
 
 #define ALLOC_STRUCT_TYPE(...) \

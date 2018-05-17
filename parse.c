@@ -577,7 +577,7 @@ static struct expr *parse_unary_expr(void)
 	lineno = cur_tok.lineno;
 	switch (cur_tok.kind) {
 	case MINUS:
-		op = NEG_OP;
+		op = NUM_NEG_OP;
 		break;
 	case PLUS_PLUS:
 		op = PRE_INC_OP;
@@ -592,10 +592,10 @@ static struct expr *parse_unary_expr(void)
 		op = REF_OP;
 		break;
 	case TILDE:
-		op = BIT_NOT_OP;
+		op = BIT_NEG_OP;
 		break;
 	case BANG:
-		op = LOG_NOT_OP;
+		op = LOG_NEG_OP;
 		break;
 	default:
 		return parse_postfix_unary_expr();
