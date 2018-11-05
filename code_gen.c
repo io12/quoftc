@@ -1152,7 +1152,9 @@ static void compile_module(char *target_file, LLVMModuleRef module)
 #if 0
 	LLVMTargetDataRef data_layout;
 #endif
+#if 0
 	LLVMDumpModule(module);
+#endif
 	LLVMVerifyModule(module, LLVMAbortProcessAction, NULL);
 	LLVMInitializeAllTargetInfos();
 	LLVMInitializeAllTargets();
