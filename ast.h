@@ -313,7 +313,7 @@ struct stmt {
 	unsigned lineno;
 	enum {
 		DECL_STMT, EXPR_STMT, IF_STMT, DO_STMT,
-		WHILE_STMT, FOR_STMT, RETURN_STMT
+		WHILE_STMT, FOR_STMT, RETURN_STMT, BREAK_STMT
 	} kind;
 	union {
 		struct {
@@ -354,6 +354,8 @@ struct stmt {
 	ALLOC_UNION(stmt, FOR_STMT, for_, __VA_ARGS__)
 #define ALLOC_RETURN_STMT(...) \
 	ALLOC_UNION(stmt, RETURN_STMT, return_, __VA_ARGS__)
+#define ALLOC_BREAK_STMT(lineno) \
+	ALLOC_UNION_KIND_ONLY(stmt, BREAK_STMT, lineno)
 
 void free_stmt(void *);
 

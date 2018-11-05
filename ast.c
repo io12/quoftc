@@ -304,6 +304,8 @@ void free_stmt(void *p)
 	case RETURN_STMT:
 		free_expr(stmt->u.return_.expr);
 		break;
+	case BREAK_STMT:
+		break;
 	}
 	free(stmt);
 }

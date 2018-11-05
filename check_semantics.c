@@ -264,7 +264,7 @@ bool is_signed_int_type(struct type *type)
 	}
 }
 
-static bool is_int_type(struct type *type)
+bool is_int_type(struct type *type)
 {
 	return type->kind == UNSIZED_INT_TYPE || is_unsigned_int_type(type) ||
 		is_signed_int_type(type);
@@ -871,7 +871,7 @@ static void type_check_ident(struct expr *expr)
 	expr->type = dup_type(sym_info->u.value.type);
 }
 
-static void check_compound_stmt(Vec *);
+static void check_compound_stmt(Vec *, bool);
 
 static void type_check_block(struct expr *expr)
 {
@@ -881,7 +881,7 @@ static void type_check_block(struct expr *expr)
 	stmts = expr->u.block.stmts;
 
 	enter_new_scope(sym_tbl);
-	check_compound_stmt(stmts);
+	check_compound_stmt(stmts, false);
 	leave_scope(sym_tbl);
 	expr->type = ALLOC_VOID_TYPE(expr->lineno);
 }
@@ -1137,7 +1137,7 @@ static void check_typedef_decl(struct decl *decl)
 	internal_error(); // TODO: Stub
 }
 
-static void check_if_stmt(struct stmt *stmt)
+static void check_if_stmt(struct stmt *stmt, bool in_loop)
 {
 	struct expr *cond;
 	Vec *then_stmts, *else_stmts;
@@ -1149,11 +1149,11 @@ static void check_if_stmt(struct stmt *stmt)
 	type_check(cond);
 	ensure_bool_expr(cond);
 	enter_new_scope(sym_tbl);
-	check_compound_stmt(then_stmts);
+	check_compound_stmt(then_stmts, in_loop);
 	leave_scope(sym_tbl);
 	if (else_stmts != NULL) {
 		enter_new_scope(sym_tbl);
-		check_compound_stmt(else_stmts);
+		check_compound_stmt(else_stmts, in_loop);
 		leave_scope(sym_tbl);
 	}
 }
@@ -1167,7 +1167,7 @@ static void check_do_stmt(struct stmt *stmt)
 	cond = stmt->u.do_.cond;
 
 	enter_new_scope(sym_tbl);
-	check_compound_stmt(stmts);
+	check_compound_stmt(stmts, true);
 	type_check(cond);
 	ensure_bool_expr(cond);
 	leave_scope(sym_tbl);
@@ -1184,7 +1184,7 @@ static void check_while_stmt(struct stmt *stmt)
 	type_check(cond);
 	ensure_bool_expr(cond);
 	enter_new_scope(sym_tbl);
-	check_compound_stmt(stmts);
+	check_compound_stmt(stmts, true);
 	leave_scope(sym_tbl);
 }
 
@@ -1205,7 +1205,7 @@ static void check_for_stmt(struct stmt *stmt)
 	type_check(post);
 	// TODO: Ensure post has side effects
 	enter_new_scope(sym_tbl);
-	check_compound_stmt(stmts);
+	check_compound_stmt(stmts, true);
 	leave_scope(sym_tbl);
 }
 
@@ -1238,9 +1238,17 @@ static void check_return_stmt(struct stmt *stmt)
 	}
 }
 
+static void check_break_stmt(struct stmt *stmt, bool in_loop)
+{
+	assert(stmt->kind == BREAK_STMT);
+	if (!in_loop) {
+		fatal_error(stmt->lineno, "Break statement not used in a loop");
+	}
+}
+
 static void check_decl(struct decl *);
 
-static void check_stmt(struct stmt *stmt)
+static void check_stmt(struct stmt *stmt, bool in_loop)
 {
 	switch (stmt->kind) {
 	case DECL_STMT:
@@ -1250,7 +1258,7 @@ static void check_stmt(struct stmt *stmt)
 		type_check(stmt->u.expr.expr);
 		break;
 	case IF_STMT:
-		check_if_stmt(stmt);
+		check_if_stmt(stmt, in_loop);
 		break;
 	case DO_STMT:
 		check_do_stmt(stmt);
@@ -1264,15 +1272,18 @@ static void check_stmt(struct stmt *stmt)
 	case RETURN_STMT:
 		check_return_stmt(stmt);
 		break;
+	case BREAK_STMT:
+		check_break_stmt(stmt, in_loop);
+		break;
 	}
 }
 
-static void check_compound_stmt(Vec *stmts)
+static void check_compound_stmt(Vec *stmts, bool in_loop)
 {
 	size_t i;
 
 	for (i = 0; i < vec_len(stmts); i++) {
-		check_stmt(vec_get(stmts, i));
+		check_stmt(vec_get(stmts, i), in_loop);
 	}
 }
 
@@ -1306,7 +1317,7 @@ static void check_func_decl(struct decl *decl)
 		insert_symbol(sym_tbl, param_name,
 				alloc_val_sym_info(true, param_type));
 	}
-	check_compound_stmt(body_stmts);
+	check_compound_stmt(body_stmts, false);
 	leave_scope(sym_tbl);
 }
 
