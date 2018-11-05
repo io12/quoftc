@@ -673,7 +673,8 @@ static LLVMValueRef emit_ident_expr(LLVMBuilderRef builder, struct expr *expr)
 	}
 }
 
-static void emit_compound_stmt(LLVMBuilderRef, Vec *, LLVMBasicBlockRef);
+static void emit_compound_stmt(LLVMBuilderRef, Vec *, LLVMBasicBlockRef,
+		LLVMBasicBlockRef);
 
 static LLVMValueRef emit_block_expr(LLVMBuilderRef builder, struct expr *expr)
 {
@@ -683,7 +684,7 @@ static LLVMValueRef emit_block_expr(LLVMBuilderRef builder, struct expr *expr)
 	stmts = expr->u.block.stmts;
 
 	enter_new_scope(sym_tbl);
-	emit_compound_stmt(builder, stmts, NULL);
+	emit_compound_stmt(builder, stmts, NULL, NULL);
 	leave_scope(sym_tbl);
 	return NULL;
 }
@@ -881,7 +882,8 @@ static void maybe_emit_cond_branch(LLVMBuilderRef builder,
 }
 
 static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt,
-		LLVMBasicBlockRef after_loop_block)
+		LLVMBasicBlockRef after_loop_block,
+		LLVMBasicBlockRef cond_loop_block)
 {
 	struct expr *cond = stmt->u.if_.cond;
 	Vec *then_stmts = stmt->u.if_.then_stmts,
@@ -899,11 +901,13 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt,
 	}
 	maybe_emit_cond_branch(builder, cond_val, then_block, else_block);
 	LLVMPositionBuilderAtEnd(builder, then_block);
-	emit_compound_stmt(builder, then_stmts, after_loop_block);
+	emit_compound_stmt(builder, then_stmts, after_loop_block,
+			cond_loop_block);
 	maybe_emit_branch(builder, merge_block);
 	if (else_stmts != NULL) {
 		LLVMPositionBuilderAtEnd(builder, else_block);
-		emit_compound_stmt(builder, else_stmts, after_loop_block);
+		emit_compound_stmt(builder, else_stmts, after_loop_block,
+				cond_loop_block);
 		maybe_emit_branch(builder, merge_block);
 	}
 	LLVMPositionBuilderAtEnd(builder, merge_block);
@@ -911,7 +915,7 @@ static void emit_if_stmt(LLVMBuilderRef builder, struct stmt *stmt,
 
 static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 {
-	LLVMBasicBlockRef do_block, cont_block;
+	LLVMBasicBlockRef do_block, cond_block, cont_block;
 	LLVMValueRef cond_val;
 	struct expr *cond;
 	Vec *stmts;
@@ -920,11 +924,14 @@ static void emit_do_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	cond = stmt->u.do_.cond;
 	stmts = stmt->u.do_.stmts;
 	do_block = append_basic_block(builder, "do.start");
+	cond_block = append_basic_block(builder, "do.cond");
 	cont_block = append_basic_block(builder, "do.end");
 	maybe_emit_branch(builder, do_block);
 	LLVMPositionBuilderAtEnd(builder, do_block);
 	enter_new_scope(sym_tbl);
-	emit_compound_stmt(builder, stmts, cont_block);
+	emit_compound_stmt(builder, stmts, cont_block, cond_block);
+	maybe_emit_branch(builder, cond_block);
+	LLVMPositionBuilderAtEnd(builder, cond_block);
 	cond_val = emit_expr(builder, cond);
 	maybe_emit_cond_branch(builder, cond_val, do_block, cont_block);
 	leave_scope(sym_tbl);
@@ -950,7 +957,7 @@ static void emit_while_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	maybe_emit_cond_branch(builder, cond_val, while_block, cont_block);
 	LLVMPositionBuilderAtEnd(builder, while_block);
 	enter_new_scope(sym_tbl);
-	emit_compound_stmt(builder, stmts, cont_block);
+	emit_compound_stmt(builder, stmts, cont_block, cond_block);
 	leave_scope(sym_tbl);
 	maybe_emit_branch(builder, cond_block);
 	LLVMPositionBuilderAtEnd(builder, cont_block);
@@ -983,7 +990,7 @@ static void emit_for_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 	maybe_emit_cond_branch(builder, cond_val, for_block, cont_block);
 	LLVMPositionBuilderAtEnd(builder, for_block);
 	enter_new_scope(sym_tbl);
-	emit_compound_stmt(builder, stmts, cont_block);
+	emit_compound_stmt(builder, stmts, cont_block, post_block);
 	leave_scope(sym_tbl);
 	maybe_emit_branch(builder, post_block);
 	LLVMPositionBuilderAtEnd(builder, post_block);
@@ -1014,13 +1021,30 @@ static void emit_return_stmt(LLVMBuilderRef builder, struct stmt *stmt)
 static void emit_break_stmt(LLVMBuilderRef builder, struct stmt *stmt,
 		LLVMBasicBlockRef after_loop_block)
 {
+	LLVMBasicBlockRef after_break_block;
+
 	assert(stmt->kind == BREAK_STMT);
 	assert(after_loop_block != NULL);
 	maybe_emit_branch(builder, after_loop_block);
+	after_break_block = append_basic_block(builder, "break.end");
+	LLVMPositionBuilderAtEnd(builder, after_break_block);
+}
+
+static void emit_continue_stmt(LLVMBuilderRef builder, struct stmt *stmt,
+		LLVMBasicBlockRef cond_loop_block)
+{
+	LLVMBasicBlockRef after_continue_block;
+
+	assert(stmt->kind == CONTINUE_STMT);
+	assert(after_loop_block != NULL);
+	maybe_emit_branch(builder, cond_loop_block);
+	after_continue_block = append_basic_block(builder, "continue.end");
+	LLVMPositionBuilderAtEnd(builder, after_continue_block);
 }
 
 static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt,
-		LLVMBasicBlockRef after_loop_block)
+		LLVMBasicBlockRef after_loop_block,
+		LLVMBasicBlockRef cond_loop_block)
 {
 	switch (stmt->kind) {
 	case DECL_STMT:
@@ -1030,7 +1054,7 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt,
 		emit_expr(builder, stmt->u.expr.expr);
 		break;
 	case IF_STMT:
-		emit_if_stmt(builder, stmt, after_loop_block);
+		emit_if_stmt(builder, stmt, after_loop_block, cond_loop_block);
 		break;
 	case DO_STMT:
 		emit_do_stmt(builder, stmt);
@@ -1047,16 +1071,21 @@ static void emit_stmt(LLVMBuilderRef builder, struct stmt *stmt,
 	case BREAK_STMT:
 		emit_break_stmt(builder, stmt, after_loop_block);
 		break;
+	case CONTINUE_STMT:
+		emit_continue_stmt(builder, stmt, cond_loop_block);
+		break;
 	}
 }
 
 static void emit_compound_stmt(LLVMBuilderRef builder, Vec *stmts,
-		LLVMBasicBlockRef after_loop_block)
+		LLVMBasicBlockRef after_loop_block,
+		LLVMBasicBlockRef cond_loop_block)
 {
 	size_t i;
 
 	for (i = 0; i < vec_len(stmts); i++) {
-		emit_stmt(builder, vec_get(stmts, i), after_loop_block);
+		emit_stmt(builder, vec_get(stmts, i), after_loop_block,
+				cond_loop_block);
 	}
 }
 
@@ -1103,7 +1132,7 @@ static void emit_func_decl(LLVMModuleRef module, struct decl *decl)
 		cur_func_return_val_ptr = LLVMBuildAlloca(builder,
 				get_llvm_type(return_type), "return_val_ptr");
 	}
-	emit_compound_stmt(builder, body_stmts, NULL);
+	emit_compound_stmt(builder, body_stmts, NULL, NULL);
 	last_block = LLVMGetLastBasicBlock(func_val);
 	maybe_emit_branch(builder, cur_func_return_block);
 	LLVMMoveBasicBlockAfter(cur_func_return_block, last_block);

@@ -961,6 +961,16 @@ static struct stmt *parse_break_stmt(void)
 	return ALLOC_BREAK_STMT(lineno);
 }
 
+static struct stmt *parse_continue_stmt(void)
+{
+	unsigned lineno;
+
+	lineno = cur_tok.lineno;
+	expect_tok(CONTINUE);
+	expect_tok(SEMICOLON);
+	return ALLOC_CONTINUE_STMT(lineno);
+}
+
 static struct stmt *parse_expr_stmt(void)
 {
 	unsigned lineno;
@@ -990,6 +1000,8 @@ static struct stmt *parse_stmt(void)
 		return parse_return_stmt();
 	case BREAK:
 		return parse_break_stmt();
+	case CONTINUE:
+		return parse_continue_stmt();
 	default:
 		return parse_expr_stmt();
 	}

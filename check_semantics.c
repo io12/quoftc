@@ -1246,6 +1246,15 @@ static void check_break_stmt(struct stmt *stmt, bool in_loop)
 	}
 }
 
+static void check_continue_stmt(struct stmt *stmt, bool in_loop)
+{
+	assert(stmt->kind == CONTINUE_STMT);
+	if (!in_loop) {
+		fatal_error(stmt->lineno,
+				"Continue statement not used in a loop");
+	}
+}
+
 static void check_decl(struct decl *);
 
 static void check_stmt(struct stmt *stmt, bool in_loop)
@@ -1274,6 +1283,9 @@ static void check_stmt(struct stmt *stmt, bool in_loop)
 		break;
 	case BREAK_STMT:
 		check_break_stmt(stmt, in_loop);
+		break;
+	case CONTINUE_STMT:
+		check_continue_stmt(stmt, in_loop);
 		break;
 	}
 }

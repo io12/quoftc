@@ -306,6 +306,8 @@ void free_stmt(void *p)
 		break;
 	case BREAK_STMT:
 		break;
+	case CONTINUE_STMT:
+		break;
 	}
 	free(stmt);
 }
