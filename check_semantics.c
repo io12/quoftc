@@ -1290,12 +1290,25 @@ static void check_stmt(struct stmt *stmt, bool in_loop)
 	}
 }
 
+static bool is_terminator_stmt(struct stmt *stmt)
+{
+	return stmt->kind == RETURN_STMT
+		|| stmt->kind == BREAK_STMT
+		|| stmt->kind == CONTINUE_STMT;
+}
+
 static void check_compound_stmt(Vec *stmts, bool in_loop)
 {
+	struct stmt *stmt;
 	size_t i;
 
 	for (i = 0; i < vec_len(stmts); i++) {
-		check_stmt(vec_get(stmts, i), in_loop);
+		stmt = vec_get(stmts, i);
+		check_stmt(stmt, in_loop);
+		if (is_terminator_stmt(stmt) && i < vec_len(stmts) - 1) {
+			warn(stmt->lineno,
+				"Dead code after terminator statement");
+		}
 	}
 }
 

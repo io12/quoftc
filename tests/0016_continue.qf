@@ -10,8 +10,6 @@ bool passed_test(void)
 			break;
 		} else {
 			continue;
-			j += 11111;
-			i += 22222;
 		}
 	}
 	if (i != 2 || j != -3) {
@@ -24,8 +22,6 @@ bool passed_test(void)
 			break;
 		} else {
 			continue;
-			j += 11111;
-			i += 22222;
 		}
 	} while (true);
 	if (i != 10 || j != 13) {
@@ -38,8 +34,6 @@ bool passed_test(void)
 			break;
 		} else {
 			continue;
-			j += 11111;
-			i += 22222;
 		}
 	}
 	if (i != 100000 || j != 0) {
