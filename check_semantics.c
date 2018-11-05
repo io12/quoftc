@@ -185,11 +185,15 @@ static bool is_pure_expr(struct expr *expr)
 		return false; // TODO
 	case FIELD_ACCESS_EXPR:
 		internal_error(); // TODO: Stub
+	case INDEX_EXPR:
+		return false;
 	}
 	internal_error();
 }
 
-static bool is_lvalue_unary_op(struct expr *expr)
+static bool is_lvalue(struct expr *);
+
+static bool is_lvalue_unary_op_expr(struct expr *expr)
 {
 	enum unary_op op = expr->u.unary_op.op;
 
@@ -199,6 +203,25 @@ static bool is_lvalue_unary_op(struct expr *expr)
 	default:
 		return false;
 	}
+}
+
+static bool is_lvalue_ident_expr(struct expr *expr)
+{
+	struct symbol_info *sym_info;
+	char *name;
+
+	name = expr->u.ident.name;
+	sym_info = lookup_symbol(sym_tbl, name);
+	assert(sym_info != NULL);
+	assert(sym_info->kind == VALUE_SYM);
+	return !sym_info->u.value.is_let;
+}
+
+// TODO: Test what happens when an array is reassigned
+static bool is_lvalue_index_expr(struct expr *expr)
+{
+	assert(expr->kind == INDEX_EXPR);
+	return is_lvalue(expr->u.index.array);
 }
 
 static bool is_lvalue(struct expr *expr)
@@ -213,19 +236,11 @@ static bool is_lvalue(struct expr *expr)
 	case LAMBDA_EXPR:
 		return false;
 	case UNARY_OP_EXPR:
-		return is_lvalue_unary_op(expr);
+		return is_lvalue_unary_op_expr(expr);
 	case BIN_OP_EXPR:
 		return false;
-	case IDENT_EXPR: {
-		struct symbol_info *sym_info;
-		char *name;
-
-		name = expr->u.ident.name;
-		sym_info = lookup_symbol(sym_tbl, name);
-		assert(sym_info != NULL);
-		assert(sym_info->kind == VALUE_SYM);
-		return !sym_info->u.value.is_let;
-	}
+	case IDENT_EXPR:
+		return is_lvalue_ident_expr(expr);
 	case BLOCK_EXPR:
 		// TODO: Stub
 	case IF_EXPR:
@@ -234,6 +249,8 @@ static bool is_lvalue(struct expr *expr)
 	case FUNC_CALL_EXPR:
 	case FIELD_ACCESS_EXPR:
 		return false;
+	case INDEX_EXPR:
+		return is_lvalue_index_expr(expr);
 	}
 	internal_error();
 }
@@ -960,6 +977,26 @@ static void type_check_field_access_expr(struct expr *expr)
 	internal_error(); // TODO: Stub
 }
 
+static void type_check_index_expr(struct expr *expr)
+{
+	struct expr *array, *index;
+
+	assert(expr->kind == INDEX_EXPR);
+	array = expr->u.index.array;
+	index = expr->u.index.index;
+	type_check(array);
+	type_check(index);
+	if (!is_int_type(index->type)) {
+		fatal_error(index->lineno,
+			"Array is indexed with a non-integer type");
+	}
+	if (array->type->kind != ARRAY_TYPE) {
+		fatal_error(array->lineno,
+			"Value is indexed, but is not an array");
+	}
+	expr->type = dup_type(array->type->u.array.l);
+}
+
 static void type_check(struct expr *expr)
 {
 	assert(expr->type == NULL);
@@ -1015,6 +1052,9 @@ static void type_check(struct expr *expr)
 		break;
 	case FIELD_ACCESS_EXPR:
 		type_check_field_access_expr(expr);
+		break;
+	case INDEX_EXPR:
+		type_check_index_expr(expr);
 		break;
 	}
 }

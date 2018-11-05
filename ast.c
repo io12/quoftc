@@ -197,6 +197,10 @@ void free_expr(void *p)
 		free_expr(expr->u.field_access.expr);
 		free(expr->u.field_access.field);
 		break;
+	case INDEX_EXPR:
+		free_expr(expr->u.index.array);
+		free_expr(expr->u.index.index);
+		break;
 	}
 	free_type(expr->type); // TODO: Is this safe?
 	free(expr);

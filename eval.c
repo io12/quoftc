@@ -77,6 +77,7 @@ uint64_t eval_const_expr(struct expr *expr)
 	case TUPLE_EXPR:
 	case FUNC_CALL_EXPR:
 	case FIELD_ACCESS_EXPR:
+	case INDEX_EXPR:
 		eval_error(expr);
 	case INT_LIT_EXPR:
 		return expr->u.int_lit.val;

@@ -785,6 +785,8 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 		return emit_func_call_expr(builder, expr);
 	case FIELD_ACCESS_EXPR:
 		internal_error(); // TODO: Stub
+	case INDEX_EXPR:
+		internal_error(); // TODO: Stub
 	}
 	internal_error();
 }

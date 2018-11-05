@@ -538,6 +538,18 @@ static Vec *parse_func_call_args(void)
 	return args;
 }
 
+static struct expr *parse_index_expr(struct expr *array)
+{
+	unsigned lineno;
+	struct expr *index;
+
+	lineno = cur_tok.lineno;
+	expect_tok(OPEN_BRACKET);
+	index = parse_expr();
+	expect_tok(CLOSE_BRACKET);
+	return ALLOC_INDEX_EXPR(lineno, array, index);
+}
+
 static struct expr *parse_postfix_unary_expr(void)
 {
 	unsigned lineno;
@@ -564,6 +576,8 @@ static struct expr *parse_postfix_unary_expr(void)
 		consume_tok();
 		return ALLOC_FIELD_ACCESS_EXPR(lineno, operand, field);
 	}
+	case OPEN_BRACKET:
+		  return parse_index_expr(operand);
 	default:
 		return operand;
 	}

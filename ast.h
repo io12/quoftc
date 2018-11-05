@@ -138,7 +138,7 @@ struct expr {
 		BOOL_LIT_EXPR, INT_LIT_EXPR, FLOAT_LIT_EXPR, CHAR_LIT_EXPR,
 		STRING_LIT_EXPR, UNARY_OP_EXPR, BIN_OP_EXPR, LAMBDA_EXPR,
 		ARRAY_LIT_EXPR, IDENT_EXPR, BLOCK_EXPR, IF_EXPR, SWITCH_EXPR,
-		TUPLE_EXPR, FUNC_CALL_EXPR, FIELD_ACCESS_EXPR
+		TUPLE_EXPR, FUNC_CALL_EXPR, FIELD_ACCESS_EXPR, INDEX_EXPR
 	} kind;
 	union {
 		struct {
@@ -196,6 +196,9 @@ struct expr {
 			struct expr *expr;
 			char *field;
 		} field_access;
+		struct {
+			struct expr *array, *index;
+		} index;
 	} u;
 };
 
@@ -231,6 +234,8 @@ struct expr {
 	ALLOC_UNION(expr, FUNC_CALL_EXPR, func_call, __VA_ARGS__)
 #define ALLOC_FIELD_ACCESS_EXPR(...) \
 	ALLOC_UNION(expr, FIELD_ACCESS_EXPR, field_access, __VA_ARGS__)
+#define ALLOC_INDEX_EXPR(...) \
+	ALLOC_UNION(expr, INDEX_EXPR, index, __VA_ARGS__)
 
 void free_expr(void *);
 
