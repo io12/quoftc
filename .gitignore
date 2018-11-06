@@ -3,3 +3,4 @@ tags
 a.out
 *.o
 tests/run_test
+vgcore.*
