@@ -41,7 +41,8 @@ static LLVMTypeRef get_fat_ptr_type(LLVMTypeRef item_type)
 
 	struct_item_types[0] = LLVMInt16Type();
 	struct_item_types[1] = LLVMPointerType(item_type, 0);
-	return LLVMStructType(struct_item_types, 2, false);
+	return LLVMStructType(struct_item_types, ARRAY_LEN(struct_item_types),
+			false);
 }
 
 static LLVMTypeRef get_llvm_type(struct type *);
@@ -673,6 +674,31 @@ static LLVMValueRef emit_ident_expr(LLVMBuilderRef builder, struct expr *expr)
 	}
 }
 
+static LLVMValueRef emit_array_lit_expr(LLVMBuilderRef builder,
+		struct expr *expr)
+{
+	LLVMValueRef llvm_arr, llvm_elem_ptr, llvm_index[2];
+	struct expr *item;
+	Vec *items;
+	size_t i;
+
+	assert(expr->kind == ARRAY_LIT_EXPR);
+	items = expr->u.array_lit.val;
+	llvm_arr = LLVMBuildAlloca(builder, get_llvm_type(expr->type),
+			"array.alloca");
+	for (i = 0; i < vec_len(items); i++) {
+		item = vec_get(items, i);
+		llvm_index[0] = LLVMConstInt(LLVMInt32Type(), 0, false);
+		llvm_index[1] = LLVMConstInt(LLVMInt32Type(), i, false);
+		llvm_elem_ptr = LLVMBuildInBoundsGEP(builder, llvm_arr,
+				llvm_index, ARRAY_LEN(llvm_index),
+				"array.elem_ptr");
+		LLVMBuildStore(builder, emit_expr(builder, item),
+				llvm_elem_ptr);
+	}
+	return llvm_arr;
+}
+
 static void emit_compound_stmt(LLVMBuilderRef, Vec *, LLVMBasicBlockRef,
 		LLVMBasicBlockRef);
 
@@ -735,6 +761,22 @@ static LLVMValueRef emit_func_call_expr(LLVMBuilderRef builder,
 	return call_val;
 }
 
+static LLVMValueRef emit_index_expr(LLVMBuilderRef builder, struct expr *expr)
+{
+	LLVMValueRef llvm_array, llvm_index[2], llvm_elem_ptr;
+	struct expr *array, *index;
+
+	assert(expr->kind == INDEX_EXPR);
+	array = expr->u.index.array;
+	index = expr->u.index.index;
+	llvm_array = emit_lval(builder, array);
+	llvm_index[0] = LLVMConstInt(LLVMInt32Type(), 0, false);
+	llvm_index[1] = emit_expr(builder, index);
+	llvm_elem_ptr = LLVMBuildInBoundsGEP(builder, llvm_array,
+			llvm_index, ARRAY_LEN(llvm_index), "array.elem_ptr");
+	return LLVMBuildLoad(builder, llvm_elem_ptr, "index.load");
+}
+
 static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 {
 	LLVMTypeRef llvm_type = get_llvm_type(expr->type);
@@ -771,8 +813,9 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	case BIN_OP_EXPR:
 		return emit_bin_op_expr(builder, expr);
 	case LAMBDA_EXPR:
-	case ARRAY_LIT_EXPR:
 		internal_error(); // TODO: Stub
+	case ARRAY_LIT_EXPR:
+		return emit_array_lit_expr(builder, expr);
 	case IDENT_EXPR:
 		return emit_ident_expr(builder, expr);
 	case BLOCK_EXPR:
@@ -786,7 +829,7 @@ static LLVMValueRef emit_expr(LLVMBuilderRef builder, struct expr *expr)
 	case FIELD_ACCESS_EXPR:
 		internal_error(); // TODO: Stub
 	case INDEX_EXPR:
-		internal_error(); // TODO: Stub
+		return emit_index_expr(builder, expr);
 	}
 	internal_error();
 }
@@ -824,18 +867,31 @@ static void emit_global_data_decl(LLVMModuleRef module, struct decl *decl)
 
 static void emit_local_data_decl(LLVMBuilderRef builder, struct decl *decl)
 {
-	LLVMTypeRef type;
-	LLVMValueRef local_ptr;
+	LLVMTypeRef llvm_type;
+	LLVMValueRef local_ptr, llvm_init;
 	struct expr *init;
+	struct type *type;
 	char *name;
 
 	assert(decl->kind == DATA_DECL);
-	type = get_llvm_type(decl->u.data.type);
+	type = decl->u.data.type;
 	name = decl->u.data.name;
 	init = decl->u.data.init;
-	local_ptr = LLVMBuildAlloca(builder, type, name);
-	if (init != NULL) {
-		LLVMBuildStore(builder, emit_expr(builder, init), local_ptr);
+	llvm_type = get_llvm_type(type);
+	if (init == NULL) {
+		llvm_init = NULL;
+	} else {
+		llvm_init = emit_expr(builder, init);
+	}
+	// Allocate space for variable and store initializer
+	if (is_scalar_type(type) || init == NULL) {
+		local_ptr = LLVMBuildAlloca(builder, llvm_type, name);
+		if (init != NULL) {
+			LLVMBuildStore(builder, llvm_init, local_ptr);
+		}
+	} else {
+		// Array initializers emit their own alloca'd pointer
+		local_ptr = llvm_init;
 	}
 	insert_symbol(sym_tbl, name, alloc_sym_info(true, local_ptr));
 }

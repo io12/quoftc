@@ -298,6 +298,29 @@ bool is_float_type(struct type *type)
 	}
 }
 
+bool is_scalar_type(struct type *type)
+{
+	switch (type->kind) {
+	case UNSIZED_INT_TYPE:
+		internal_error(); // The parser shouldn't set this
+	case U8_TYPE:
+	case U16_TYPE:
+	case U32_TYPE:
+	case U64_TYPE:
+	case I8_TYPE:
+	case I16_TYPE:
+	case I32_TYPE:
+	case I64_TYPE:
+	case F32_TYPE:
+	case F64_TYPE:
+	case BOOL_TYPE:
+	case CHAR_TYPE:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static bool is_num_type(struct type *type)
 {
 	return is_int_type(type) || is_float_type(type);
