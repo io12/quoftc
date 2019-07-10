@@ -1094,7 +1094,7 @@ static void emit_continue_stmt(LLVMBuilderRef builder, struct stmt *stmt,
 	LLVMBasicBlockRef after_continue_block;
 
 	assert(stmt->kind == CONTINUE_STMT);
-	assert(after_loop_block != NULL);
+	assert(cond_loop_block != NULL);
 	maybe_emit_branch(builder, cond_loop_block);
 	after_continue_block = append_basic_block(builder, "continue.end");
 	LLVMPositionBuilderAtEnd(builder, after_continue_block);
